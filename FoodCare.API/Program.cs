@@ -3,21 +3,34 @@ using Npgsql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using FoodCare.API.Models;
+using FoodCare.API.Models.Enums;
 using FoodCare.API.Helpers;
 using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Implementations;
+using System.Text.Json.Serialization;
+using FoodCare.API.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Configure Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+
+dataSourceBuilder.MapEnum<UserRole>("user_role");
+dataSourceBuilder.MapEnum<OrderStatus>("order_status");
+dataSourceBuilder.MapEnum<PaymentStatus>("payment_status");
+dataSourceBuilder.MapEnum<SubFrequency>("sub_frequency");
+dataSourceBuilder.MapEnum<SubStatus>("sub_status");
+
 dataSourceBuilder.EnableDynamicJson();
 
 var dataSource = dataSourceBuilder.Build();
