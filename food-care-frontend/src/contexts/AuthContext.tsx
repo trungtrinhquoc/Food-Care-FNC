@@ -8,6 +8,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: LoginRequest) => Promise<void>;
     register: (data: RegisterRequest) => Promise<void>;
+    loginWithGoogle: () => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
 }
@@ -51,6 +52,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         handleAuthResponse(response);
     };
 
+    const loginWithGoogle = async () => {
+        // TODO: Implement actual Google Login integration
+        console.log('Google login requested');
+        // Simulating a delay for now
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // For now we can just alert or toast that it's not implemented, 
+        // but to avoid breaking the flow we'll just return. 
+        // If we want to simulate success:
+        // handleAuthResponse({ token: 'mock-token', user: { ... } });
+    };
+
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -62,6 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading,
         login,
         register,
+        loginWithGoogle,
         logout,
         isAuthenticated: !!user,
     };
