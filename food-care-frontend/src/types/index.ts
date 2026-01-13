@@ -22,11 +22,11 @@ export interface User {
     id: string;
     email: string;
     fullName: string;
-    phone?: string;
+    phoneNumber?: string; // Changed from phone
     avatarUrl?: string;
     role: string;
     memberTier?: MemberTier;
-    totalSpent: number;
+    totalSpent?: number; // Optional as not in DTO yet
     loyaltyPoints: number;
 }
 
@@ -34,7 +34,7 @@ export interface RegisterRequest {
     email: string;
     password: string;
     fullName: string;
-    phone?: string;
+    phoneNumber?: string; // Changed from phone
 }
 
 export interface LoginRequest {
@@ -57,9 +57,9 @@ export interface Product {
     categoryId?: number;
     categoryName?: string;
     description?: string;
-    price: number;
+    basePrice: number; // Changed from price
     originalPrice?: number;
-    unit: string;
+    unit?: string; // Made optional
     stockQuantity: number;
     imageUrl?: string;
     images?: string[];
@@ -83,7 +83,7 @@ export interface ProductFilter {
 }
 
 export interface ProductsResponse {
-    data: Product[];
+    products: Product[]; // Changed from data
     totalCount: number;
     page: number;
     pageSize: number;
