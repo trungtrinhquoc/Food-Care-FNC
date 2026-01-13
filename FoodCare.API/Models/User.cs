@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using FoodCare.API.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace FoodCare.API.Models;
 
@@ -13,6 +14,7 @@ public partial class User
 
     public string? FullName { get; set; }
 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public UserRole Role { get; set; } = UserRole.customer;
 
     public string? PhoneNumber { get; set; }

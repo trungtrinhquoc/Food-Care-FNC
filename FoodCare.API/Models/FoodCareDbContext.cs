@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using FoodCare.API.Models.Enums; // Đảm bảo namespace này đúng với nơi bạn lưu Enum
+using FoodCare.API.Models.Enums; 
+using FoodCare.API.Models;
 
 namespace FoodCare.API.Models;
 
@@ -37,8 +38,8 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
     public virtual DbSet<ZaloTemplate> ZaloTemplates { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
+    // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,12 +47,11 @@ public partial class FoodCareDbContext : DbContext
         // 1. CẤU HÌNH ENUM CỦA DỰ ÁN (SỬA LẠI CHUẨN)
         // =========================================================
         // Sử dụng Generic <T> để EF Core hiểu map với Enum C#
-        modelBuilder.HasPostgresEnum<UserRole>("user_role");
-        modelBuilder.HasPostgresEnum<OrderStatus>("order_status");
-        modelBuilder.HasPostgresEnum<PaymentStatus>("payment_status");
-        modelBuilder.HasPostgresEnum<SubFrequency>("sub_frequency");
-        modelBuilder.HasPostgresEnum<SubStatus>("sub_status");
-
+        modelBuilder.HasPostgresEnum<UserRole>("public", "user_role");
+modelBuilder.HasPostgresEnum<OrderStatus>("public", "order_status");
+modelBuilder.HasPostgresEnum<PaymentStatus>("public", "payment_status");
+modelBuilder.HasPostgresEnum<SubFrequency>("public", "sub_frequency");
+modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
         // =========================================================
         // 2. ENUM HỆ THỐNG SUPABASE (GIỮ NGUYÊN)
         // =========================================================
@@ -223,18 +223,12 @@ public partial class FoodCareDbContext : DbContext
             entity.Property(e => e.Status)
                   .HasDefaultValue(OrderStatus.pending)
                   .HasColumnName("status")
-                  .HasConversion(
-                      v => v.ToString().ToLower(),
-                      v => (OrderStatus)Enum.Parse(typeof(OrderStatus), v, true)
-                  );
+                  .HasColumnType("order_status");
 
             entity.Property(e => e.PaymentStatus)
                   .HasDefaultValue(PaymentStatus.unpaid)
                   .HasColumnName("payment_status")
-                  .HasConversion(
-                      v => v.ToString().ToLower(),
-                      v => (PaymentStatus)Enum.Parse(typeof(PaymentStatus), v, true)
-                  );
+                  .HasColumnType("payment_status");
 
             entity.HasOne(d => d.Subscription).WithMany(p => p.Orders).HasForeignKey(d => d.SubscriptionId).HasConstraintName("orders_subscription_id_fkey");
             entity.HasOne(d => d.User).WithMany(p => p.Orders).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_user_id_fkey");
@@ -271,17 +265,11 @@ public partial class FoodCareDbContext : DbContext
             // --- FIX 3: Cấu hình ColumnType cho Enum History ---
             entity.Property(e => e.PreviousStatus)
                   .HasColumnName("previous_status")
-                  .HasConversion(
-                      v => v.ToString().ToLower(),
-                      v => (OrderStatus)Enum.Parse(typeof(OrderStatus), v, true)
-                  );
+                  .HasColumnType("order_status");
             
             entity.Property(e => e.NewStatus)
                   .HasColumnName("new_status")
-                  .HasConversion(
-                      v => v.ToString().ToLower(),
-                      v => (OrderStatus)Enum.Parse(typeof(OrderStatus), v, true)
-                  );
+                  .HasColumnType("order_status");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.OrderStatusHistories).HasForeignKey(d => d.CreatedBy).HasConstraintName("order_status_history_created_by_fkey");
             entity.HasOne(d => d.Order).WithMany(p => p.OrderStatusHistories).HasForeignKey(d => d.OrderId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("order_status_history_order_id_fkey");
@@ -401,18 +389,12 @@ public partial class FoodCareDbContext : DbContext
             // --- FIX 4: Cấu hình ColumnType cho Enum Subscription ---
             entity.Property(e => e.Frequency)
                   .HasColumnName("frequency")
-                  .HasConversion(
-                      v => v.ToString().ToLower(),
-                      v => (SubFrequency)Enum.Parse(typeof(SubFrequency), v, true)
-                  );
+                  .HasColumnType("sub_frequency");
 
             entity.Property(e => e.Status)
                   .HasDefaultValue(SubStatus.active)
                   .HasColumnName("status")
-                  .HasConversion(
-                      v => v.ToString().ToLower(),
-                      v => (SubStatus)Enum.Parse(typeof(SubStatus), v, true)
-                  );
+                  .HasColumnType("sub_status");
 
             entity.HasOne(d => d.PaymentMethod).WithMany(p => p.Subscriptions).HasForeignKey(d => d.PaymentMethodId).HasConstraintName("subscriptions_payment_method_id_fkey");
             entity.HasOne(d => d.Product).WithMany(p => p.Subscriptions).HasForeignKey(d => d.ProductId).HasConstraintName("subscriptions_product_id_fkey");
@@ -466,10 +448,7 @@ public partial class FoodCareDbContext : DbContext
             // --- FIX 1: Cấu hình ColumnType cho Enum User (NGUYÊN NHÂN LỖI CHÍNH) ---
             entity.Property(e => e.Role)
                 .HasColumnName("role")
-                .HasConversion(
-                    v => v.ToString().ToLower(), // Convert enum to lowercase string (customer, admin, staff)
-                    v => (UserRole)Enum.Parse(typeof(UserRole), v, true) // Convert string back to enum
-                );
+                .HasColumnType("user_role");
 
             entity.Property(e => e.TierId).HasDefaultValue(1).HasColumnName("tier_id");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
