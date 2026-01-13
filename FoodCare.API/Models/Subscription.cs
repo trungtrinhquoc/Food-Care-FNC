@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using FoodCare.API.Models.Enums;
 
 namespace FoodCare.API.Models;
 
@@ -11,9 +12,13 @@ public partial class Subscription
 
     public Guid? ProductId { get; set; }
 
+    public SubFrequency Frequency { get; set; }
+
     public int? Quantity { get; set; }
 
     public decimal? DiscountPercent { get; set; }
+
+    public SubStatus Status { get; set; } = SubStatus.active;
 
     public DateOnly? StartDate { get; set; }
 
