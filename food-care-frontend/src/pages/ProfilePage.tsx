@@ -20,12 +20,12 @@ export default function ProfilePage() {
 
                 <div>
                     <label className="text-sm text-gray-600">Số điện thoại</label>
-                    <p className="font-semibold">{user?.phone || 'Chưa cập nhật'}</p>
+                    <p className="font-semibold">{user?.phoneNumber || 'Chưa cập nhật'}</p>
                 </div>
 
                 <div>
                     <label className="text-sm text-gray-600">Hạng thành viên</label>
-                    <p className="font-semibold text-primary">{user?.memberTier?.nameVi}</p>
+                    <p className="font-semibold text-primary">{user?.memberTier?.name}</p>
                 </div>
 
                 <div>
@@ -35,7 +35,7 @@ export default function ProfilePage() {
 
                 <div>
                     <label className="text-sm text-gray-600">Tổng chi tiêu</label>
-                    <p className="font-semibold">{user?.totalSpent.toLocaleString('vi-VN')}đ</p>
+                    <p className="font-semibold">{user?.totalSpent?.toLocaleString('vi-VN') ?? 0}đ</p>
                 </div>
             </div>
         </div>

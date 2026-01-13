@@ -36,6 +36,7 @@ artifacts/
 # Sensitive configuration files
 appsettings.Development.json
 appsettings.Production.json
+appsettings.json
 *.env
 .env.local
 .env.development

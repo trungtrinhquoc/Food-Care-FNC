@@ -26,9 +26,9 @@ export default function CartPage() {
                             <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0"></div>
                             <div className="flex-1">
                                 <h3 className="font-semibold">{item.product.name}</h3>
-                                <p className="text-sm text-gray-600">{item.product.unit}</p>
+                                <p className="text-sm text-gray-600">{item.product.unit || 'Cái'}</p>
                                 <p className="text-primary font-bold">
-                                    {item.product.price.toLocaleString('vi-VN')}đ
+                                    {item.product.basePrice.toLocaleString('vi-VN')}đ
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
