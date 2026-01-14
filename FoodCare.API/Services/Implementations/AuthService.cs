@@ -131,25 +131,44 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
     {
-        // NOTE: In production, this should call Supabase Auth API
-        // For now, simplified login by email only
+        // Verify credentials with Supabase Auth
+        _logger.LogInformation("Attempting login with Supabase Auth for email: {Email}", request.Email);
         
+        Supabase.Gotrue.Session? session;
+        try
+        {
+            session = await _supabaseClient.Auth.SignIn(request.Email, request.Password);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Supabase Auth sign-in failed for email: {Email}", request.Email);
+            throw new UnauthorizedAccessException("Invalid email or password");
+        }
+
+        if (session?.User == null || string.IsNullOrEmpty(session.User.Id))
+        {
+            _logger.LogWarning("Supabase Auth returned null session or user for email: {Email}", request.Email);
+            throw new UnauthorizedAccessException("Invalid email or password");
+        }
+
+        var supabaseUserId = Guid.Parse(session.User.Id);
+        _logger.LogInformation("Supabase Auth successful for user ID: {UserId}", supabaseUserId);
+
+        // Get user from our database
         var user = await _context.Users
             .Include(u => u.Tier)
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => u.Id == supabaseUserId);
 
         if (user == null)
         {
-            throw new UnauthorizedAccessException("Invalid email or password");
+            _logger.LogWarning("User exists in Supabase but not in database: {UserId}", supabaseUserId);
+            throw new UnauthorizedAccessException("User not found in system");
         }
 
         if (user.IsActive == false)
         {
             throw new UnauthorizedAccessException("Account is inactive");
         }
-
-        // In production, password verification would be done by Supabase Auth
-        // For now, we'll just generate token
 
         var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = _jwtHelper.GenerateRefreshToken();

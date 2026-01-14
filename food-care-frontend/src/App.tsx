@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { Toaster } from 'sonner';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -77,6 +78,7 @@ function App() {
         <AuthProvider>
           <CartProvider>
             <AppRoutes />
+            <Toaster position="top-center" richColors />
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
