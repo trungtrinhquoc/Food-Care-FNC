@@ -159,3 +159,62 @@ export interface Category {
     imageUrl?: string;
     parentId?: number;
 }
+// ...existing code...
+
+// Admin Types
+export interface AdminStats {
+    totalRevenue: number
+    totalOrders: number
+    totalCustomers: number
+    totalProducts: number
+    monthlyGrowth: number
+    activeSubscriptions: number
+}
+
+export interface AdminOrder {
+    id: string
+    customerName: string
+    date: string
+    total: number
+    status: 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled'
+    items: number
+    subscription: boolean
+    products: string[]
+    address: string
+    phone: string
+}
+
+export interface AdminCustomer {
+    id: string
+    name: string
+    email: string
+    phone: string
+    memberTier: string
+    totalOrders: number
+    totalSpent: number
+    joinDate: string
+    subscriptions: number
+}
+
+export interface Supplier {
+    id: string
+    name: string
+    products: string[]
+    totalProducts: number
+    status: 'active' | 'inactive'
+    phone: string
+    email: string
+    address: string
+    contact: string
+}
+
+export interface ZaloReminder {
+    id: string
+    customerName: string
+    phone: string
+    product: string
+    estimatedDaysLeft: number
+    lastPurchase: string
+    status: 'pending' | 'sent'
+    sentDate?: string
+}

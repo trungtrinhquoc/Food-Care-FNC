@@ -81,7 +81,7 @@ export const productsApi = {
     },
 
     getProduct: async (id: string): Promise<Product> => {
-        const response = await api.get<Product>(`/products/${id}`);
+        const response = await api.get<Product>(`/./${id}`);
         return response.data;
     },
 };
