@@ -9,6 +9,34 @@ export type SubscriptionFrequency = 'Weekly' | 'BiWeekly' | 'Monthly' | 'Custom'
 
 export type SubscriptionStatus = 'Active' | 'Paused' | 'Cancelled';
 
+// Product
+export interface CreateProductRequest {
+    name: string
+    description?: string
+    basePrice: number
+    originalPrice?: number
+    sku?: string
+    stockQuantity: number
+    categoryId?: number
+    supplierId?: number
+    isSubscriptionAvailable: boolean
+    images: string[]
+}
+
+
+export interface UpdateProductRequest {
+    name?: string
+    description?: string
+    basePrice?: number
+    originalPrice?: number
+    sku?: string
+    stockQuantity?: number
+    categoryId?: number
+    isSubscriptionAvailable?: boolean
+    isActive?: boolean
+    images: string[]
+}
+
 // Auth Types
 export interface MemberTier {
     id: number;
@@ -55,7 +83,7 @@ export interface Product {
     sku: string;
     name: string;
     slug: string;
-    categoryId?: number;
+    categoryId?: string;
     categoryName?: string;
     description?: string;
     basePrice: number; // Changed from price
@@ -63,13 +91,14 @@ export interface Product {
     unit?: string; // Made optional
     stockQuantity: number;
     imageUrl?: string;
-    images?: string[];
+    images: string[];
     ratingAverage: number;
     ratingCount: number;
     isSubscriptionAvailable: boolean;
     subscriptionDiscounts?: Record<string, number>;
     isActive: boolean;
 }
+
 
 export interface ProductFilter {
     categoryId?: number;
@@ -91,13 +120,16 @@ export interface ProductsResponse {
     totalPages: number;
 }
 
-// Cart Types
 export interface CartItem {
     product: Product;
     quantity: number;
+    selected: boolean;
     isSubscription: boolean;
-    subscriptionFrequency?: SubscriptionFrequency;
+    subscription?: {
+        frequency: SubscriptionFrequency;
+    };
 }
+
 
 // Order Types
 export interface OrderItem {
@@ -109,6 +141,7 @@ export interface OrderItem {
     isSubscription: boolean;
     subscriptionFrequency?: SubscriptionFrequency;
 }
+
 
 export interface Order {
     id: string;
@@ -126,6 +159,31 @@ export interface Order {
     items: OrderItem[];
     createdAt: string;
 }
+export interface VariantSnapshot {
+    isSubscription: boolean;
+    subscription?: {
+        frequency: string;
+    };
+}
+
+
+export interface CreateOrderItemRequest {
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
+    variantSnapshot: VariantSnapshot;
+}
+
+
+export interface CreateOrderRequest {
+    userId: string;
+    shippingAddress: string;
+    paymentMethod: string;
+    note?: string;
+    items: CreateOrderItemRequest[];
+}
+
 
 // Subscription Types
 export interface Subscription {
@@ -143,6 +201,7 @@ export interface Subscription {
     deliveryCount: number;
     createdAt: string;
 }
+
 
 export interface CreateSubscription {
     productId: string;
@@ -175,6 +234,11 @@ export interface Address {
     createdAt?: string;
 }
 
+export interface Supplier {
+    id: number
+    name: string
+}
+
 // Payment Method Types
 export type PaymentMethodType = 'card' | 'momo' | 'zalopay' | 'bank';
 
@@ -188,3 +252,96 @@ export interface PaymentMethod {
 }
 
 
+
+// ...existing code...
+
+// Admin Types
+export interface AdminStats {
+    totalRevenue: number
+    totalOrders: number
+    totalCustomers: number
+    totalProducts: number
+    monthlyGrowth: number
+    activeSubscriptions: number
+}
+
+export interface AdminOrder {
+    id: string
+    customerName: string
+    date: string
+    total: number
+    status: 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled'
+    items: number
+    subscription: boolean
+    products: string[]
+    address: string
+    phone: string
+}
+
+export interface AdminCustomer {
+    id: string
+    name: string
+    email: string
+    phone: string
+    memberTier: string
+    totalOrders: number
+    totalSpent: number
+    joinDate: string
+    subscriptions: number
+}
+
+export interface Supplier {
+    id: string
+    name: string
+    products: string[]
+    totalProducts: number
+    status: 'active' | 'inactive'
+    phone: string
+    email: string
+    address: string
+    contact: string
+}
+
+export interface ZaloReminder {
+    id: string
+    customerName: string
+    phone: string
+    product: string
+    estimatedDaysLeft: number
+    lastPurchase: string
+    status: 'pending' | 'sent'
+    sentDate?: string
+}
+
+// Product Request Types
+export interface CreateProductRequest {
+    sku: string;
+    name: string;
+    categoryId?: number;
+    supplierId?: number;
+    description?: string;
+    basePrice: number;
+    originalPrice?: number;
+    unit?: string;
+    stockQuantity: number;
+    imageUrl?: string;
+    images?: string[];
+    isSubscriptionAvailable: boolean;
+    isActive?: boolean;
+}
+
+export interface UpdateProductRequest {
+    sku?: string;
+    name?: string;
+    categoryId?: number;
+    supplierId?: number;
+    description?: string;
+    basePrice?: number;
+    originalPrice?: number;
+    unit?: string;
+    stockQuantity?: number;
+    imageUrl?: string;
+    images?: string[];
+    isSubscriptionAvailable?: boolean;
+    isActive?: boolean;
+}

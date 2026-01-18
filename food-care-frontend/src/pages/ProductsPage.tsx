@@ -8,11 +8,22 @@ import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ProductDialog } from '../components/ProductDialog'
 import type { Product } from '../types'
+import { ProductCard } from '../components/ProductCard'
+import { useNavigate } from 'react-router-dom'
 
 
 
 
 export default function ProductsPage() {
+    const navigate = useNavigate()
+
+    const handleViewDetail = (product: Product) => {
+        navigate(`/products/${product.id}`)
+    }
+
+    const handleAddToCart = (product: Product) => {
+        addToCart(product, 1)
+    }
     const [openDialog, setOpenDialog] = useState(false)
     const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined)
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -29,7 +40,7 @@ export default function ProductsPage() {
                 page: 1,
                 pageSize: 20,
                 searchTerm: searchQuery || undefined,
-                categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
+                categoryId: selectedCategory === 'all' ? undefined : parseInt(selectedCategory, 10),
             }),
     });
 
@@ -149,41 +160,12 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {data?.products.map((product) => (
-                    <div key={product.id} className="card hover:shadow-lg transition-shadow">
-                        <Link to={`/products/${product.id}`}>
-                            <div className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                                {product.images ? (
-                                    <img
-                                        src={product.images[0]}
-                                        alt={product.name}
-                                        className="w-full h-full object-cover rounded-lg"
-                                    />
-                                ) : (
-                                    <ShoppingCart className="h-16 w-16 text-gray-400" />
-                                )}
-                            </div>
-                            <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
-                            <p className="text-sm text-gray-600 mb-2">{product.unit || 'Cái'}</p>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xl font-bold text-primary">
-                                        {product.basePrice.toLocaleString('vi-VN')}đ
-                                    </p>
-                                    {product.originalPrice && (
-                                        <p className="text-sm text-gray-400 line-through">
-                                            {product.originalPrice.toLocaleString('vi-VN')}đ
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </Link>
-                        <button
-                            onClick={() => addToCart(product, 1)}
-                            className="w-full btn-primary mt-4"
-                        >
-                            Thêm vào giỏ
-                        </button>
-                    </div>
+                    <ProductCard
+                        key={product.id}
+                        product={product}
+                        onViewDetail={handleViewDetail}
+                        onAddToCart={handleAddToCart}
+                    />
                 ))}
             </div>
             <ProductDialog

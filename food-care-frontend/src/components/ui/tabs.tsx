@@ -39,7 +39,11 @@ const TabsList = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={`inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground ${className || ""}`}
+        className={`
+      bg-muted text-muted-foreground inline-flex h-9 w-fit
+      items-center justify-center rounded-xl p-[3px]
+      ${className || ""}
+    `}
         {...props}
     />
 ))
@@ -58,11 +62,19 @@ const TabsTrigger = React.forwardRef<
         <button
             ref={ref}
             type="button"
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${isActive
-                ? "bg-background text-foreground shadow"
-                : "hover:bg-muted/50"
-                } ${className || ""}`}
             onClick={() => context.setActiveTab(value)}
+            className={`
+        inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center
+        gap-1.5 rounded-xl border border-transparent px-2 py-1
+        text-sm font-medium whitespace-nowrap transition-[color,box-shadow]
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50
+        disabled:pointer-events-none disabled:opacity-50
+        ${isActive
+                    ? "bg-card text-foreground shadow"
+                    : "text-muted-foreground hover:bg-muted/50"
+                }
+        ${className || ""}
+      `}
             {...props}
         />
     )

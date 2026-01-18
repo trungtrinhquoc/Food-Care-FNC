@@ -6,12 +6,13 @@ import type { User, LoginRequest, RegisterRequest, AuthResponse } from '../types
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (data: LoginRequest) => Promise<void>;
-    register: (data: RegisterRequest) => Promise<void>;
+    login: (data: LoginRequest) => Promise<AuthResponse>;
+    register: (data: RegisterRequest) => Promise<AuthResponse>;
     loginWithGoogle: () => Promise<void>;
     logout: () => void;
     refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
+    isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,11 +47,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (data: LoginRequest) => {
         const response = await authApi.login(data);
         handleAuthResponse(response);
+        return response;
     };
 
     const register = async (data: RegisterRequest) => {
         const response = await authApi.register(data);
         handleAuthResponse(response);
+        return response;
     };
 
     const loginWithGoogle = async () => {
@@ -92,6 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         refreshUser,
         isAuthenticated: !!user,
+        isAdmin: user?.role?.toLowerCase() === 'admin',
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

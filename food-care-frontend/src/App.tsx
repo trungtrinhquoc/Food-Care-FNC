@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 // Components
 import Header from './components/Header';
@@ -40,6 +41,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Admin Route Component - requires admin role
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 function AppRoutes() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,6 +71,8 @@ function AppRoutes() {
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+
           <Route
             path="/cart"
             element={
@@ -67,7 +89,16 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+                              <Route
+                        path="/admin"
+                        element={
+                            <AdminRoute>
+                                <AdminDashboardPage />
+                            </AdminRoute>
+                        }
+                    />          
         </Routes>
+        
       </main>
     </div>
   );

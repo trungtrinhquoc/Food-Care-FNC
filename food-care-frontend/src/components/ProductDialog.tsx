@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from './ui/select'
 
-import type { Product, Category, Supplier } from '../types'
+import type { Product, Category } from '../types'
 import type {
     CreateProductRequest,
     UpdateProductRequest,
