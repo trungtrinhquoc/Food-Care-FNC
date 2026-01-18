@@ -159,3 +159,5 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder
 .mfractor/
 *.sln
+ADMIN_BACKEND_ARCHITECTURE.md
+ADMIN_FEATURES_SUMMARY.md
