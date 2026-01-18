@@ -28,6 +28,7 @@ export interface User {
     memberTier?: MemberTier;
     totalSpent?: number; // Optional as not in DTO yet
     loyaltyPoints: number;
+    createdAt?: string;
 }
 
 export interface RegisterRequest {
@@ -159,3 +160,31 @@ export interface Category {
     imageUrl?: string;
     parentId?: number;
 }
+
+// Address Types
+export interface Address {
+    id: string;
+    recipientName: string;
+    phoneNumber: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    district?: string;
+    ward?: string;
+    isDefault: boolean;
+    createdAt?: string;
+}
+
+// Payment Method Types
+export type PaymentMethodType = 'card' | 'momo' | 'zalopay' | 'bank';
+
+export interface PaymentMethod {
+    id: string;
+    provider: string;
+    last4Digits?: string;
+    expiryDate?: string;
+    isDefault: boolean;
+    createdAt?: string;
+}
+
+

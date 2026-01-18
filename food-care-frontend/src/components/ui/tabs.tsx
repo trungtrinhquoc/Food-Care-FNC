@@ -7,9 +7,21 @@ const TabsContext = React.createContext<{
 
 const Tabs = React.forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & { defaultValue: string }
->(({ className, defaultValue, children, ...props }, ref) => {
-    const [activeTab, setActiveTab] = React.useState(defaultValue)
+    React.HTMLAttributes<HTMLDivElement> & {
+        defaultValue?: string
+        value?: string
+        onValueChange?: (value: string) => void
+    }
+>(({ className, defaultValue, value, onValueChange, children, ...props }, ref) => {
+    const [internalValue, setInternalValue] = React.useState(defaultValue || value || '')
+
+    const activeTab = value !== undefined ? value : internalValue
+    const setActiveTab = (newValue: string) => {
+        if (value === undefined) {
+            setInternalValue(newValue)
+        }
+        onValueChange?.(newValue)
+    }
 
     return (
         <TabsContext.Provider value={{ activeTab, setActiveTab }}>
@@ -47,8 +59,8 @@ const TabsTrigger = React.forwardRef<
             ref={ref}
             type="button"
             className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${isActive
-                    ? "bg-background text-foreground shadow"
-                    : "hover:bg-muted/50"
+                ? "bg-background text-foreground shadow"
+                : "hover:bg-muted/50"
                 } ${className || ""}`}
             onClick={() => context.setActiveTab(value)}
             {...props}
