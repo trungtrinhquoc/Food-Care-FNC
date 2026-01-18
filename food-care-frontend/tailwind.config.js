@@ -7,6 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
+        /* shadcn / css variables */
+        border: "hsl(var(--border))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+
+        /* existing colors */
         primary: {
           DEFAULT: '#10b981',
           50: '#f0fdf4',
