@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 
 interface ImageWithFallbackProps {
-    src: string;
-    alt: string;
+    src?: string;
+    alt?: string;
     className?: string;
     fallbackSrc?: string;
 }
 
 export function ImageWithFallback({
     src,
-    alt,
+    alt = "",
     className = '',
     fallbackSrc = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop'
 }: ImageWithFallbackProps) {

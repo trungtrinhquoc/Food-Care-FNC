@@ -2,6 +2,7 @@ using AutoMapper;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Auth;
 using FoodCare.API.Models.DTOs.Products;
+using FoodCare.API.Models.DTOs.Subscriptions;
 
 namespace FoodCare.API.Helpers;
 
@@ -46,6 +47,11 @@ public class MappingProfile : Profile
         
         // Category mappings
         CreateMap<Category, CategoryDto>();
+        CreateMap<Subscription, SubscriptionDto>()
+    .ForMember(
+        dest => dest.ProductName,
+        opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty)
+    );
     }
 
     private static string GenerateSlug(string text)

@@ -8,6 +8,8 @@ import type {
     ProductFilter,
     Product,
     Category,
+    Address,
+    PaymentMethod,
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -99,4 +101,93 @@ export const categoriesApi = {
     },
 };
 
+// Profile API
+export const profileApi = {
+    // Profile Management
+    updateProfile: async (data: {
+        fullName: string;
+        email?: string;
+        phoneNumber?: string;
+        avatarUrl?: string;
+    }): Promise<{ message: string; success: boolean }> => {
+        const response = await api.put('/profile', data);
+        return response.data;
+    },
+
+    changePassword: async (data: {
+        currentPassword: string;
+        newPassword: string;
+        confirmPassword: string;
+    }): Promise<{ message: string; success: boolean }> => {
+        const response = await api.post('/profile/change-password', data);
+        return response.data;
+    },
+
+    // Address Management
+    getAddresses: async (): Promise<Address[]> => {
+        const response = await api.get('/profile/addresses');
+        return response.data;
+    },
+
+    getAddress: async (addressId: string): Promise<Address> => {
+        const response = await api.get(`/profile/addresses/${addressId}`);
+        return response.data;
+    },
+
+    createAddress: async (data: Omit<Address, 'id'>): Promise<Address> => {
+        const response = await api.post('/profile/addresses', data);
+        return response.data;
+    },
+
+    updateAddress: async (addressId: string, data: Omit<Address, 'id'>): Promise<Address> => {
+        const response = await api.put(`/profile/addresses/${addressId}`, data);
+        return response.data;
+    },
+
+    deleteAddress: async (addressId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.delete(`/profile/addresses/${addressId}`);
+        return response.data;
+    },
+
+    setDefaultAddress: async (addressId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.patch(`/profile/addresses/${addressId}/set-default`);
+        return response.data;
+    },
+
+    // Payment Method Management
+    getPaymentMethods: async (): Promise<PaymentMethod[]> => {
+        const response = await api.get('/profile/payment-methods');
+        return response.data;
+    },
+
+    getPaymentMethod: async (paymentMethodId: string): Promise<PaymentMethod> => {
+        const response = await api.get(`/profile/payment-methods/${paymentMethodId}`);
+        return response.data;
+    },
+
+    createPaymentMethod: async (data: Omit<PaymentMethod, 'id'>): Promise<PaymentMethod> => {
+        const response = await api.post('/profile/payment-methods', data);
+        return response.data;
+    },
+
+    updatePaymentMethod: async (
+        paymentMethodId: string,
+        data: Omit<PaymentMethod, 'id'>
+    ): Promise<PaymentMethod> => {
+        const response = await api.put(`/profile/payment-methods/${paymentMethodId}`, data);
+        return response.data;
+    },
+
+    deletePaymentMethod: async (paymentMethodId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.delete(`/profile/payment-methods/${paymentMethodId}`);
+        return response.data;
+    },
+
+    setDefaultPaymentMethod: async (paymentMethodId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.patch(`/profile/payment-methods/${paymentMethodId}/set-default`);
+        return response.data;
+    },
+};
+
 export default api;
+
