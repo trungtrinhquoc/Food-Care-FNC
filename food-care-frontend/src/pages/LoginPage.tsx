@@ -32,9 +32,16 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            await login({ email: loginData.email, password: loginData.password });
+            const response = await login({ email: loginData.email, password: loginData.password });
             toast.success('Đăng nhập thành công!');
-            navigate('/');
+            
+            // Redirect based on user role
+            const userRole = response?.user?.role?.toLowerCase();
+            if (userRole === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/');
+            }
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
             toast.error(errorMessage);

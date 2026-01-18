@@ -40,7 +40,7 @@ export default function ProductsPage() {
                 page: 1,
                 pageSize: 20,
                 searchTerm: searchQuery || undefined,
-                categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
+                categoryId: selectedCategory === 'all' ? undefined : parseInt(selectedCategory, 10),
             }),
     });
 

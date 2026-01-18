@@ -11,7 +11,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import LoginPage from './pages/LoginPage';
 import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
-import CheckoutPage from './pages/CheckoutPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 // Components
 import Header from './components/Header';
@@ -35,6 +35,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Admin Route Component - requires admin role
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
@@ -68,7 +87,16 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+                              <Route
+                        path="/admin"
+                        element={
+                            <AdminRoute>
+                                <AdminDashboardPage />
+                            </AdminRoute>
+                        }
+                    />          
         </Routes>
+        
       </main>
     </div>
   );
