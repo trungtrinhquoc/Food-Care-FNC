@@ -31,6 +31,13 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    // Email Verification
+    public bool EmailVerified { get; set; } = false;
+
+    public string? EmailVerificationToken { get; set; }
+
+    public DateTime? EmailVerificationExpiry { get; set; }
+
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();

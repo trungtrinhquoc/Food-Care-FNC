@@ -27,6 +27,7 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<Order> Orders { get; set; }
     public virtual DbSet<OrderItem> OrderItems { get; set; }
     public virtual DbSet<OrderStatusHistory> OrderStatusHistories { get; set; }
+    public virtual DbSet<OtpVerification> OtpVerifications { get; set; }
     public virtual DbSet<PaymentMethod> PaymentMethods { get; set; }
     public virtual DbSet<Product> Products { get; set; }
     public virtual DbSet<Review> Reviews { get; set; }
@@ -486,6 +487,25 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.Price).HasPrecision(10, 2).HasDefaultValue(200m).HasColumnName("price");
             entity.Property(e => e.TemplateId).HasMaxLength(50).HasColumnName("template_id");
             entity.Property(e => e.TemplateName).HasMaxLength(100).HasColumnName("template_name");
+        });
+
+        // User Entity Configuration (Email Verification Columns)
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("users");
+            entity.HasKey(e => e.Id);
+            
+            // Email Verification Columns Mapping
+            entity.Property(e => e.EmailVerified)
+                .HasColumnName("email_verified")
+                .HasDefaultValue(false);
+            
+            entity.Property(e => e.EmailVerificationToken)
+                .HasColumnName("email_verification_token")
+                .HasMaxLength(255);
+            
+            entity.Property(e => e.EmailVerificationExpiry)
+                .HasColumnName("email_verification_expiry");
         });
     }
 }

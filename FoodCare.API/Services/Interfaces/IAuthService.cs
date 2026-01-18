@@ -8,4 +8,8 @@ public interface IAuthService
     Task<AuthResponseDto> LoginAsync(LoginRequestDto request);
     Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthRequestDto request);
     Task<UserDto?> GetUserByIdAsync(Guid userId);
+    
+    // Email Verification
+    Task<bool> VerifyEmailAsync(string token);
+    Task ResendVerificationEmailAsync(string email);
 }

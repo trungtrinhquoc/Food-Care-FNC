@@ -15,23 +15,33 @@ public class AuthService : IAuthService
     private readonly JwtHelper _jwtHelper;
     private readonly ILogger<AuthService> _logger;
     private readonly Supabase.Client _supabaseClient;
+    private readonly IEmailService _emailService;
 
     public AuthService(
         FoodCareDbContext context,
         IMapper mapper,
         JwtHelper jwtHelper,
         ILogger<AuthService> logger,
-        Supabase.Client supabaseClient)
+        Supabase.Client supabaseClient,
+        IEmailService emailService)
     {
         _context = context;
         _mapper = mapper;
         _jwtHelper = jwtHelper;
         _logger = logger;
         _supabaseClient = supabaseClient;
+        _emailService = emailService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
     {
+        // Validate password strength
+        var (isValid, errors) = PasswordValidator.ValidatePassword(request.Password);
+        if (!isValid)
+        {
+            throw new InvalidOperationException($"Password validation failed: {string.Join(", ", errors)}");
+        }
+
         // Check if email already exists in our database (quick validation)
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
         {
@@ -77,6 +87,9 @@ public class AuthService : IAuthService
         var supabaseUserId = Guid.Parse(session.User.Id);
         _logger.LogInformation("Successfully created user in Supabase Auth with ID: {UserId}", supabaseUserId);
 
+        // Generate verification token
+        var verificationToken = Guid.NewGuid().ToString();
+
         // Create User in public.users with matching ID
         var user = new User
         {
@@ -89,7 +102,12 @@ public class AuthService : IAuthService
             Role = UserRole.customer,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            
+            // Email Verification
+            EmailVerified = false,
+            EmailVerificationToken = verificationToken,
+            EmailVerificationExpiry = DateTime.UtcNow.AddHours(24)
         };
 
         _logger.LogInformation("Adding user to database context: Id={UserId}, Email={Email}, TierId={TierId}, Role={Role}", 
@@ -115,17 +133,32 @@ public class AuthService : IAuthService
         // Load Tier for DTO mapping
         await _context.Entry(user).Reference(u => u.Tier).LoadAsync();
 
-        // Generate JWT token (Note: Supabase also returns a token, you can use theirs or create your own)
-        var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
-        var refreshToken = _jwtHelper.GenerateRefreshToken();
+        // Send verification email
+        _logger.LogInformation("Sending verification email to: {Email}", user.Email);
+        try
+        {
+            await _emailService.SendVerificationEmailAsync(
+                user.Email,
+                verificationToken,
+                user.FullName ?? "User"
+            );
+            _logger.LogInformation("Verification email sent successfully to: {Email}", user.Email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
+            // Don't fail registration if email fails
+        }
 
-        _logger.LogInformation("User registered successfully: {Email}", user.Email);
+        _logger.LogInformation("User registered successfully: {Email}. Email verification required.", user.Email);
 
+        // Don't auto-login, require email verification first
         return new AuthResponseDto
         {
-            Token = token,
-            RefreshToken = refreshToken,
-            User = _mapper.Map<UserDto>(user)
+            Message = "Registration successful! Please check your email to verify your account.",
+            User = null,
+            Token = null,
+            RefreshToken = null
         };
     }
 
@@ -195,5 +228,72 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         return user == null ? null : _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<bool> VerifyEmailAsync(string token)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => 
+                u.EmailVerificationToken == token 
+                && u.EmailVerificationExpiry > DateTime.UtcNow
+                && !u.EmailVerified);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("Email verification failed: Invalid or expired token");
+            return false;
+        }
+        
+        _logger.LogInformation("Verifying email for user: {Email}", user.Email);
+        
+        user.EmailVerified = true;
+        user.EmailVerificationToken = null;
+        user.EmailVerificationExpiry = null;
+        
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Email verified successfully for user: {Email}", user.Email);
+        
+        // Send welcome email
+        try
+        {
+            await _emailService.SendWelcomeEmailAsync(user.Email, user.FullName ?? "User");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send welcome email to {Email}", user.Email);
+            // Don't fail verification if welcome email fails
+        }
+        
+        return true;
+    }
+
+    public async Task ResendVerificationEmailAsync(string email)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email && !u.EmailVerified);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("Resend verification failed: User not found or already verified for email: {Email}", email);
+            throw new InvalidOperationException("User not found or already verified");
+        }
+        
+        _logger.LogInformation("Resending verification email to: {Email}", email);
+        
+        // Generate new token
+        var newToken = Guid.NewGuid().ToString();
+        user.EmailVerificationToken = newToken;
+        user.EmailVerificationExpiry = DateTime.UtcNow.AddHours(24);
+        
+        await _context.SaveChangesAsync();
+        
+        await _emailService.SendVerificationEmailAsync(
+            user.Email,
+            newToken,
+            user.FullName ?? "User"
+        );
+        
+        _logger.LogInformation("Verification email resent successfully to: {Email}", email);
     }
 }
