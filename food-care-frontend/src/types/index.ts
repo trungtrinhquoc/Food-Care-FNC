@@ -312,3 +312,36 @@ export interface ZaloReminder {
     status: 'pending' | 'sent'
     sentDate?: string
 }
+
+// Product Request Types
+export interface CreateProductRequest {
+    sku: string;
+    name: string;
+    categoryId?: number;
+    supplierId?: number;
+    description?: string;
+    basePrice: number;
+    originalPrice?: number;
+    unit?: string;
+    stockQuantity: number;
+    imageUrl?: string;
+    images?: string[];
+    isSubscriptionAvailable: boolean;
+    isActive?: boolean;
+}
+
+export interface UpdateProductRequest {
+    sku?: string;
+    name?: string;
+    categoryId?: number;
+    supplierId?: number;
+    description?: string;
+    basePrice?: number;
+    originalPrice?: number;
+    unit?: string;
+    stockQuantity?: number;
+    imageUrl?: string;
+    images?: string[];
+    isSubscriptionAvailable?: boolean;
+    isActive?: boolean;
+}

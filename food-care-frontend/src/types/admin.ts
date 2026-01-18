@@ -71,13 +71,13 @@ export interface RevenueData {
 
 export interface ProductFormData {
   name: string;
-  category: string;
-  price: string;
+  categoryName: string; // maps to categoryName in Product
+  basePrice: string;    // maps to basePrice in Product
   originalPrice: string;
-  image: string;
+  imageUrl: string;     // maps to imageUrl in Product
   description: string;
   unit: string;
-  stock: string;
+  stockQuantity: string; // maps to stockQuantity in Product
 }
 
 export interface SupplierFormData {
