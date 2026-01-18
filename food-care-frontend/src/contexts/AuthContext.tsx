@@ -10,6 +10,7 @@ interface AuthContextType {
     register: (data: RegisterRequest) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
 }
 
@@ -69,6 +70,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
+    const refreshUser = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const updatedUser = await authApi.getCurrentUser();
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
+        } catch (error) {
+            console.error('Error refreshing user:', error);
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -76,6 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         loginWithGoogle,
         logout,
+        refreshUser,
         isAuthenticated: !!user,
     };
 
