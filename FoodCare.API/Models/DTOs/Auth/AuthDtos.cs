@@ -35,9 +35,17 @@ public class GoogleAuthRequestDto
 
 public class AuthResponseDto
 {
-    public string Token { get; set; } = null!;
-    public string RefreshToken { get; set; } = null!;
-    public UserDto User { get; set; } = null!;
+    public string? Token { get; set; }
+    public string? RefreshToken { get; set; }
+    public UserDto? User { get; set; }
+    public string? Message { get; set; }
+}
+
+public class ResendVerificationRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = null!;
 }
 
 public class UserDto

@@ -8,12 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
+import { EmailVerificationNotice } from '../components/EmailVerificationNotice';
 
 export default function LoginPage() {
     const navigate = useNavigate();
     const { login, register, loginWithGoogle } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [showEmailNotice, setShowEmailNotice] = useState(false);
+    const [registeredEmail, setRegisteredEmail] = useState('');
 
     const [loginData, setLoginData] = useState({
         email: '',
@@ -52,8 +56,25 @@ export default function LoginPage() {
             return;
         }
 
-        if (registerData.password.length < 6) {
-            toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+        // Validate password strength
+        if (registerData.password.length < 8) {
+            toast.error('Mật khẩu phải có ít nhất 8 ký tự');
+            return;
+        }
+        if (!/[A-Z]/.test(registerData.password)) {
+            toast.error('Mật khẩu phải có ít nhất 1 chữ HOA');
+            return;
+        }
+        if (!/[a-z]/.test(registerData.password)) {
+            toast.error('Mật khẩu phải có ít nhất 1 chữ thường');
+            return;
+        }
+        if (!/\d/.test(registerData.password)) {
+            toast.error('Mật khẩu phải có ít nhất 1 số');
+            return;
+        }
+        if (!/[@$!%*?&]/.test(registerData.password)) {
+            toast.error('Mật khẩu phải có ít nhất 1 ký tự đặc biệt (@$!%*?&)');
             return;
         }
 
@@ -66,8 +87,15 @@ export default function LoginPage() {
                 fullName: registerData.name,
                 phoneNumber: '' // Phone number is optional in this UI, can be improved later
             });
-            toast.success('Đăng ký thành công!');
-            navigate('/');
+
+            // Show email verification notice
+            setRegisteredEmail(registerData.email);
+            setShowEmailNotice(true);
+
+            toast.success(
+                'Đăng ký thành công! Vui lòng kiểm tra email để kích hoạt tài khoản.',
+                { duration: 5000 }
+            );
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
             toast.error(errorMessage);
@@ -256,6 +284,7 @@ export default function LoginPage() {
                                             required
                                             className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
                                         />
+                                        <PasswordStrengthIndicator password={registerData.password} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="register-confirm-password">Xác nhận mật khẩu</Label>
@@ -324,6 +353,13 @@ export default function LoginPage() {
                                         {isGoogleLoading ? 'Đang đăng ký...' : 'Đăng ký bằng Google'}
                                     </Button>
                                 </form>
+
+                                {/* Email Verification Notice */}
+                                {showEmailNotice && (
+                                    <div className="mt-4">
+                                        <EmailVerificationNotice email={registeredEmail} />
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>

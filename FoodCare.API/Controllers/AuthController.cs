@@ -100,4 +100,49 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { message = "An error occurred" });
         }
     }
+
+    [HttpGet("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new { message = "Token is required" });
+            }
+
+            var result = await _authService.VerifyEmailAsync(token);
+
+            if (!result)
+            {
+                return BadRequest(new { message = "Invalid or expired verification link" });
+            }
+
+            return Ok(new { message = "Email verified successfully! You can now login." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during email verification");
+            return StatusCode(500, new { message = "An error occurred during verification" });
+        }
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+    {
+        try
+        {
+            await _authService.ResendVerificationEmailAsync(request.Email);
+            return Ok(new { message = "Verification email sent. Please check your inbox." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resending verification email");
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
 }

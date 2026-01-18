@@ -24,7 +24,7 @@ export interface User {
     fullName: string;
     phoneNumber?: string; // Changed from phone
     avatarUrl?: string;
-    role: string;
+    role: 'customer' | 'admin';
     memberTier?: MemberTier;
     totalSpent?: number; // Optional as not in DTO yet
     loyaltyPoints: number;

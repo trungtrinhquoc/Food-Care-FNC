@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User, ShoppingCart, ChevronDown, LogOut, Package } from 'lucide-react';
+import { ShoppingBag, User, ShoppingCart, ChevronDown, LogOut, Package, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 
@@ -123,6 +123,21 @@ export default function Header() {
 
                                         {/* Menu Items */}
                                         <div className="py-1">
+                                            {/* Admin Dashboard - Only for admin */}
+                                            {user?.role === 'admin' && (
+                                                <>
+                                                    <Link
+                                                        to="/admin/dashboard"
+                                                        onClick={() => setIsDropdownOpen(false)}
+                                                        className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        <LayoutDashboard className="w-5 h-5 text-gray-500" />
+                                                        <span className="text-sm">Admin Dashboard</span>
+                                                    </Link>
+                                                    <div className="my-1 border-t border-gray-100"></div>
+                                                </>
+                                            )}
+
                                             <Link
                                                 to="/profile"
                                                 onClick={() => setIsDropdownOpen(false)}
