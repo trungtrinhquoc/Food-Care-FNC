@@ -35,8 +35,10 @@ export default function LoginPage() {
             await login({ email: loginData.email, password: loginData.password });
             toast.success('Đăng nhập thành công!');
             navigate('/');
-        } catch (error) {
-            toast.error('Đăng nhập thất bại. Vui lòng thử lại.');
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+            toast.error(errorMessage);
+            console.error('Login error:', error);
         } finally {
             setIsLoading(false);
         }
@@ -66,8 +68,10 @@ export default function LoginPage() {
             });
             toast.success('Đăng ký thành công!');
             navigate('/');
-        } catch (error) {
-            toast.error('Đăng ký thất bại. Vui lòng thử lại.');
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+            toast.error(errorMessage);
+            console.error('Registration error:', error);
         } finally {
             setIsLoading(false);
         }
