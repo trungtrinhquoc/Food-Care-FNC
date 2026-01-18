@@ -4,10 +4,6 @@ import type {
     LoginRequest,
     RegisterRequest,
     User,
-    ProductsResponse,
-    ProductFilter,
-    Product,
-    Category,
     Address,
     PaymentMethod,
 } from '../types';
@@ -46,10 +42,14 @@ api.interceptors.response.use(
     (error) => {
         console.error('API Error:', error.response?.data || error.message);
         if (error.response?.status === 401) {
-            // Unauthorized - clear token and redirect to login
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+            // Only redirect to login if not already on admin pages
+            // Admin pages handle their own auth
+            const isAdminRoute = window.location.pathname.startsWith('/admin');
+            if (!isAdminRoute) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
@@ -73,33 +73,13 @@ export const authApi = {
     },
 };
 
-// Products API
-export const productsApi = {
-    getProducts: async (filter: ProductFilter = {}): Promise<ProductsResponse> => {
-        const response = await api.get<ProductsResponse>('/products', {
-            params: filter,
-        });
-        return response.data;
-    },
+// Products API - calls Backend which connects to Supabase
+import { productsApi as productsApiImport } from './productsApi';
+export const productsApi = productsApiImport;
 
-    getProduct: async (id: string): Promise<Product> => {
-        const response = await api.get<Product>(`/./${id}`);
-        return response.data;
-    },
-};
-
-// Categories API
-export const categoriesApi = {
-    getCategories: async (): Promise<Category[]> => {
-        const response = await api.get<Category[]>('/categories');
-        return response.data;
-    },
-
-    getCategory: async (id: number): Promise<Category> => {
-        const response = await api.get<Category>(`/categories/${id}`);
-        return response.data;
-    },
-};
+// Categories API - calls Backend which connects to Supabase
+import { categoriesApi as categoriesApiImport } from './categoriesApi';
+export const categoriesApi = categoriesApiImport;
 
 // Profile API
 export const profileApi = {

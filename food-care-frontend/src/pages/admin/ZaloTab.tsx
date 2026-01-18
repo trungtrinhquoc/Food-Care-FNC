@@ -1,3 +1,4 @@
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -5,17 +6,71 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Switch } from "../../components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Bell, Send, Eye } from "lucide-react";
-import { StatusBadge, ReminderDaysBadge } from "../../components/admin/BadgeComponents";
+import { SimplePagination } from "../../components/ui/pagination";
+import { Bell, Send, Eye, Search, Loader2 } from "lucide-react";
+import { OrderStatusBadge, ReminderDaysBadge } from "../../components/ui/status-badge";
 import type { ZaloReminder } from "../../types/admin";
+import { mockZaloReminders } from "../../services/adminService";
 
-interface ZaloTabProps {
-  reminders: ZaloReminder[];
-  onSendReminder: (reminderId: string) => void;
-  onSendBulk: () => void;
-}
+export function ZaloTab() {
+  const [reminders, setReminders] = useState<ZaloReminder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
 
-export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps) {
+  // Fetch reminders - will be replaced with API call
+  useEffect(() => {
+    const fetchReminders = async () => {
+      try {
+        setIsLoading(true);
+        // TODO: Replace with actual API call
+        setReminders(mockZaloReminders);
+      } catch (error) {
+        console.error("Error fetching reminders:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReminders();
+  }, []);
+
+  const filteredReminders = useMemo(() => {
+    return reminders.filter(
+      (r) =>
+        r.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.phone.includes(searchTerm)
+    );
+  }, [reminders, searchTerm]);
+
+  const totalPages = Math.ceil(filteredReminders.length / pageSize);
+  const paginatedReminders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredReminders.slice(startIndex, startIndex + pageSize);
+  }, [filteredReminders, currentPage, pageSize]);
+
+  const handleSendReminder = useCallback((reminderId: string) => {
+    setReminders(prev => prev.map(r => 
+      r.id === reminderId ? { ...r, status: 'sent' as const, sentDate: new Date().toISOString().split('T')[0] } : r
+    ));
+  }, []);
+
+  const handleSendBulk = useCallback(() => {
+    setReminders(prev => prev.map(r => 
+      r.status === 'pending' ? { ...r, status: 'sent' as const, sentDate: new Date().toISOString().split('T')[0] } : r
+    ));
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <span className="ml-2 text-gray-600">Đang tải...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -32,7 +87,7 @@ export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps)
                 <Bell className="w-4 h-4 mr-2" />
                 Cài đặt
               </Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700" size="sm" onClick={onSendBulk}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700" size="sm" onClick={handleSendBulk}>
                 <Send className="w-4 h-4 mr-2" />
                 Gửi hàng loạt
               </Button>
@@ -56,6 +111,20 @@ export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps)
             </CardContent>
           </Card>
 
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Tìm kiếm theo tên, số điện thoại hoặc sản phẩm..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10 max-w-sm"
+            />
+          </div>
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -68,7 +137,7 @@ export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps)
               </TableRow>
             </TableHeader>
             <TableBody>
-              {reminders.map((reminder) => (
+              {paginatedReminders.map((reminder) => (
                 <TableRow key={reminder.id}>
                   <TableCell>
                     <div>
@@ -82,7 +151,7 @@ export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps)
                     <ReminderDaysBadge days={reminder.estimatedDaysLeft} />
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={reminder.status} />
+                    <OrderStatusBadge status={reminder.status} />
                     {reminder.sentDate && (
                       <div className="text-xs text-gray-500 mt-1">{reminder.sentDate}</div>
                     )}
@@ -92,7 +161,7 @@ export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps)
                       <Button
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => onSendReminder(reminder.id)}
+                        onClick={() => handleSendReminder(reminder.id)}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         Gửi ngay
@@ -108,6 +177,13 @@ export function ZaloTab({ reminders, onSendReminder, onSendBulk }: ZaloTabProps)
               ))}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          <SimplePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </CardContent>
       </Card>
 

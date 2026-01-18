@@ -1,9 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../services/productsApi';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
-  Star, Plus, Minus, ShoppingCart, Calendar, ChevronLeft, Repeat
+  Star, Plus, Minus, ShoppingCart, ChevronLeft
 } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination, Thumbs } from 'swiper/modules'
@@ -11,13 +11,9 @@ import { Navigation, Pagination, Thumbs } from 'swiper/modules'
 import 'swiper/swiper-bundle.css'
 
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { useCart } from '../contexts/CartContext';
 import { toast } from 'sonner';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { cloudinaryResize } from '../utils/cloudinary'
 
 // import { SubscriptionDialog } from '../components/SubscriptionDialog';
@@ -30,11 +26,14 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
 
   const [quantity, setQuantity] = useState(1);
-  const [subscriptionType, setSubscriptionType] =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [subscriptionType, _setSubscriptionType] =
     useState<'one-time' | 'subscription'>('one-time');
-  const [frequency, setFrequency] =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [frequency, _setFrequency] =
     useState<'weekly' | 'biweekly' | 'monthly'>('monthly');
-  const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_showSubscriptionDialog, _setShowSubscriptionDialog] = useState(false);
 
   const { data: product, isLoading, error } = useQuery({
 
@@ -111,7 +110,7 @@ export default function ProductDetailPage() {
             </Swiper>
 
             {/* THUMBNAILS */}
-            {product.images.length > 1 && (
+            {product.images && product.images.length > 1 && (
               <Swiper
                 modules={[Thumbs]}
                 onSwiper={setThumbsSwiper}
@@ -120,7 +119,7 @@ export default function ProductDetailPage() {
                 watchSlidesProgress
                 className="mt-4"
               >
-                {product.images.map((img, index) => (
+                {product.images?.map((img, index) => (
                   <SwiperSlide key={index}>
                     <div className="aspect-square border rounded cursor-pointer">
                       <img

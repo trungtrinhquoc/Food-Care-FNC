@@ -9,7 +9,7 @@ import {
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Truck } from 'lucide-react';
-import { StatusBadge } from './BadgeComponents';
+import { OrderStatusBadge } from '../ui/status-badge';
 import type { AdminOrder } from '../../types/admin';
 
 interface OrderDetailDialogProps {
@@ -62,7 +62,7 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
             <div>
               <Label className="text-gray-500">Trạng thái</Label>
               <div className="mt-1">
-                <StatusBadge status={order.status} />
+                <OrderStatusBadge status={order.status} />
               </div>
             </div>
             <div>

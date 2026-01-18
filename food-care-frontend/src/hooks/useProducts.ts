@@ -9,25 +9,25 @@ export function useProducts(initialProducts: Product[]) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductFormData>({
     name: '',
-    category: '',
-    price: '',
+    categoryName: '',
+    basePrice: '',
     originalPrice: '',
-    image: '',
+    imageUrl: '',
     description: '',
     unit: '',
-    stock: '',
+    stockQuantity: '',
   });
 
   const resetForm = useCallback(() => {
     setProductForm({
       name: '',
-      category: '',
-      price: '',
+      categoryName: '',
+      basePrice: '',
       originalPrice: '',
-      image: '',
+      imageUrl: '',
       description: '',
       unit: '',
-      stock: '',
+      stockQuantity: '',
     });
   }, []);
 
@@ -36,13 +36,13 @@ export function useProducts(initialProducts: Product[]) {
       setEditingProduct(product);
       setProductForm({
         name: product.name,
-        category: product.category,
-        price: product.price.toString(),
+        categoryName: product.categoryName || '',
+        basePrice: product.basePrice.toString(),
         originalPrice: product.originalPrice?.toString() || '',
-        image: product.image,
-        description: product.description,
-        unit: product.unit,
-        stock: product.stock.toString(),
+        imageUrl: product.imageUrl || '',
+        description: product.description || '',
+        unit: product.unit || '',
+        stockQuantity: product.stockQuantity.toString(),
       });
     } else {
       setEditingProduct(null);
@@ -58,24 +58,27 @@ export function useProducts(initialProducts: Product[]) {
   }, [resetForm]);
 
   const saveProduct = useCallback(() => {
-    if (!productForm.name || !productForm.category || !productForm.price || !productForm.unit || !productForm.stock) {
+    if (!productForm.name || !productForm.categoryName || !productForm.basePrice || !productForm.unit || !productForm.stockQuantity) {
       toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
 
     const newProduct: Product = {
-      id: editingProduct ? editingProduct.id : `${products.length + 1}`,
+      id: editingProduct ? editingProduct.id : crypto.randomUUID(),
+      sku: editingProduct?.sku || `SKU-${Date.now()}`,
+      slug: editingProduct?.slug || productForm.name.toLowerCase().replace(/\s+/g, '-'),
       name: productForm.name,
-      category: productForm.category,
-      price: parseFloat(productForm.price),
+      categoryName: productForm.categoryName,
+      basePrice: parseFloat(productForm.basePrice),
       originalPrice: productForm.originalPrice ? parseFloat(productForm.originalPrice) : undefined,
-      image: productForm.image || 'https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=400',
+      imageUrl: productForm.imageUrl || 'https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=400',
       description: productForm.description,
       unit: productForm.unit,
-      stock: parseInt(productForm.stock),
-      rating: editingProduct?.rating || 4.5,
-      reviews: editingProduct?.reviews || 0,
-      reviewList: editingProduct?.reviewList || [],
+      stockQuantity: parseInt(productForm.stockQuantity),
+      ratingAverage: editingProduct?.ratingAverage || 4.5,
+      ratingCount: editingProduct?.ratingCount || 0,
+      isSubscriptionAvailable: editingProduct?.isSubscriptionAvailable || false,
+      isActive: editingProduct?.isActive ?? true,
     };
 
     if (editingProduct) {

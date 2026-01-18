@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 interface ImageWithFallbackProps {
     src?: string;
@@ -15,7 +15,7 @@ export function ImageWithFallback({
 }: ImageWithFallbackProps) {
     const [imgSrc, setImgSrc] = useState(src);
     const [isLoading, setIsLoading] = useState(true);
-    const [hasError, setHasError] = useState(false);
+    const [_hasError, setHasError] = useState(false);
 
     const handleError = () => {
         if (imgSrc !== fallbackSrc) {

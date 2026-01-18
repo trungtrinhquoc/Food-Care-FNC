@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Product } from '../types';
 import { productsApi } from '../services/api';
 import { X, AlertTriangle } from 'lucide-react';
@@ -8,7 +8,7 @@ interface LowStockNotificationProps {
     onAddToCart: (product: Product) => void;
 }
 
-export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotificationProps) {
+export function LowStockNotification({ onNavigate: _onNavigate, onAddToCart }: LowStockNotificationProps) {
     const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
     const [isVisible, setIsVisible] = useState(true);
     const [isLoading, setIsLoading] = useState(true);

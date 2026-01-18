@@ -7,6 +7,8 @@ using FoodCare.API.Models.Enums;
 using FoodCare.API.Helpers;
 using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Implementations;
+using FoodCare.API.Services.Interfaces.Admin;
+using FoodCare.API.Services.Implementations.Admin;
 using System.Text.Json.Serialization;
 using FoodCare.API.Models;
 
@@ -61,15 +63,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Configure CORS
+// Configure CORS - Allow all origins in development
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] { "http://localhost:5173", "http://localhost:3000" };
-        
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(_ => true) // Allow any origin in development
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -96,6 +95,17 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+
+// Register Admin Services
+builder.Services.AddScoped<IAdminStatsService, AdminStatsService>();
+builder.Services.AddScoped<IAdminProductService, AdminProductService>();
+builder.Services.AddScoped<IAdminOrderService, AdminOrderService>();
+builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
+builder.Services.AddScoped<IAdminSupplierService, AdminSupplierService>();
+builder.Services.AddScoped<IAdminZaloService, AdminZaloService>();
+builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
+builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 
 var app = builder.Build();
 
