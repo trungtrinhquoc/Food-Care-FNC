@@ -158,3 +158,6 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder
 .mfractor/
+ADMIN_BACKEND_ARCHITECTURE.md
+ADMIN_FEATURES_SUMMARY.md
+FoodCare.API/FoodCare.API.sln
