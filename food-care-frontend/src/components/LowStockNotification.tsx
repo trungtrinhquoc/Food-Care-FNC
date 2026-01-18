@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Product } from '../types';
-import { productsApi } from '../services/api';
+import { productsApi } from '../services/productsApi';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface LowStockNotificationProps {

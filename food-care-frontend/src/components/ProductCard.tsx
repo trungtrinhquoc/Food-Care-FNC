@@ -20,7 +20,7 @@ export function ProductCard({ product, onViewDetail, onAddToCart }: ProductCardP
             {/* Product Image */}
             <div className="relative mb-4 overflow-hidden rounded-xl" onClick={() => onViewDetail(product)}>
                 <ImageWithFallback
-                    src={product.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop'}
+                    src={product.images[0] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop'}
                     alt={product.name}
                     className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
                 />

@@ -10,6 +10,8 @@ import type {
     Category,
     Address,
     PaymentMethod,
+    Supplier,
+
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -54,6 +56,14 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+//SuplierApi 
+export const supplierApi = {
+    getAll: async (): Promise<Supplier[]> => {
+        const res = await axios.get(`${API_URL}/suppliers`)
+        return res.data
+    },
+};
+
 
 // Auth API
 export const authApi = {
