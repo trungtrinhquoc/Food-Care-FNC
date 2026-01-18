@@ -1,6 +1,7 @@
 using AutoMapper;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Auth;
+using FoodCare.API.Models.DTOs.Orders;
 using FoodCare.API.Models.DTOs.Products;
 using FoodCare.API.Models.DTOs.Subscriptions;
 
@@ -47,7 +48,9 @@ public class MappingProfile : Profile
         
         // Category mappings
         CreateMap<Category, CategoryDto>();
-        CreateMap<Subscription, SubscriptionDto>()
+        CreateMap<Subscription, SubscriptionDto>();
+            CreateMap<Order, OrderDto>();
+        CreateMap<OrderItem, OrderItemDto>()
     .ForMember(
         dest => dest.ProductName,
         opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty)

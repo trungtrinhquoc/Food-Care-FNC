@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { LowStockNotification } from '../components/LowStockNotification';
-import { productsApi } from '../services/api';
+import { productsApi } from '../services/productsApi';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { ArrowRight, Star, TrendingUp, Package, Clock, DollarSign } from 'lucide-react';
 import { Button } from '../components/ui/button';

@@ -10,6 +10,8 @@ import type {
     Category,
     Address,
     PaymentMethod,
+    Supplier,
+
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -54,6 +56,14 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+//SuplierApi 
+export const supplierApi = {
+    getAll: async (): Promise<Supplier[]> => {
+        const res = await axios.get(`${API_URL}/suppliers`)
+        return res.data
+    },
+};
+
 
 // Auth API
 export const authApi = {
@@ -69,21 +79,6 @@ export const authApi = {
 
     getCurrentUser: async (): Promise<User> => {
         const response = await api.get<User>('/auth/me');
-        return response.data;
-    },
-};
-
-// Products API
-export const productsApi = {
-    getProducts: async (filter: ProductFilter = {}): Promise<ProductsResponse> => {
-        const response = await api.get<ProductsResponse>('/products', {
-            params: filter,
-        });
-        return response.data;
-    },
-
-    getProduct: async (id: string): Promise<Product> => {
-        const response = await api.get<Product>(`/products/${id}`);
         return response.data;
     },
 };

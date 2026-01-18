@@ -11,6 +11,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import LoginPage from './pages/LoginPage';
 import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
+import CheckoutPage from './pages/CheckoutPage';
 
 // Components
 import Header from './components/Header';
@@ -49,6 +50,8 @@ function AppRoutes() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+
           <Route
             path="/cart"
             element={
