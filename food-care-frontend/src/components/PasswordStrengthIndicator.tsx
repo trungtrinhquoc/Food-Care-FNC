@@ -15,9 +15,9 @@ export function PasswordStrengthIndicator({ password }: PasswordStrengthIndicato
 
     const getStrengthLabel = () => {
         if (strength === 0) return '';
-        if (strength < 3) return 'Weak';
-        if (strength < 5) return 'Medium';
-        return 'Strong';
+        if (strength < 3) return 'Yếu';
+        if (strength < 5) return 'Trung bình';
+        return 'Mạnh';
     };
 
     const getStrengthColor = () => {
@@ -36,8 +36,8 @@ export function PasswordStrengthIndicator({ password }: PasswordStrengthIndicato
                     <div
                         key={level}
                         className={`h-1.5 flex-1 rounded-full transition-colors ${level <= strength
-                                ? getStrengthColor()
-                                : 'bg-gray-200'
+                            ? getStrengthColor()
+                            : 'bg-gray-200'
                             }`}
                     />
                 ))}
@@ -47,31 +47,26 @@ export function PasswordStrengthIndicator({ password }: PasswordStrengthIndicato
             {strength > 0 && (
                 <p className={`text-xs font-medium ${strength < 3 ? 'text-red-600' : strength < 5 ? 'text-yellow-600' : 'text-green-600'
                     }`}>
-                    Password strength: {getStrengthLabel()}
+                    Độ mạnh mật khẩu: {getStrengthLabel()}
                 </p>
             )}
 
             {/* Requirements Checklist */}
             <ul className="text-xs space-y-1">
                 <li className={`flex items-center gap-1.5 ${checks.length ? 'text-green-600' : 'text-gray-500'}`}>
-                    <span className="w-4">{checks.length ? '✓' : '○'}</span>
-                    <span>At least 8 characters</span>
+                    <span className="w-4">{checks.length ? '✓' : '○'}</span> Ít nhất 8 ký tự
                 </li>
                 <li className={`flex items-center gap-1.5 ${checks.uppercase ? 'text-green-600' : 'text-gray-500'}`}>
-                    <span className="w-4">{checks.uppercase ? '✓' : '○'}</span>
-                    <span>One uppercase letter (A-Z)</span>
+                    <span className="w-4">{checks.uppercase ? '✓' : '○'}</span> Một chữ HOA (A-Z)
                 </li>
                 <li className={`flex items-center gap-1.5 ${checks.lowercase ? 'text-green-600' : 'text-gray-500'}`}>
-                    <span className="w-4">{checks.lowercase ? '✓' : '○'}</span>
-                    <span>One lowercase letter (a-z)</span>
+                    <span className="w-4">{checks.lowercase ? '✓' : '○'}</span> Một chữ thường (a-z)
                 </li>
                 <li className={`flex items-center gap-1.5 ${checks.number ? 'text-green-600' : 'text-gray-500'}`}>
-                    <span className="w-4">{checks.number ? '✓' : '○'}</span>
-                    <span>One number (0-9)</span>
+                    <span className="w-4">{checks.number ? '✓' : '○'}</span> Một chữ số (0-9)
                 </li>
                 <li className={`flex items-center gap-1.5 ${checks.special ? 'text-green-600' : 'text-gray-500'}`}>
-                    <span className="w-4">{checks.special ? '✓' : '○'}</span>
-                    <span>One special character (@$!%*?&)</span>
+                    <span className="w-4">{checks.special ? '✓' : '○'}</span> Một ký tự đặc biệt (@$!%*?&)
                 </li>
             </ul>
         </div>

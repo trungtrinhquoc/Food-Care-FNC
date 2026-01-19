@@ -232,23 +232,37 @@ public class AuthService : IAuthService
 
     public async Task<bool> VerifyEmailAsync(string token)
     {
+        // First, check if user with this token exists (regardless of verification status)
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => 
-                u.EmailVerificationToken == token 
-                && u.EmailVerificationExpiry > DateTime.UtcNow
-                && !u.EmailVerified);
+            .FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
         
         if (user == null)
         {
-            _logger.LogWarning("Email verification failed: Invalid or expired token");
+            _logger.LogWarning("Email verification failed: Token not found");
             return false;
         }
         
+        // Check if already verified
+        if (user.EmailVerified)
+        {
+            _logger.LogInformation("Email already verified for user: {Email}", user.Email);
+            return true; // Return success, no need to verify again
+        }
+        
+        // Check if token expired
+        if (user.EmailVerificationExpiry == null || user.EmailVerificationExpiry < DateTime.UtcNow)
+        {
+            _logger.LogWarning("Email verification failed: Token expired for user: {Email}", user.Email);
+            return false;
+        }
+        
+        // Verify email
         _logger.LogInformation("Verifying email for user: {Email}", user.Email);
         
         user.EmailVerified = true;
-        user.EmailVerificationToken = null;
-        user.EmailVerificationExpiry = null;
+        // Keep token so user can click verification link multiple times
+        // user.EmailVerificationToken = null;
+        // user.EmailVerificationExpiry = null;
         
         await _context.SaveChangesAsync();
         

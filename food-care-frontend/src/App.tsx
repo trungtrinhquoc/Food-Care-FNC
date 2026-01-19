@@ -71,7 +71,8 @@ function AppRoutes() {
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
+          {/* <Route path="/checkout" element={<CheckoutPage />} /> */}
+
 
           <Route
             path="/cart"
@@ -89,16 +90,16 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-                              <Route
-                        path="/admin"
-                        element={
-                            <AdminRoute>
-                                <AdminDashboardPage />
-                            </AdminRoute>
-                        }
-                    />          
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
         </Routes>
-        
+
       </main>
     </div>
   );

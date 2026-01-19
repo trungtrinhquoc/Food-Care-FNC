@@ -9,32 +9,31 @@ export type SubscriptionFrequency = 'Weekly' | 'BiWeekly' | 'Monthly' | 'Custom'
 
 export type SubscriptionStatus = 'Active' | 'Paused' | 'Cancelled';
 
-// Product
+// Product Request Types
 export interface CreateProductRequest {
-    name: string
-    description?: string
-    basePrice: number
-    originalPrice?: number
-    sku?: string
-    stockQuantity: number
-    categoryId?: number
-    supplierId?: number
-    isSubscriptionAvailable: boolean
-    images: string[]
+    name: string;
+    description?: string;
+    basePrice: number;
+    originalPrice?: number;
+    sku?: string;
+    stockQuantity: number;
+    categoryId?: number;
+    supplierId?: number;
+    isSubscriptionAvailable: boolean;
+    images: string[];
 }
 
-
 export interface UpdateProductRequest {
-    name?: string
-    description?: string
-    basePrice?: number
-    originalPrice?: number
-    sku?: string
-    stockQuantity?: number
-    categoryId?: number
-    isSubscriptionAvailable?: boolean
-    isActive?: boolean
-    images: string[]
+    name?: string;
+    description?: string;
+    basePrice?: number;
+    originalPrice?: number;
+    sku?: string;
+    stockQuantity?: number;
+    categoryId?: number;
+    isSubscriptionAvailable?: boolean;
+    isActive?: boolean;
+    images: string[];
 }
 
 // Auth Types
@@ -235,8 +234,15 @@ export interface Address {
 }
 
 export interface Supplier {
-    id: number
-    name: string
+    id: number | string; // Support both number and string
+    name: string;
+    products?: string[];
+    totalProducts?: number;
+    status?: 'active' | 'inactive';
+    phone?: string;
+    email?: string;
+    address?: string;
+    contact?: string;
 }
 
 // Payment Method Types
@@ -251,97 +257,48 @@ export interface PaymentMethod {
     createdAt?: string;
 }
 
-
-
-// ...existing code...
-
 // Admin Types
 export interface AdminStats {
-    totalRevenue: number
-    totalOrders: number
-    totalCustomers: number
-    totalProducts: number
-    monthlyGrowth: number
-    activeSubscriptions: number
+    totalRevenue: number;
+    totalOrders: number;
+    totalCustomers: number;
+    totalProducts: number;
+    monthlyGrowth: number;
+    activeSubscriptions: number;
 }
 
 export interface AdminOrder {
-    id: string
-    customerName: string
-    date: string
-    total: number
-    status: 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled'
-    items: number
-    subscription: boolean
-    products: string[]
-    address: string
-    phone: string
+    id: string;
+    customerName: string;
+    date: string;
+    total: number;
+    status: 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled';
+    items: number;
+    subscription: boolean;
+    products: string[];
+    address: string;
+    phone: string;
 }
 
 export interface AdminCustomer {
-    id: string
-    name: string
-    email: string
-    phone: string
-    memberTier: string
-    totalOrders: number
-    totalSpent: number
-    joinDate: string
-    subscriptions: number
-}
-
-export interface Supplier {
-    id: string
-    name: string
-    products: string[]
-    totalProducts: number
-    status: 'active' | 'inactive'
-    phone: string
-    email: string
-    address: string
-    contact: string
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    memberTier: string;
+    totalOrders: number;
+    totalSpent: number;
+    joinDate: string;
+    subscriptions: number;
 }
 
 export interface ZaloReminder {
-    id: string
-    customerName: string
-    phone: string
-    product: string
-    estimatedDaysLeft: number
-    lastPurchase: string
-    status: 'pending' | 'sent'
-    sentDate?: string
-}
-
-// Product Request Types
-export interface CreateProductRequest {
-    sku: string;
-    name: string;
-    categoryId?: number;
-    supplierId?: number;
-    description?: string;
-    basePrice: number;
-    originalPrice?: number;
-    unit?: string;
-    stockQuantity: number;
-    imageUrl?: string;
-    images?: string[];
-    isSubscriptionAvailable: boolean;
-    isActive?: boolean;
-}
-
-export interface UpdateProductRequest {
-    sku?: string;
-    name?: string;
-    categoryId?: number;
-    supplierId?: number;
-    description?: string;
-    basePrice?: number;
-    originalPrice?: number;
-    unit?: string;
-    stockQuantity?: number;
-    imageUrl?: string;
-    images?: string[];
-    isSubscriptionAvailable?: boolean;
-    isActive?: boolean;
+    id: string;
+    customerName: string;
+    phone: string;
+    product: string;
+    estimatedDaysLeft: number;
+    lastPurchase: string;
+    status: 'pending' | 'sent';
+    sentDate?: string;
 }

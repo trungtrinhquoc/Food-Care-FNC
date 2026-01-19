@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
@@ -18,6 +18,11 @@ export default function LoginPage() {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [showEmailNotice, setShowEmailNotice] = useState(false);
     const [registeredEmail, setRegisteredEmail] = useState('');
+
+    // Password visibility states
+    const [showLoginPassword, setShowLoginPassword] = useState(false);
+    const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const [loginData, setLoginData] = useState({
         email: '',
@@ -38,7 +43,7 @@ export default function LoginPage() {
         try {
             const response = await login({ email: loginData.email, password: loginData.password });
             toast.success('Đăng nhập thành công!');
-            
+
             // Redirect based on user role
             const userRole = response?.user?.role?.toLowerCase();
             if (userRole === 'admin') {
@@ -178,15 +183,24 @@ export default function LoginPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="login-password">Mật khẩu</Label>
-                                        <Input
-                                            id="login-password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={loginData.password}
-                                            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                                            required
-                                            className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                                        />
+                                        <div className="relative">
+                                            <Input
+                                                id="login-password"
+                                                type={showLoginPassword ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                value={loginData.password}
+                                                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                                                required
+                                                className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 pr-10"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                                            >
+                                                {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -282,28 +296,46 @@ export default function LoginPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="register-password">Mật khẩu</Label>
-                                        <Input
-                                            id="register-password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={registerData.password}
-                                            onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                                            required
-                                            className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                                        />
+                                        <div className="relative">
+                                            <Input
+                                                id="register-password"
+                                                type={showRegisterPassword ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                value={registerData.password}
+                                                onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                                                required
+                                                className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 pr-10"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                                            >
+                                                {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
                                         <PasswordStrengthIndicator password={registerData.password} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="register-confirm-password">Xác nhận mật khẩu</Label>
-                                        <Input
-                                            id="register-confirm-password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={registerData.confirmPassword}
-                                            onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                                            required
-                                            className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                                        />
+                                        <div className="relative">
+                                            <Input
+                                                id="register-confirm-password"
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                value={registerData.confirmPassword}
+                                                onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                                                required
+                                                className="bg-white/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 pr-10"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                                            >
+                                                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="text-xs text-center text-gray-500 mt-4">
                                         Bằng việc đăng ký, bạn đồng ý với{' '}
