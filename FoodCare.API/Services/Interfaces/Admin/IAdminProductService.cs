@@ -1,5 +1,6 @@
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Products;
+using FoodCare.API.Models.DTOs.Products; // Import shared Create/Update DTOs
 
 namespace FoodCare.API.Services.Interfaces.Admin;
 

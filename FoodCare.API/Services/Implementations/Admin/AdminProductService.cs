@@ -1,6 +1,7 @@
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Products;
+using FoodCare.API.Models.DTOs.Products; // Import shared Create/Update DTOs
 using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.EntityFrameworkCore;
 
