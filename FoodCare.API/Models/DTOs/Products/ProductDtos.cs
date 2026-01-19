@@ -22,45 +22,45 @@ public class ProductDto
     public DateTime? CreatedAt { get; set; }
 }
 
-public class CreateProductDto
-{
-    [Required]
-    public string Name { get; set; } = null!;
+//public class CreateProductDto
+//{
+//    [Required]
+//    public string Name { get; set; } = null!;
 
-    public string? Description { get; set; }
+//    public string? Description { get; set; }
 
-    [Required]
-    [Range(0, double.MaxValue)]
-    public decimal BasePrice { get; set; }
+//    [Required]
+//    [Range(0, double.MaxValue)]
+//    public decimal BasePrice { get; set; }
 
-    public decimal? OriginalPrice { get; set; }
+//    public decimal? OriginalPrice { get; set; }
 
-    public string? Sku { get; set; }
+//    public string? Sku { get; set; }
 
-    public int StockQuantity { get; set; }
+//    public int StockQuantity { get; set; }
 
-    public int? CategoryId { get; set; }
+//    public int? CategoryId { get; set; }
 
-    public int? SupplierId { get; set; }
+//    public int? SupplierId { get; set; }
     
-    public bool IsSubscriptionAvailable { get; set; } = false;
+//    public bool IsSubscriptionAvailable { get; set; } = false;
     
-    public List<string>? Images { get; set; }
-}
+//    public List<string>? Images { get; set; }
+//}
 
-public class UpdateProductDto
-{
-    public string? Name { get; set; }
-    public string? Description { get; set; }
-    public decimal? BasePrice { get; set; }
-    public decimal? OriginalPrice { get; set; }
-    public string? Sku { get; set; }
-    public int? StockQuantity { get; set; }
-    public int? CategoryId { get; set; }
-    public bool? IsSubscriptionAvailable { get; set; }
-    public bool? IsActive { get; set; }
-    public List<string>? Images { get; set; }
-}
+//public class UpdateProductDto
+//{
+//    public string? Name { get; set; }
+//    public string? Description { get; set; }
+//    public decimal? BasePrice { get; set; }
+//    public decimal? OriginalPrice { get; set; }
+//    public string? Sku { get; set; }
+//    public int? StockQuantity { get; set; }
+//    public int? CategoryId { get; set; }
+//    public bool? IsSubscriptionAvailable { get; set; }
+//    public bool? IsActive { get; set; }
+//    public List<string>? Images { get; set; }
+//}
 
 public class ProductFilterDto
 {

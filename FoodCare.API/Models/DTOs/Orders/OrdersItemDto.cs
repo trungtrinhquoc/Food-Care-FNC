@@ -1,6 +1,6 @@
 ﻿namespace FoodCare.API.Models.DTOs.Orders
 {
-    public class OrderItemDto
+    public class OrdersItemDto
     {
         public Guid ProductId { get; set; }
         public string ProductName { get; set; } = null!;

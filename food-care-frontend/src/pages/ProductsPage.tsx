@@ -139,7 +139,7 @@ export default function ProductsPage() {
 
 
                         </div>
-                        <div className="flex gap-2 items-center">
+                        {/* <div className="flex gap-2 items-center">
                             <button
                                 onClick={() => {
                                     setEditingProduct(undefined)
@@ -149,7 +149,7 @@ export default function ProductsPage() {
                             >
                                 + Thêm sản phẩm
                             </button>
-                        </div>
+                        </div> */}
 
                     </div>
                 </div>
@@ -168,7 +168,7 @@ export default function ProductsPage() {
                     />
                 ))}
             </div>
-            <ProductDialog
+            {/* <ProductDialog
                 open={openDialog}
                 onOpenChange={setOpenDialog}
                 product={editingProduct}
@@ -178,7 +178,7 @@ export default function ProductsPage() {
                     setOpenDialog(false)
                     // refetch products
                 }}
-            />
+            /> */}
         </div>
     );
 }
