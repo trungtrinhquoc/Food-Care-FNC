@@ -84,39 +84,42 @@ public class ProductService : IProductService
         return product == null ? null : _mapper.Map<ProductDto>(product);
     }
 
-    //public async Task<ProductDto> CreateProductAsync(CreateProductDto dto)
-    //{
-    //    var product = _mapper.Map<Product>(dto);
-    //    product.Id = Guid.NewGuid();
+    public async Task<ProductDto> CreateProductAsync(CreateProductDto dto)
+    {
+        var product = _mapper.Map<Product>(dto);
+        product.Id = Guid.NewGuid();
+        product.CreatedAt = DateTime.UtcNow;
+        product.UpdatedAt = DateTime.UtcNow;
+        product.IsActive = true;
 
-    //    _context.Products.Add(product);
-    //    await _context.SaveChangesAsync();
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
 
-    //    await _context.Entry(product).Reference(p => p.Category).LoadAsync();
+        await _context.Entry(product).Reference(p => p.Category).LoadAsync();
 
-    //    _logger.LogInformation("Product created: {ProductId} - {ProductName}", product.Id, product.Name);
+        _logger.LogInformation("Product created: {ProductId} - {ProductName}", product.Id, product.Name);
 
-    //    return _mapper.Map<ProductDto>(product);
-    //}
+        return _mapper.Map<ProductDto>(product);
+    }
 
-    //public async Task<ProductDto?> UpdateProductAsync(Guid id, UpdateProductDto dto)
-    //{
-    //    var product = await _context.Products.FindAsync(id);
-    //    if (product == null)
-    //    {
-    //        return null;
-    //    }
+    public async Task<ProductDto?> UpdateProductAsync(Guid id, UpdateProductDto dto)
+    {
+        var product = await _context.Products.FindAsync(id);
+        if (product == null)
+        {
+            return null;
+        }
 
-    //    _mapper.Map(dto, product);
-    //    product.UpdatedAt = DateTime.UtcNow;
+        _mapper.Map(dto, product);
+        product.UpdatedAt = DateTime.UtcNow;
 
-    //    await _context.SaveChangesAsync();
-    //    await _context.Entry(product).Reference(p => p.Category).LoadAsync();
+        await _context.SaveChangesAsync();
+        await _context.Entry(product).Reference(p => p.Category).LoadAsync();
 
-    //    _logger.LogInformation("Product updated: {ProductId}", id);
+        _logger.LogInformation("Product updated: {ProductId}", id);
 
-    //    return _mapper.Map<ProductDto>(product);
-    //}
+        return _mapper.Map<ProductDto>(product);
+    }
 
     public async Task<bool> DeleteProductAsync(Guid id)
     {

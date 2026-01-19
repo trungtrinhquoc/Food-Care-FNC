@@ -78,12 +78,22 @@ export const productsApi = {
     },
 
     createProduct: async (data: CreateProductRequest): Promise<Product> => {
-        const response = await api.post<Product>('/products', data);
+        // Convert images array to JSON string for backend
+        const payload = {
+            ...data,
+            images: data.images && data.images.length > 0 ? JSON.stringify(data.images) : null,
+        };
+        const response = await api.post<Product>('/products', payload);
         return response.data;
     },
 
     updateProduct: async (productId: string, data: UpdateProductRequest): Promise<Product> => {
-        const response = await api.put<Product>(`/products/${productId}`, data);
+        // Convert images array to JSON string for backend
+        const payload = {
+            ...data,
+            images: data.images && data.images.length > 0 ? JSON.stringify(data.images) : null,
+        };
+        const response = await api.put<Product>(`/products/${productId}`, payload);
         return response.data;
     },
 

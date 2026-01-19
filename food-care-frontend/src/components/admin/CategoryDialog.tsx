@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,21 +13,13 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import {
-  getCategoriesDropdown,
   createCategory,
   updateCategory,
   type AdminCategory,
-  type CategoryDropdown,
   type CreateCategoryDto,
   type UpdateCategoryDto,
 } from '../../services/categoriesApi';
+import { uploadMultipleToCloudinary } from '../../utils/cloudinary';
 
 interface CategoryDialogProps {
   open: boolean;
@@ -38,7 +30,6 @@ interface CategoryDialogProps {
 
 interface FormData {
   name: string;
-  parentId: string;
   imageUrl: string;
   description: string;
   isActive: boolean;
@@ -46,7 +37,6 @@ interface FormData {
 
 const initialFormData: FormData = {
   name: '',
-  parentId: '',
   imageUrl: '',
   description: '',
   isActive: true,
@@ -59,33 +49,14 @@ export function CategoryDialog({
   onSuccess,
 }: CategoryDialogProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [categories, setCategories] = useState<CategoryDropdown[]>([]);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const loadCategories = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getCategoriesDropdown();
-      // Filter out current category if editing (prevent self-reference)
-      const filtered = category 
-        ? data.filter(c => c.id !== category.id)
-        : data;
-      setCategories(filtered);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [category]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (open) {
-      loadCategories();
       if (category) {
         setFormData({
           name: category.name,
-          parentId: category.parentId?.toString() || '',
           imageUrl: category.imageUrl || '',
           description: category.description || '',
           isActive: category.isActive,
@@ -94,7 +65,7 @@ export function CategoryDialog({
         setFormData(initialFormData);
       }
     }
-  }, [open, category, loadCategories]);
+  }, [open, category]);
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
@@ -108,7 +79,6 @@ export function CategoryDialog({
         // Update
         const updateData: UpdateCategoryDto = {
           name: formData.name,
-          parentId: formData.parentId ? parseInt(formData.parentId) : null,
           imageUrl: formData.imageUrl || undefined,
           description: formData.description || undefined,
           isActive: formData.isActive,
@@ -118,7 +88,6 @@ export function CategoryDialog({
         // Create
         const createData: CreateCategoryDto = {
           name: formData.name,
-          parentId: formData.parentId ? parseInt(formData.parentId) : null,
           imageUrl: formData.imageUrl || undefined,
           description: formData.description || undefined,
         };
@@ -159,34 +128,46 @@ export function CategoryDialog({
             />
           </div>
 
-          <div>
-            <Label>Danh mục</Label>
-            <Select
-              value={formData.parentId}
-              onValueChange={(value) => updateForm('parentId', value === 'none' ? '' : value)}
-              disabled={loading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={loading ? "Đang tải..." : "Chọn danh mục"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Trống</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
-                    {cat.parentName ? `${cat.parentName} > ` : ''}{cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>URL hình ảnh</Label>
+          <div className="space-y-2">
+            <Label>Hình ảnh danh mục</Label>
             <Input
-              value={formData.imageUrl}
-              onChange={(e) => updateForm('imageUrl', e.target.value)}
-              placeholder="https://..."
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={async (e) => {
+                if (!e.target.files || e.target.files.length === 0) return;
+
+                try {
+                  setUploading(true);
+                  const results = await uploadMultipleToCloudinary(
+                    Array.from(e.target.files)
+                  );
+                  if (results.length > 0) {
+                    updateForm('imageUrl', results[0].url);
+                  }
+                } catch (err) {
+                  alert((err as Error).message);
+                } finally {
+                  setUploading(false);
+                }
+              }}
             />
+            {formData.imageUrl && (
+              <div className="relative inline-block">
+                <img
+                  src={formData.imageUrl}
+                  alt="Preview"
+                  className="h-24 w-24 object-cover rounded-md border"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateForm('imageUrl', '')}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hover:bg-red-600"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -211,13 +192,13 @@ export function CategoryDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving || uploading}>
             Hủy
           </Button>
           <Button
             className="bg-emerald-600 hover:bg-emerald-700"
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || uploading}
           >
             {saving ? 'Đang lưu...' : (category ? 'Cập nhật' : 'Thêm mới')}
           </Button>

@@ -61,39 +61,39 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
-    //public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto dto)
-    //{
-    //    try
-    //    {
-    //        var product = await _productService.CreateProductAsync(dto);
-    //        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Error creating product");
-    //        return StatusCode(500, new { message = "An error occurred while creating the product" });
-    //    }
-    //}
+    public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto dto)
+    {
+        try
+        {
+            var product = await _productService.CreateProductAsync(dto);
+            return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating product");
+            return StatusCode(500, new { message = "An error occurred while creating the product" });
+        }
+    }
 
     [HttpPut("{id}")]
-    //public async Task<ActionResult<ProductDto>> UpdateProduct(Guid id, [FromBody] UpdateProductDto dto)
-    //{
-    //    try
-    //    {
-    //        var product = await _productService.UpdateProductAsync(id, dto);
-    //        if (product == null)
-    //        {
-    //            return NotFound(new { message = "Product not found" });
-    //        }
+    public async Task<ActionResult<ProductDto>> UpdateProduct(Guid id, [FromBody] UpdateProductDto dto)
+    {
+        try
+        {
+            var product = await _productService.UpdateProductAsync(id, dto);
+            if (product == null)
+            {
+                return NotFound(new { message = "Product not found" });
+            }
 
-    //        return Ok(product);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Error updating product {ProductId}", id);
-    //        return StatusCode(500, new { message = "An error occurred while updating the product" });
-    //    }
-    //}
+            return Ok(product);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating product {ProductId}", id);
+            return StatusCode(500, new { message = "An error occurred while updating the product" });
+        }
+    }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(Guid id)

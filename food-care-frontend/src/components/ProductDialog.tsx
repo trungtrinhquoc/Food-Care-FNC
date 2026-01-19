@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -33,72 +33,92 @@ interface ProductDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     product?: Product // có → edit | không → create
-    categories: Category[]
-    // suppliers: Supplier[]
+    categories?: Category[]
     onSuccess?: () => void
+    // Optional: External form control for admin use
+    externalForm?: CreateProductRequest
+    onFormChange?: (form: CreateProductRequest) => void
+    onSave?: () => void // If provided, skip API call and use this callback
+}
+
+const defaultForm: CreateProductRequest = {
+    name: '',
+    description: '',
+    basePrice: 0,
+    originalPrice: undefined,
+    sku: '',
+    stockQuantity: 0,
+    categoryId: undefined,
+    supplierId: undefined,
+    isSubscriptionAvailable: false,
+    images: [],
 }
 
 export function ProductDialog({
     open,
     onOpenChange,
     product,
+    categories: externalCategories,
     onSuccess,
+    externalForm,
+    onFormChange,
+    onSave,
 }: ProductDialogProps) {
     const isEdit = !!product
-    const [categories, setCategories] = useState<Category[]>([])
-    // const [suppliers, setSuppliers] = useState<Supplier[]>([])
-
-
-    const [form, setForm] = useState<CreateProductRequest>({
-        name: '',
-        description: '',
-        basePrice: 0,
-        originalPrice: undefined,
-        sku: '',
-        stockQuantity: 0,
-        categoryId: undefined,
-        supplierId: undefined,
-        isSubscriptionAvailable: false,
-        images: [],
-    })
-
+    const [internalCategories, setInternalCategories] = useState<Category[]>([])
+    const [internalForm, setInternalForm] = useState<CreateProductRequest>(defaultForm)
     const [loading, setLoading] = useState(false)
 
+    // Use external or internal form/categories
+    const categories = externalCategories || internalCategories
+    const form = externalForm || internalForm
+
+    const handleChange = useCallback(<K extends keyof CreateProductRequest>(
+        key: K,
+        value: CreateProductRequest[K]
+    ) => {
+        if (onFormChange) {
+            onFormChange({ ...form, [key]: value })
+        } else {
+            setInternalForm((prev) => ({ ...prev, [key]: value }))
+        }
+    }, [form, onFormChange])
+
+    // Load categories if not provided externally
+    useEffect(() => {
+        if (!open || externalCategories) return
+        categoriesApi.getCategories().then(setInternalCategories)
+    }, [open, externalCategories])
+
+    // Load data when editing (only for internal form)
     useEffect(() => {
         if (!open) return
-
-        categoriesApi.getCategories().then(setCategories)
-        // supplierApi.getAll().then(setSuppliers)
-    }, [open])
-
-
-
-    // Load data khi edit
-    useEffect(() => {
-        if (product) {
-            setForm({
+        
+        if (product && !externalForm) {
+            setInternalForm({
                 name: product.name,
                 description: product.description ?? '',
                 basePrice: product.basePrice,
                 originalPrice: product.originalPrice,
-                sku: product.sku,
+                sku: product.sku ?? '',
                 stockQuantity: product.stockQuantity,
                 categoryId: product.categoryId ? Number(product.categoryId) : undefined,
                 supplierId: undefined,
                 isSubscriptionAvailable: product.isSubscriptionAvailable,
                 images: product.images ?? [],
             })
+        } else if (!product && !externalForm) {
+            setInternalForm(defaultForm)
         }
-    }, [product])
-
-    const handleChange = <K extends keyof CreateProductRequest>(
-        key: K,
-        value: CreateProductRequest[K]
-    ) => {
-        setForm((prev) => ({ ...prev, [key]: value }))
-    }
+    }, [product, open, externalForm])
 
     const handleSubmit = async () => {
+        // If external onSave is provided, use it instead of API call
+        if (onSave) {
+            onSave()
+            return
+        }
+
         try {
             setLoading(true)
 
