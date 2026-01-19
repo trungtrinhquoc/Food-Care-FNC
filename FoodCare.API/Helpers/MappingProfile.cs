@@ -32,25 +32,25 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.IsSubscriptionAvailable, opt => opt.MapFrom(src => src.IsSubscriptionAvailable ?? false))
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive ?? true));
         
-        CreateMap<CreateProductDto, Product>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore())
-            .ForMember(dest => dest.BasePrice, opt => opt.MapFrom(src => src.BasePrice))
-            .ForMember(dest => dest.Slug, opt => opt.MapFrom(src => GenerateSlug(src.Name)))
-            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
-            .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
-            .ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src => 0))
-            .ForMember(dest => dest.RatingCount, opt => opt.MapFrom(src => 0));
+        //CreateMap<CreateProductDto, Product>()
+        //    .ForMember(dest => dest.Id, opt => opt.Ignore())
+        //    .ForMember(dest => dest.BasePrice, opt => opt.MapFrom(src => src.BasePrice))
+        //    .ForMember(dest => dest.Slug, opt => opt.MapFrom(src => GenerateSlug(src.Name)))
+        //    .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+        //    .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+        //    .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+        //    .ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src => 0))
+        //    .ForMember(dest => dest.RatingCount, opt => opt.MapFrom(src => 0));
         
-        CreateMap<UpdateProductDto, Product>()
-            .ForMember(dest => dest.BasePrice, opt => opt.MapFrom((src, dest) => src.BasePrice ?? dest.BasePrice))
-            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+        //CreateMap<UpdateProductDto, Product>()
+        //    .ForMember(dest => dest.BasePrice, opt => opt.MapFrom((src, dest) => src.BasePrice ?? dest.BasePrice))
+        //    .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
         
         // Category mappings
         CreateMap<Category, CategoryDto>();
         CreateMap<Subscription, SubscriptionDto>();
-            CreateMap<Order, OrderDto>();
-        CreateMap<OrderItem, OrderItemDto>()
+            CreateMap<Order, OrdersDto>();
+        CreateMap<OrderItem, OrdersItemDto>()
     .ForMember(
         dest => dest.ProductName,
         opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty)

@@ -25,7 +25,7 @@ namespace FoodCare.API.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto)
+        public async Task<OrdersDto> CreateOrderAsync(CreateOrderDto dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -87,7 +87,7 @@ namespace FoodCare.API.Services.Implementations
 
                 _logger.LogInformation("Order created successfully: {OrderId}", order.Id);
 
-                return _mapper.Map<OrderDto>(order);
+                return _mapper.Map<OrdersDto>(order);
             }
             catch (Exception ex)
             {
@@ -97,13 +97,13 @@ namespace FoodCare.API.Services.Implementations
             }
         }
 
-        public async Task<OrderDto?> GetOrderByIdAsync(Guid id)
+        public async Task<OrdersDto?> GetOrderByIdAsync(Guid id)
         {
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
-            return order == null ? null : _mapper.Map<OrderDto>(order);
+            return order == null ? null : _mapper.Map<OrdersDto>(order);
         }
     }
 }

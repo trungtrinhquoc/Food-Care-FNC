@@ -13,6 +13,8 @@ import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import CheckoutPage from './pages/CheckoutPage';
+
 
 // Components
 import Header from './components/Header';
@@ -71,7 +73,7 @@ function AppRoutes() {
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          {/* <Route path="/checkout" element={<CheckoutPage />} /> */}
+          <Route path="/checkout" element={<CheckoutPage />} />
 
 
           <Route

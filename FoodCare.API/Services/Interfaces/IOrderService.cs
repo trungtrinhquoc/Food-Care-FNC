@@ -4,7 +4,7 @@ namespace FoodCare.API.Services.Interfaces
 {
     public interface IOrderService
     {
-        Task<OrderDto> CreateOrderAsync(CreateOrderDto dto);
-        Task<OrderDto?> GetOrderByIdAsync(Guid id);
+        Task<OrdersDto> CreateOrderAsync(CreateOrderDto dto);
+        Task<OrdersDto?> GetOrderByIdAsync(Guid id);
     }
 }

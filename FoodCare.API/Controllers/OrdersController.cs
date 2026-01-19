@@ -20,7 +20,7 @@ namespace FoodCare.API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<OrderDto>> CreateOrder(CreateOrderDto dto)
+        public async Task<ActionResult<OrdersDto>> CreateOrder(CreateOrderDto dto)
         {
             try
             {
@@ -35,7 +35,7 @@ namespace FoodCare.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<OrderDto>> GetOrder(Guid id)
+        public async Task<ActionResult<OrdersDto>> GetOrder(Guid id)
         {
             var order = await _orderService.GetOrderByIdAsync(id);
             if (order == null)
