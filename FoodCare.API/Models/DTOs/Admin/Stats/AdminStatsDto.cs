@@ -37,3 +37,13 @@ public class TopProductDto
     public string ProductName { get; set; } = string.Empty;
     public int TotalSold { get; set; }
 }
+
+public class OrderChartDataDto
+{
+    public string Period { get; set; } = string.Empty;
+    public int Pending { get; set; }
+    public int Confirmed { get; set; }
+    public int Delivered { get; set; }
+    public int Cancelled { get; set; }
+    public int Total { get; set; }
+}

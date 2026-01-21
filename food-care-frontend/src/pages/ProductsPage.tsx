@@ -1,21 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../services/productsApi';
 import { categoriesApi } from '../services/api';
-import { Link } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ProductDialog } from '../components/ProductDialog'
 import type { Product } from '../types'
 import { ProductCard } from '../components/ProductCard'
 import { useNavigate } from 'react-router-dom'
+import { SimplePagination } from '../components/ui/pagination';
 
 
 
 
 export default function ProductsPage() {
     const navigate = useNavigate()
+    const pageSize = 12;
+    const [currentPage, setCurrentPage] = useState(1);
 
     const handleViewDetail = (product: Product) => {
         navigate(`/products/${product.id}`)
@@ -24,8 +24,6 @@ export default function ProductsPage() {
     const handleAddToCart = (product: Product) => {
         addToCart(product, 1)
     }
-    const [openDialog, setOpenDialog] = useState(false)
-    const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined)
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -34,15 +32,29 @@ export default function ProductsPage() {
         queryFn: categoriesApi.getCategories,
     });
     const { data, isLoading, error } = useQuery({
-        queryKey: ['products', selectedCategory, searchQuery],
+        queryKey: ['products', selectedCategory, searchQuery, currentPage],
         queryFn: () =>
             productsApi.getProducts({
-                page: 1,
-                pageSize: 20,
+                page: currentPage,
+                pageSize,
                 searchTerm: searchQuery || undefined,
                 categoryId: selectedCategory === 'all' ? undefined : parseInt(selectedCategory, 10),
             }),
     });
+
+    const totalPages = data?.totalPages || Math.ceil((data?.totalCount || 0) / pageSize);
+    const totalItems = data?.totalCount || data?.products.length || 0;
+
+    // Reset page when filters change
+    const handleCategoryChange = (category: string) => {
+        setSelectedCategory(category);
+        setCurrentPage(1);
+    };
+
+    const handleSearch = () => {
+        setSearchQuery(searchInput);
+        setCurrentPage(1);
+    };
 
     const { addToCart } = useCart();
 
@@ -86,7 +98,7 @@ export default function ProductsPage() {
                             >
                                 <TabsTrigger
                                     value="all"
-                                    onClick={() => setSelectedCategory('all')}
+                                    onClick={() => handleCategoryChange('all')}
                                     className={`
                 px-4 py-2 rounded-md transition
                 ${selectedCategory === 'all'
@@ -106,7 +118,7 @@ export default function ProductsPage() {
                                         <TabsTrigger
                                             key={category.id}
                                             value={value}
-                                            onClick={() => setSelectedCategory(value)}
+                                            onClick={() => handleCategoryChange(value)}
                                             className={`
                         px-4 py-2 rounded-md transition
                         ${isActive
@@ -131,7 +143,7 @@ export default function ProductsPage() {
                                 onChange={(e) => setSearchInput(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                        setSearchQuery(searchInput);
+                                        handleSearch();
                                     }
                                 }}
                                 className="w-full pl-10 pr-20 py-2 border rounded-md"
@@ -158,15 +170,31 @@ export default function ProductsPage() {
 
 
 
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {data?.products.map((product) => (
-                    <ProductCard
-                        key={product.id}
-                        product={product}
-                        onViewDetail={handleViewDetail}
-                        onAddToCart={handleAddToCart}
-                    />
-                ))}
+            <div className="container mx-auto px-4 py-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {data?.products.map((product) => (
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            onViewDetail={handleViewDetail}
+                            onAddToCart={handleAddToCart}
+                        />
+                    ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="mt-8">
+                        <SimplePagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={totalItems}
+                            pageSize={pageSize}
+                            onPageChange={setCurrentPage}
+                            itemLabel="sản phẩm"
+                        />
+                    </div>
+                )}
             </div>
             {/* <ProductDialog
                 open={openDialog}

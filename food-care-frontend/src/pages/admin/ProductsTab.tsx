@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/admin/Button";
 import { Input } from "../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { Pagination } from "../../components/ui/pagination";
-import { Plus, Search, Edit, Trash2, Box, FolderOpen, Loader2 } from "lucide-react";
+import { SimplePagination } from "../../components/ui/pagination";
+import { Plus, Search, Edit, Trash2, Box, FolderOpen, Loader2, RefreshCw } from "lucide-react";
 import { StockBadge } from "../../components/ui/status-badge";
 import type { Product } from "../../types";
 import { CategoriesSection } from "../../components/admin/CategoriesSection";
@@ -18,45 +18,43 @@ export function ProductsTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [activeSubTab, setActiveSubTab] = useState("products");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const pageSize = 5;
+  const pageSize = 10;
 
-  // Fetch products
+  // Fetch products with server-side pagination
   const fetchProducts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await productsApi.getProducts();
+      const response = await productsApi.getProducts({
+        page: currentPage,
+        pageSize,
+        searchTerm: searchTerm || undefined,
+      });
       setProducts(response.products);
+      setTotalPages(response.totalPages || Math.ceil((response.totalCount || 0) / pageSize));
+      setTotalItems(response.totalCount || response.products.length);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentPage, searchTerm]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  const filteredProducts = useMemo(() => {
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.categoryName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [products, searchTerm]);
-
-  const totalPages = Math.ceil(filteredProducts.length / pageSize);
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredProducts.slice(startIndex, startIndex + pageSize);
-  }, [filteredProducts, currentPage, pageSize]);
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1);
   }, []);
 
   const handleAdd = useCallback(() => {
@@ -116,12 +114,18 @@ export function ProductsTab() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Quản lý sản phẩm</CardTitle>
-                  <CardDescription>Tổng {filteredProducts.length} sản phẩm</CardDescription>
+                  <CardDescription>Tổng {totalItems} sản phẩm</CardDescription>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAdd}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Thêm sản phẩm
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={fetchProducts}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Làm mới
+                  </Button>
+                  <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAdd}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Thêm sản phẩm
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -150,14 +154,14 @@ export function ProductsTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedProducts.length === 0 ? (
+                  {products.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         {searchTerm ? 'Không tìm thấy sản phẩm nào' : 'Chưa có sản phẩm nào'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedProducts.map((product) => (
+                    products.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -216,10 +220,10 @@ export function ProductsTab() {
               </Table>
 
               {/* Pagination */}
-              <Pagination
+              <SimplePagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={filteredProducts.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
                 itemLabel="sản phẩm"

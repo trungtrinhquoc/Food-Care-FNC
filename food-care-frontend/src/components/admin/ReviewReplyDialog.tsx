@@ -7,12 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Button } from './Button';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Star } from 'lucide-react';
-import { replyToReview, type AdminReview } from '../../services/reviewsApi';
+import { reviewsService } from '../../services/admin';
+import type { AdminReview } from '../../types/admin';
 
 interface ReviewReplyDialogProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function ReviewReplyDialog({
 
     setSaving(true);
     try {
-      await replyToReview(review.id, replyComment);
+      await reviewsService.replyToReview(review.id, replyComment);
       onSuccess();
     } catch (error) {
       console.error('Failed to reply:', error);

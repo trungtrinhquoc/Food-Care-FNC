@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/admin/Button";
 import { Input } from "../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
@@ -16,15 +16,8 @@ import {
   Plus, Search, Edit, Trash2, UserCheck, UserX, 
   Users, UserPlus, Shield, Key, BarChart3 
 } from "lucide-react";
-import {
-  getUsers,
-  getUserStats,
-  toggleUserActive,
-  deleteUser,
-  type AdminUser,
-  type UserStats,
-  type PagedResult,
-} from "../../services/usersApi";
+import { usersService } from "../../services/admin";
+import type { AdminUser, UserStats, PagedResult } from "../../types/admin";
 import { UserDialog } from "../../components/admin/UserDialog";
 import { ChangePasswordDialog } from "../../components/admin/ChangePasswordDialog";
 
@@ -49,7 +42,7 @@ export function UsersTab() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const result: PagedResult<AdminUser> = await getUsers({
+      const result: PagedResult<AdminUser> = await usersService.getUsers({
         page: currentPage,
         pageSize,
         search: searchTerm || undefined,
@@ -70,7 +63,7 @@ export function UsersTab() {
 
   const loadStats = useCallback(async () => {
     try {
-      const data = await getUserStats();
+      const data = await usersService.getUserStats();
       setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
@@ -99,7 +92,7 @@ export function UsersTab() {
 
   const handleToggleActive = async (user: AdminUser) => {
     try {
-      await toggleUserActive(user.id);
+      await usersService.toggleUserActive(user.id);
       loadUsers();
       loadStats();
     } catch (error) {
@@ -111,7 +104,7 @@ export function UsersTab() {
     if (!window.confirm('Bạn có chắc muốn xóa người dùng này?')) return;
     
     try {
-      await deleteUser(id);
+      await usersService.deleteUser(id);
       loadUsers();
       loadStats();
     } catch (error) {
@@ -400,7 +393,10 @@ export function UsersTab() {
             <SimplePagination
               currentPage={currentPage}
               totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
               onPageChange={setCurrentPage}
+              itemLabel="người dùng"
             />
           </CardContent>
         </Card>

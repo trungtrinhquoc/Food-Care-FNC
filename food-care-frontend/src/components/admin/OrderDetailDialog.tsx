@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Button } from './Button';
 import { Label } from '../ui/label';
 import { Truck } from 'lucide-react';
 import { OrderStatusBadge } from '../ui/status-badge';

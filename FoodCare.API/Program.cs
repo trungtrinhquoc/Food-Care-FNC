@@ -92,6 +92,7 @@ builder.Services.AddHttpClient();
 
 // Register Helpers
 builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddHttpContextAccessor();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
