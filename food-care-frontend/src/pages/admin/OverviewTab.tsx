@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import { Button } from '../../components/admin/Button';
 import {
   Download,
   Send,
@@ -16,14 +16,17 @@ import {
 } from 'lucide-react';
 import { StatsCard } from '../../components/admin/StatsCard';
 import { DateRangeFilter, type DateRange } from '../../components/admin/DateRangeFilter';
+import { TrafficDateRangeFilter, type TrafficDateRange } from '../../components/admin/TrafficDateRangeFilter';
 import { RevenueChart } from '../../components/admin/RevenueChart';
 import { OrdersChart, type OrderChartData } from '../../components/admin/OrdersChart';
-import { TrafficChart, type TrafficSource } from '../../components/admin/TrafficChart';
+import { CategoryRevenueChart, type CategoryRevenue } from '../../components/admin/CategoryRevenueChart';
+import { UserTrafficChart, type UserTrafficData } from '../../components/admin/UserTrafficChart';
 import { LatestOrdersTable, type LatestOrder } from '../../components/admin/LatestOrdersTable';
 import { TopProductsPanel, type TopProduct } from '../../components/admin/TopProductsPanel';
 import { AlertsPanel, type SystemAlert } from '../../components/admin/AlertsPanel';
 import { DashboardSkeleton } from '../../components/admin/DashboardSkeleton';
 import type { AdminStats, RevenueData } from '../../types/admin';
+import { useOverviewData } from '../../hooks/useOverviewData';
 
 interface OverviewTabProps {
   stats: AdminStats;
@@ -38,44 +41,6 @@ function generateSparkline(base: number, variance: number = 0.2): number[] {
     Math.floor(base * (1 + (Math.random() - 0.5) * variance))
   );
 }
-
-// Mock data for orders chart (replace with API)
-const mockOrdersData: OrderChartData[] = [
-  { period: 'T2', pending: 12, confirmed: 8, delivered: 45, cancelled: 2, total: 67 },
-  { period: 'T3', pending: 15, confirmed: 10, delivered: 52, cancelled: 3, total: 80 },
-  { period: 'T4', pending: 8, confirmed: 12, delivered: 48, cancelled: 1, total: 69 },
-  { period: 'T5', pending: 18, confirmed: 6, delivered: 55, cancelled: 4, total: 83 },
-  { period: 'T6', pending: 10, confirmed: 15, delivered: 60, cancelled: 2, total: 87 },
-  { period: 'T7', pending: 22, confirmed: 8, delivered: 65, cancelled: 3, total: 98 },
-  { period: 'CN', pending: 14, confirmed: 10, delivered: 58, cancelled: 1, total: 83 },
-];
-
-// Mock traffic data (replace with API)
-const mockTrafficData: TrafficSource[] = [
-  { source: 'Tìm kiếm', sessions: 4520, users: 3200, color: '#10b981' },
-  { source: 'Trực tiếp', sessions: 2890, users: 2100, color: '#3b82f6' },
-  { source: 'Mạng xã hội', sessions: 1850, users: 1400, color: '#8b5cf6' },
-  { source: 'Referral', sessions: 980, users: 750, color: '#f59e0b' },
-  { source: 'Email', sessions: 420, users: 320, color: '#ef4444' },
-];
-
-// Mock latest orders (replace with API)
-const mockLatestOrders: LatestOrder[] = [
-  { id: 'ord-001234', customerName: 'Nguyễn Văn A', totalAmount: 450000, status: 'delivered', createdAt: new Date(Date.now() - 1800000).toISOString(), itemCount: 3 },
-  { id: 'ord-001235', customerName: 'Trần Thị B', totalAmount: 280000, status: 'shipping', createdAt: new Date(Date.now() - 3600000).toISOString(), itemCount: 2 },
-  { id: 'ord-001236', customerName: 'Lê Văn C', totalAmount: 750000, status: 'confirmed', createdAt: new Date(Date.now() - 7200000).toISOString(), itemCount: 5 },
-  { id: 'ord-001237', customerName: 'Phạm Thị D', totalAmount: 120000, status: 'pending', createdAt: new Date(Date.now() - 14400000).toISOString(), itemCount: 1 },
-  { id: 'ord-001238', customerName: 'Hoàng Văn E', totalAmount: 560000, status: 'delivered', createdAt: new Date(Date.now() - 28800000).toISOString(), itemCount: 4 },
-];
-
-// Mock top products (replace with API)
-const mockTopProducts: TopProduct[] = [
-  { productId: '1', productName: 'Rau cải xanh hữu cơ', totalSold: 245, revenue: 12250000, imageUrl: '' },
-  { productId: '2', productName: 'Thịt gà ta nguyên con', totalSold: 189, revenue: 18900000, imageUrl: '' },
-  { productId: '3', productName: 'Cá hồi tươi Na Uy', totalSold: 156, revenue: 31200000, imageUrl: '' },
-  { productId: '4', productName: 'Trứng gà sạch (10 quả)', totalSold: 320, revenue: 9600000, imageUrl: '' },
-  { productId: '5', productName: 'Sữa tươi Vinamilk 1L', totalSold: 280, revenue: 8400000, imageUrl: '' },
-];
 
 // Mock alerts (replace with real notification system)
 const generateMockAlerts = (stats: AdminStats): SystemAlert[] => {
@@ -124,12 +89,70 @@ const generateMockAlerts = (stats: AdminStats): SystemAlert[] => {
 export function OverviewTab({ stats, revenueData, totalProducts, isLoading = false }: OverviewTabProps) {
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [trafficDateRange, setTrafficDateRange] = useState<TrafficDateRange>('7d');
+  const [orderDateRange, setOrderDateRange] = useState<TrafficDateRange>('7d');
+  
+  // Map traffic date range to days
+  const trafficDaysMap: Record<TrafficDateRange, number> = {
+    '1d': 1,
+    '7d': 7,
+    '30d': 30,
+    '1y': 365,
+  };
+  
+  const orderDaysMap: Record<TrafficDateRange, number> = {
+    '1d': 1,
+    '7d': 7,
+    '30d': 30,
+    '1y': 365,
+  };
+  
+  // Fetch overview data from API
+  const {
+    ordersChart,
+    categoryRevenue,
+    latestOrders: apiLatestOrders,
+    topProducts: apiTopProducts,
+    userTraffic,
+    isLoading: overviewLoading,
+    refetch: refetchOverview,
+  } = useOverviewData(trafficDaysMap[trafficDateRange], orderDaysMap[orderDateRange]);
+
+  // Convert API data to component format
+  const latestOrders: LatestOrder[] = apiLatestOrders.map(order => ({
+    id: order.orderId,
+    customerName: order.customerName,
+    totalAmount: order.totalAmount,
+    status: order.status as LatestOrder['status'],
+    createdAt: order.createdAt,
+    itemCount: order.itemCount,
+  }));
+
+  const topProducts: TopProduct[] = apiTopProducts.map(product => ({
+    productId: product.productId,
+    productName: product.productName,
+    totalSold: product.totalSold,
+    revenue: product.revenue,
+    imageUrl: product.imageUrl,
+  }));
 
   // Handle date range change
   const handleDateRangeChange = useCallback((range: DateRange) => {
     setDateRange(range);
-    // TODO: Refetch data based on range
-  }, []);
+    refetchOverview();
+  }, [refetchOverview]);
+
+  // Handle traffic date range change
+  const handleTrafficDateRangeChange = useCallback((range: TrafficDateRange) => {
+    setTrafficDateRange(range);
+    refetchOverview();
+  }, [refetchOverview]);
+
+  // Handle order date range change
+  const handleOrderDateRangeChange = useCallback((range: TrafficDateRange) => {
+    setOrderDateRange(range);
+    refetchOverview();
+  }, [refetchOverview]);
 
   // Handle KPI card clicks for drill-down
   const handleRevenueClick = () => navigate('/admin?tab=orders');
@@ -158,7 +181,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     navigate('/admin?tab=zalo');
   };
 
-  if (isLoading) {
+  if (isLoading || overviewLoading) {
     return <DashboardSkeleton />;
   }
 
@@ -241,13 +264,13 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
           </CardContent>
         </Card>
 
-        {/* Traffic Chart */}
+        {/* Category Revenue Chart */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-semibold">Nguồn truy cập</CardTitle>
+            <CardTitle className="text-lg font-semibold">Doanh thu theo danh mục</CardTitle>
           </CardHeader>
           <CardContent className="relative">
-            <TrafficChart data={mockTrafficData} />
+            <CategoryRevenueChart data={categoryRevenue} />
           </CardContent>
         </Card>
       </div>
@@ -257,10 +280,11 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
         {/* Orders Over Time */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-semibold">Đơn hàng theo tuần</CardTitle>
+            <CardTitle className="text-lg font-semibold">Đơn hàng theo thời gian</CardTitle>
+            <TrafficDateRangeFilter value={orderDateRange} onChange={handleOrderDateRangeChange} />
           </CardHeader>
           <CardContent>
-            <OrdersChart data={mockOrdersData} />
+            <OrdersChart data={ordersChart} />
           </CardContent>
         </Card>
 
@@ -283,6 +307,20 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
         </Card>
       </div>
 
+      {/* User Traffic Chart - Full Width */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Users className="w-5 h-5 text-orange-500" />
+            Lưu lượng truy cập người dùng
+          </CardTitle>
+          <TrafficDateRangeFilter value={trafficDateRange} onChange={handleTrafficDateRangeChange} />
+        </CardHeader>
+        <CardContent>
+          <UserTrafficChart data={userTraffic} />
+        </CardContent>
+      </Card>
+
       {/* Bottom Section: Latest Orders, Top Products, Quick Actions */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Latest Orders */}
@@ -294,7 +332,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LatestOrdersTable orders={mockLatestOrders} />
+            <LatestOrdersTable orders={latestOrders} />
           </CardContent>
         </Card>
 
@@ -307,7 +345,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <TopProductsPanel products={mockTopProducts} />
+            <TopProductsPanel products={topProducts} />
           </CardContent>
         </Card>
 

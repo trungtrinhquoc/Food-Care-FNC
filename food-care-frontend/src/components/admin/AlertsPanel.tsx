@@ -1,5 +1,5 @@
 import { AlertTriangle, Info, Package, ShoppingCart, Star } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button } from './Button';
 
 function formatTimeAgo(date: string | Date): string {
   const now = new Date();

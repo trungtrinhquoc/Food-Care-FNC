@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'default' | 'outline' | 'ghost' | 'secondary';
+    variant?: 'default' | 'outline' | 'ghost' | 'secondary' | 'destructive';
     size?: 'sm' | 'md' | 'lg';
     children: React.ReactNode;
 }
@@ -16,10 +16,11 @@ export function Button({
     const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variants = {
-        default: 'bg-emerald-500 text-black hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40',
-        secondary: 'bg-emerald-700 text-black hover:bg-emerald-800 shadow-lg',
-        outline: 'bg-white/10 backdrop-blur-sm border-2 border-black/30 text-black hover:bg-white/20',
-        ghost: 'bg-transparent hover:bg-gray-100 text-gray-700',
+        default: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40',
+        secondary: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 shadow-lg shadow-orange-600/30',
+        outline: 'bg-white border-2 border-orange-500 text-orange-600 hover:bg-orange-50 hover:border-orange-600 shadow-sm hover:shadow-md',
+        ghost: 'bg-transparent hover:bg-orange-50 text-orange-600 hover:text-orange-700',
+        destructive: 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40',
     };
 
     const sizes = {

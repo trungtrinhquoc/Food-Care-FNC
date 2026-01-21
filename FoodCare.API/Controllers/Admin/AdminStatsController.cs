@@ -64,4 +64,19 @@ public class AdminStatsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while retrieving dashboard summary" });
         }
     }
+
+    [HttpGet("orders-chart")]
+    public async Task<ActionResult> GetOrdersChartData([FromQuery] int days = 7)
+    {
+        try
+        {
+            var data = await _statsService.GetOrdersChartDataAsync(days);
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders chart data");
+            return StatusCode(500, new { message = "An error occurred while retrieving orders chart data" });
+        }
+    }
 }
