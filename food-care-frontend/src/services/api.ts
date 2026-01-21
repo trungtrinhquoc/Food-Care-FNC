@@ -104,6 +104,11 @@ export const authApi = {
         const response = await api.post('/auth/reset-password', data);
         return response.data;
     },
+
+    googleAuth: async (idToken: string): Promise<AuthResponse> => {
+        const response = await api.post<AuthResponse>('/auth/google', { idToken });
+        return response.data;
+    },
 };
 
 // Products API - calls Backend which connects to Supabase
