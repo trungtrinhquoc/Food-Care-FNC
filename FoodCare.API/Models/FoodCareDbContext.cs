@@ -38,6 +38,9 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
     public virtual DbSet<ZaloTemplate> ZaloTemplates { get; set; }
+    public virtual DbSet<Transaction> Transaction { get; set; }
+
+
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
@@ -290,6 +293,33 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.User).WithMany(p => p.PaymentMethods).HasForeignKey(d => d.UserId).HasConstraintName("payment_methods_user_id_fkey");
+        });
+
+        modelBuilder.Entity<Transaction>(entity =>
+        {
+            entity.ToTable("transactions", t =>
+            {
+                t.HasCheckConstraint(
+                    "check_attempt_number",
+                    "\"AttemptNumber\" >= 1"
+                );
+            });
+
+            entity.Property(e => e.TransactionType)
+                  .HasConversion<string>();
+
+            entity.Property(e => e.Status)
+                  .HasConversion<string>();
+
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.SubscriptionId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+
+            //entity.HasCheckConstraint(
+            //    "check_attempt_number",
+            //    "\"AttemptNumber\" >= 1"
+            //);
         });
 
         modelBuilder.Entity<Product>(entity =>
