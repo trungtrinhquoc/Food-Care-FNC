@@ -104,7 +104,21 @@ public class AdminUserService : IAdminUserService
             .Include(u => u.Reviews)
             .FirstOrDefaultAsync(u => u.Id == id);
 
-        return user != null ? MapToDto(user) : null;
+        if (user == null) return null;
+
+        // Get last successful login
+        var lastLogin = await _context.LoginLogs
+            .Where(l => l.UserId == id && l.Success == true)
+            .OrderByDescending(l => l.LoginAt)
+            .Select(l => l.LoginAt)
+            .FirstOrDefaultAsync();
+
+        var dto = MapToDto(user);
+        dto.LastLoginAt = lastLogin;
+        dto.ActiveSubscriptions = user.Subscriptions?.Count(s => s.Status == Models.Enums.SubStatus.active) ?? 0;
+        dto.EmailVerified = user.EmailVerified;
+        
+        return dto;
     }
 
     public async Task<UserStatsDto> GetUserStatsAsync()

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { profileApi } from '../services/api';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { StatusBadge } from '../components/ui/status-badge';
 import { Progress } from '../components/ui/progress';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { SimplePagination } from '../components/ui/pagination';
 import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
@@ -62,6 +63,15 @@ export default function ProfilePage() {
     const [orders] = useState<Order[]>([]); // TODO: Implement orders API
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+    // Orders pagination
+    const [ordersPage, setOrdersPage] = useState(1);
+    const ordersPageSize = 5;
+    const ordersTotalPages = Math.ceil(orders.length / ordersPageSize);
+    const paginatedOrders = useMemo(() => {
+        const start = (ordersPage - 1) * ordersPageSize;
+        return orders.slice(start, start + ordersPageSize);
+    }, [orders, ordersPage]);
 
     // Loading states
     const [loading, setLoading] = useState(false);
@@ -646,7 +656,7 @@ export default function ProfilePage() {
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {orders.map(order => (
+                                        {paginatedOrders.map(order => (
                                             <Card key={order.id} className="border-2">
                                                 <CardContent className="pt-6">
                                                     <div className="flex items-start justify-between mb-4">
@@ -690,6 +700,19 @@ export default function ProfilePage() {
                                                 </CardContent>
                                             </Card>
                                         ))}
+
+                                        {/* Pagination */}
+                                        {ordersTotalPages > 1 && (
+                                            <SimplePagination
+                                                currentPage={ordersPage}
+                                                totalPages={ordersTotalPages}
+                                                totalItems={orders.length}
+                                                pageSize={ordersPageSize}
+                                                onPageChange={setOrdersPage}
+                                                itemLabel="đơn hàng"
+                                                className="pt-4 border-t"
+                                            />
+                                        )}
                                     </div>
                                 )}
                             </CardContent>

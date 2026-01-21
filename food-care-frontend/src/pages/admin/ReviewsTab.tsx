@@ -12,15 +12,8 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Eye, EyeOff, MessageSquare, Trash2, Star, BarChart3 } from "lucide-react";
-import {
-  getReviews,
-  getReviewStats,
-  toggleHideReview,
-  deleteReview,
-  type AdminReview,
-  type ReviewStats,
-  type PagedResult,
-} from "../../services/reviewsApi";
+import { reviewsService } from "../../services/admin";
+import type { AdminReview, ReviewStats, PagedResult } from "../../types/admin";
 import { ReviewReplyDialog } from "../../components/admin/ReviewReplyDialog";
 
 export function ReviewsTab() {
@@ -44,7 +37,7 @@ export function ReviewsTab() {
   const loadReviews = useCallback(async () => {
     setLoading(true);
     try {
-      const result: PagedResult<AdminReview> = await getReviews({
+      const result: PagedResult<AdminReview> = await reviewsService.getReviews({
         page: currentPage,
         pageSize,
         minRating: ratingFilter ? parseInt(ratingFilter) : undefined,
@@ -66,7 +59,7 @@ export function ReviewsTab() {
 
   const loadStats = useCallback(async () => {
     try {
-      const data = await getReviewStats();
+      const data = await reviewsService.getReviewStats();
       setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
@@ -80,7 +73,7 @@ export function ReviewsTab() {
 
   const handleToggleHide = async (review: AdminReview) => {
     try {
-      await toggleHideReview(review.id);
+      await reviewsService.toggleHideReview(review.id);
       loadReviews();
     } catch (error) {
       console.error('Failed to toggle hide:', error);
@@ -91,7 +84,7 @@ export function ReviewsTab() {
     if (!window.confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
     
     try {
-      await deleteReview(id);
+      await reviewsService.deleteReview(id);
       loadReviews();
       loadStats();
     } catch (error) {
@@ -188,7 +181,7 @@ export function ReviewsTab() {
             <CardContent>
               <div className="space-y-2">
                 {[5, 4, 3, 2, 1].map((rating) => {
-                  const count = stats.ratingDistribution[rating.toString()] || 0;
+                  const count = stats.ratingDistribution?.[rating.toString()] || 0;
                   const percentage = stats.totalReviews > 0 ? (count / stats.totalReviews) * 100 : 0;
                   return (
                     <div key={rating} className="flex items-center gap-3">
@@ -377,7 +370,10 @@ export function ReviewsTab() {
             <SimplePagination
               currentPage={currentPage}
               totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
               onPageChange={setCurrentPage}
+              itemLabel="đánh giá"
             />
           </CardContent>
         </Card>

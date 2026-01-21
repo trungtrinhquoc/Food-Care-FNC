@@ -16,6 +16,7 @@ public class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
     private readonly Supabase.Client _supabaseClient;
     private readonly IEmailService _emailService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuthService(
         FoodCareDbContext context,
@@ -23,7 +24,8 @@ public class AuthService : IAuthService
         JwtHelper jwtHelper,
         ILogger<AuthService> logger,
         Supabase.Client supabaseClient,
-        IEmailService emailService)
+        IEmailService emailService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _mapper = mapper;
@@ -31,6 +33,7 @@ public class AuthService : IAuthService
         _logger = logger;
         _supabaseClient = supabaseClient;
         _emailService = emailService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
@@ -167,7 +170,13 @@ public class AuthService : IAuthService
         // Verify credentials with Supabase Auth
         _logger.LogInformation("Attempting login with Supabase Auth for email: {Email}", request.Email);
         
+        // Get HTTP context for logging
+        var httpContext = _httpContextAccessor.HttpContext;
+        var ipAddress = httpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var userAgent = httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown";
+        
         Supabase.Gotrue.Session? session;
+        
         try
         {
             session = await _supabaseClient.Auth.SignIn(request.Email, request.Password);
@@ -175,6 +184,14 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Supabase Auth sign-in failed for email: {Email}", request.Email);
+            
+            // Try to get userId from email for failed login log
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (existingUser != null)
+            {
+                await CreateLoginLogAsync(existingUser.Id, ipAddress, userAgent, false, "Invalid credentials");
+            }
+            
             throw new UnauthorizedAccessException("Invalid email or password");
         }
 
@@ -200,8 +217,12 @@ public class AuthService : IAuthService
 
         if (user.IsActive == false)
         {
+            await CreateLoginLogAsync(user.Id, ipAddress, userAgent, false, "Account inactive");
             throw new UnauthorizedAccessException("Account is inactive");
         }
+
+        // Create successful login log
+        await CreateLoginLogAsync(user.Id, ipAddress, userAgent, true, null);
 
         var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = _jwtHelper.GenerateRefreshToken();
@@ -214,6 +235,59 @@ public class AuthService : IAuthService
             RefreshToken = refreshToken,
             User = _mapper.Map<UserDto>(user)
         };
+    }
+    
+    private async Task CreateLoginLogAsync(Guid userId, string ipAddress, string userAgent, bool success, string? failureReason)
+    {
+        try
+        {
+            var loginLog = new LoginLog
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                LoginAt = DateTime.UtcNow,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
+                DeviceType = ParseDeviceType(userAgent),
+                DeviceName = ParseDeviceName(userAgent),
+                Success = success,
+                FailureReason = failureReason,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.LoginLogs.Add(loginLog);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create login log for user {UserId}", userId);
+            // Don't throw - logging failure shouldn't prevent login
+        }
+    }
+
+    private static string ParseDeviceType(string userAgent)
+    {
+        if (string.IsNullOrEmpty(userAgent)) return "Unknown";
+        
+        var ua = userAgent.ToLower();
+        if (ua.Contains("mobile") || ua.Contains("android") || ua.Contains("iphone"))
+            return "Mobile";
+        if (ua.Contains("tablet") || ua.Contains("ipad"))
+            return "Tablet";
+        return "Desktop";
+    }
+
+    private static string ParseDeviceName(string userAgent)
+    {
+        if (string.IsNullOrEmpty(userAgent)) return "Unknown";
+        
+        var ua = userAgent.ToLower();
+        if (ua.Contains("chrome")) return "Chrome";
+        if (ua.Contains("firefox")) return "Firefox";
+        if (ua.Contains("safari")) return "Safari";
+        if (ua.Contains("edge")) return "Edge";
+        if (ua.Contains("opera")) return "Opera";
+        return "Unknown Browser";
     }
 
     public async Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthRequestDto request)

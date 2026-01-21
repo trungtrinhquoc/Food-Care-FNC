@@ -152,7 +152,10 @@ export function SuppliersTab() {
         <SimplePagination
           currentPage={currentPage}
           totalPages={totalPages}
+          totalItems={filteredSuppliers.length}
+          pageSize={pageSize}
           onPageChange={setCurrentPage}
+          itemLabel="nhà cung cấp"
         />
       </CardContent>
     </Card>

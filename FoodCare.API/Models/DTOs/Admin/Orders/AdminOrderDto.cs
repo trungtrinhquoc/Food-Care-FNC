@@ -53,6 +53,7 @@ public class StatusHistoryDto
 public class AdminOrderFilterDto
 {
     public string? SearchTerm { get; set; }
+    public Guid? UserId { get; set; }
     public OrderStatus? Status { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }

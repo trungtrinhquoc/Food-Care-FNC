@@ -23,6 +23,11 @@ public class AdminOrderService : IAdminOrderService
             .AsQueryable();
 
         // Apply filters
+        if (filter.UserId.HasValue)
+        {
+            query = query.Where(o => o.UserId == filter.UserId.Value);
+        }
+
         if (!string.IsNullOrEmpty(filter.SearchTerm))
         {
             var searchLower = filter.SearchTerm.ToLower();
@@ -155,7 +160,10 @@ public class AdminOrderService : IAdminOrderService
 
     public async Task<bool> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDto dto)
     {
-        var order = await _context.Orders.FindAsync(id);
+        var order = await _context.Orders
+            .Include(o => o.User)
+            .FirstOrDefaultAsync(o => o.Id == id);
+            
         if (order == null)
         {
             return false;
@@ -185,6 +193,73 @@ public class AdminOrderService : IAdminOrderService
         };
 
         _context.OrderStatusHistories.Add(history);
+
+        // Handle points when order is delivered/completed
+        if (newStatus == OrderStatus.delivered && previousStatus != OrderStatus.delivered)
+        {
+            // Award loyalty points (1 point per 10,000 VND spent)
+            var pointsEarned = (int)(order.TotalAmount / 10000);
+            if (pointsEarned > 0 && order.User != null && order.UserId.HasValue)
+            {
+                var currentBalance = order.User.LoyaltyPoints ?? 0;
+                var newBalance = currentBalance + pointsEarned;
+
+                var pointsHistory = new PointsHistory
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = order.UserId.Value,
+                    Points = pointsEarned,
+                    Type = "earn",
+                    Description = $"Tích điểm đơn hàng #{order.Id.ToString()[..8].ToUpper()}",
+                    OrderId = order.Id,
+                    BalanceBefore = currentBalance,
+                    BalanceAfter = newBalance,
+                    CreatedBy = dto.ChangedBy,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.PointsHistories.Add(pointsHistory);
+                order.User.LoyaltyPoints = newBalance;
+            }
+
+            // Update payment status if COD
+            if (order.PaymentStatus == PaymentStatus.unpaid)
+            {
+                order.PaymentStatus = PaymentStatus.paid;
+                
+                // Update payment log
+                var paymentLog = await _context.PaymentLogs
+                    .FirstOrDefaultAsync(p => p.OrderId == id);
+                if (paymentLog != null)
+                {
+                    paymentLog.Status = "completed";
+                    paymentLog.PaidAt = DateTime.UtcNow;
+                    paymentLog.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        // Handle refund when order is cancelled
+        if (newStatus == OrderStatus.cancelled && previousStatus != OrderStatus.cancelled)
+        {
+            if (order.PaymentStatus == PaymentStatus.paid)
+            {
+                order.PaymentStatus = PaymentStatus.refunded;
+                
+                // Update payment log for refund
+                var paymentLog = await _context.PaymentLogs
+                    .FirstOrDefaultAsync(p => p.OrderId == id);
+                if (paymentLog != null)
+                {
+                    paymentLog.Status = "refunded";
+                    paymentLog.RefundedAt = DateTime.UtcNow;
+                    paymentLog.RefundAmount = order.TotalAmount;
+                    paymentLog.RefundReason = dto.Note ?? "Đơn hàng bị hủy";
+                    paymentLog.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return true;

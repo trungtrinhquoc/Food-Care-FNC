@@ -82,6 +82,23 @@ namespace FoodCare.API.Services.Implementations
 
                 _context.OrderItems.AddRange(orderItems);
 
+                // 4. Tạo PaymentLog nếu có UserId
+                if (dto.UserId.HasValue)
+                {
+                    var paymentLog = new PaymentLog
+                    {
+                        Id = Guid.NewGuid(),
+                        OrderId = order.Id,
+                        UserId = dto.UserId.Value,
+                        Amount = order.TotalAmount,
+                        PaymentMethod = dto.PaymentMethod ?? "COD",
+                        PaymentMethodName = GetPaymentMethodName(dto.PaymentMethod),
+                        Status = "pending",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.PaymentLogs.Add(paymentLog);
+                }
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -95,6 +112,18 @@ namespace FoodCare.API.Services.Implementations
                 _logger.LogError(ex, "Error creating order");
                 throw;
             }
+        }
+
+        private static string GetPaymentMethodName(string? method)
+        {
+            return method?.ToUpper() switch
+            {
+                "COD" => "Thanh toán khi nhận hàng",
+                "MOMO" => "Ví MoMo",
+                "VNPAY" => "VNPay",
+                "BANKING" => "Chuyển khoản ngân hàng",
+                _ => "Thanh toán khi nhận hàng"
+            };
         }
 
         public async Task<OrdersDto?> GetOrderByIdAsync(Guid id)

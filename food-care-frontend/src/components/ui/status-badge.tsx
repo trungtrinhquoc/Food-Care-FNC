@@ -111,11 +111,25 @@ function SupplierStatusBadge({ status }: SupplierStatusBadgeProps) {
     return <StatusBadge className={className}>{label}</StatusBadge>;
 }
 
+// ============ Payment Status Badge ============
+import { PAYMENT_STATUS_CONFIG } from '../../constants/admin';
+import type { PaymentStatus } from '../../types/admin';
+
+interface PaymentStatusBadgeProps {
+    status: PaymentStatus | string;
+}
+
+function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {
+    const config = PAYMENT_STATUS_CONFIG[status as PaymentStatus] || { label: status, className: 'bg-gray-500' };
+    return <StatusBadge className={config.className}>{config.label}</StatusBadge>;
+}
+
 export { 
     StatusBadge, 
     OrderStatusBadge, 
     TierBadge, 
     StockBadge, 
     ReminderDaysBadge,
-    SupplierStatusBadge 
+    SupplierStatusBadge,
+    PaymentStatusBadge,
 }

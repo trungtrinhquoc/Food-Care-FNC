@@ -89,6 +89,7 @@ builder.Services.AddScoped<Supabase.Client>(_ => new Supabase.Client(supabaseUrl
 
 // Register Helpers
 builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddHttpContextAccessor();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();

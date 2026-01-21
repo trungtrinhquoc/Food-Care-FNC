@@ -38,6 +38,9 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
     public virtual DbSet<ZaloTemplate> ZaloTemplates { get; set; }
+    public DbSet<LoginLog> LoginLogs { get; set; }
+    public DbSet<PointsHistory> PointsHistories { get; set; }
+    public DbSet<PaymentLog> PaymentLogs { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
@@ -507,5 +510,86 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.EmailVerificationExpiry)
                 .HasColumnName("email_verification_expiry");
         });
+        modelBuilder.Entity<LoginLog>(entity => {
+            entity.ToTable("login_logs");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.LoginAt).HasColumnName("login_at");
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address");
+            entity.Property(e => e.UserAgent).HasColumnName("user_agent");
+            entity.Property(e => e.DeviceType).HasColumnName("device_type");
+            entity.Property(e => e.DeviceName).HasColumnName("device_name");
+            entity.Property(e => e.Location).HasColumnName("location");
+            entity.Property(e => e.CountryCode).HasColumnName("country_code");
+            entity.Property(e => e.Success).HasColumnName("success");
+            entity.Property(e => e.FailureReason).HasColumnName("failure_reason");
+            entity.Property(e => e.SessionId).HasColumnName("session_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // PointsHistory configuration
+        modelBuilder.Entity<PointsHistory>(entity => {
+            entity.ToTable("points_history");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.Type).HasColumnName("type");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.BalanceBefore).HasColumnName("balance_before");
+            entity.Property(e => e.BalanceAfter).HasColumnName("balance_after");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Order)
+                .WithMany()
+                .HasForeignKey(e => e.OrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // PaymentLog configuration
+        modelBuilder.Entity<PaymentLog>(entity => {
+            entity.ToTable("payment_logs");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Amount).HasColumnName("amount");
+            entity.Property(e => e.PaymentMethod).HasColumnName("payment_method");
+            entity.Property(e => e.PaymentMethodName).HasColumnName("payment_method_name");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.GatewayResponse).HasColumnName("gateway_response");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.RefundedAt).HasColumnName("refunded_at");
+            entity.Property(e => e.RefundAmount).HasColumnName("refund_amount");
+            entity.Property(e => e.RefundReason).HasColumnName("refund_reason");
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne(e => e.Order)
+                .WithMany()
+                .HasForeignKey(e => e.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
     }
 }

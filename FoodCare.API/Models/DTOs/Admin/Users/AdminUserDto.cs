@@ -17,11 +17,14 @@ public class AdminUserDto
     public string? TierName { get; set; }
     public int? LoyaltyPoints { get; set; }
     public bool IsActive { get; set; }
+    public bool EmailVerified { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public DateTime? LastLoginAt { get; set; }
     
     // Statistics
     public int TotalOrders { get; set; }
+    public int ActiveSubscriptions { get; set; }
     public decimal TotalSpent { get; set; }
     public int TotalSubscriptions { get; set; }
     public int TotalReviews { get; set; }

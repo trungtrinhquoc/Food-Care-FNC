@@ -182,7 +182,10 @@ export function ZaloTab() {
           <SimplePagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalItems={filteredReminders.length}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
+            itemLabel="lời nhắc"
           />
         </CardContent>
       </Card>
