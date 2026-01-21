@@ -51,7 +51,7 @@ public class AuthService : IAuthService
         // Check if email already exists in our database (quick validation)
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
         {
-            throw new InvalidOperationException("Email already exists in system");
+            throw new InvalidOperationException("Email đã được sử dụng. Vui lòng sử dụng email khác.");
         }
 
         var bronzeTier = await _context.MemberTiers.FirstOrDefaultAsync(mt => mt.Id == 1);
@@ -75,7 +75,28 @@ public class AuthService : IAuthService
         // Call Supabase Auth to create real user and get real ID
         _logger.LogInformation("Calling Supabase Auth SignUp for email: {Email}", request.Email);
         
-        var session = await _supabaseClient.Auth.SignUp(request.Email, request.Password);
+        Supabase.Gotrue.Session? session;
+        try
+        {
+            session = await _supabaseClient.Auth.SignUp(request.Email, request.Password);
+        }
+        catch (Supabase.Gotrue.Exceptions.GotrueException ex)
+        {
+            _logger.LogWarning(ex, "Supabase Auth SignUp failed for email: {Email}", request.Email);
+            
+            // Check if it's a duplicate user error
+            if (ex.Message.Contains("already registered") || ex.Message.Contains("already exists"))
+            {
+                throw new InvalidOperationException("Email đã được sử dụng. Vui lòng sử dụng email khác.");
+            }
+            
+            throw new InvalidOperationException("Không thể tạo tài khoản. Vui lòng thử lại.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during Supabase SignUp for email: {Email}", request.Email);
+            throw new InvalidOperationException("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.");
+        }
 
         _logger.LogInformation("Supabase Auth response - Session: {Session}, User: {User}, UserId: {UserId}", 
             session != null ? "Not null" : "NULL", 
@@ -86,7 +107,7 @@ public class AuthService : IAuthService
         {
             // If Supabase rejects (e.g., weak password, invalid email format...)
             _logger.LogError("Supabase Auth failed to create user. Session or User is null");
-            throw new Exception("Failed to create user in Supabase Auth");
+            throw new InvalidOperationException("Không thể tạo tài khoản. Vui lòng thử lại.");
         }
 
         // Get real ID from Supabase response (String -> Guid)
@@ -181,13 +202,13 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Supabase Auth sign-in failed for email: {Email}", request.Email);
-            throw new UnauthorizedAccessException("Invalid email or password");
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
         }
 
         if (session?.User == null || string.IsNullOrEmpty(session.User.Id))
         {
             _logger.LogWarning("Supabase Auth returned null session or user for email: {Email}", request.Email);
-            throw new UnauthorizedAccessException("Invalid email or password");
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
         }
 
         var supabaseUserId = Guid.Parse(session.User.Id);
@@ -201,19 +222,19 @@ public class AuthService : IAuthService
         if (user == null)
         {
             _logger.LogWarning("User exists in Supabase but not in database: {UserId}", supabaseUserId);
-            throw new UnauthorizedAccessException("User not found in system");
+            throw new UnauthorizedAccessException("Tài khoản không tồn tại trong hệ thống.");
         }
 
         if (user.IsActive == false)
         {
-            throw new UnauthorizedAccessException("Account is inactive");
+            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.");
         }
 
         // Check if email is verified
         if (!user.EmailVerified)
         {
             _logger.LogWarning("Login attempt with unverified email: {Email}", user.Email);
-            throw new UnauthorizedAccessException("Please verify your email before logging in. Check your inbox for the verification link.");
+            throw new UnauthorizedAccessException("Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.");
         }
 
         var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());

@@ -43,11 +43,18 @@ api.interceptors.response.use(
     },
     (error) => {
         console.error('API Error:', error.response?.data || error.message);
-        if (error.response?.status === 401) {
-            // Only redirect to login if not already on admin pages
-            // Admin pages handle their own auth
+
+        // Don't auto-redirect on 401 if it's from login/register endpoints
+        // Let the component handle the error and show appropriate messages
+        const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
+            error.config?.url?.includes('/auth/register');
+
+        if (error.response?.status === 401 && !isAuthEndpoint) {
+            // Only redirect to login if not already on admin pages or auth pages
             const isAdminRoute = window.location.pathname.startsWith('/admin');
-            if (!isAdminRoute) {
+            const isLoginPage = window.location.pathname === '/login';
+
+            if (!isAdminRoute && !isLoginPage) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 window.location.href = '/login';
