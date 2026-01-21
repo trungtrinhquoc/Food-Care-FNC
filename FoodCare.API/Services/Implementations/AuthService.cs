@@ -252,7 +252,179 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthRequestDto request)
     {
-        throw new NotImplementedException("Google OAuth will be implemented later");
+        try
+        {
+            _logger.LogInformation("Starting Google OAuth authentication");
+            
+            // The request.IdToken is actually an access token from the frontend
+            // We'll use it to get user info from Google's userinfo endpoint
+            string email;
+            string name;
+            string picture;
+            
+            try
+            {
+                // Call Google's userinfo API with the access token
+                var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v3/userinfo");
+                userInfoRequest.Headers.Add("Authorization", $"Bearer {request.IdToken}");
+                
+                var response = await _httpClient.SendAsync(userInfoRequest);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Failed to get user info from Google: {StatusCode}", response.StatusCode);
+                    throw new UnauthorizedAccessException("Invalid Google token");
+                }
+                
+                var userInfoJson = await response.Content.ReadAsStringAsync();
+                var userInfo = System.Text.Json.JsonDocument.Parse(userInfoJson);
+                
+                email = userInfo.RootElement.GetProperty("email").GetString() ?? throw new UnauthorizedAccessException("Email not found in Google response");
+                name = userInfo.RootElement.GetProperty("name").GetString() ?? "Google User";
+                picture = userInfo.RootElement.TryGetProperty("picture", out var pictureElement) ? pictureElement.GetString() : null;
+                
+                _logger.LogInformation("Google user info retrieved successfully for email: {Email}", email);
+            }
+            catch (Exception ex) when (ex is not UnauthorizedAccessException)
+            {
+                _logger.LogError(ex, "Failed to validate Google token");
+                throw new UnauthorizedAccessException("Invalid Google token");
+            }
+
+            // Check if user exists in our database
+            var user = await _context.Users
+                .Include(u => u.Tier)
+                .FirstOrDefaultAsync(u => u.Email == email);
+
+            if (user != null)
+            {
+                // Existing user - just login
+                _logger.LogInformation("Existing user logging in via Google: {Email}", user.Email);
+                
+                if (user.IsActive == false)
+                {
+                    throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.");
+                }
+
+                // Auto-verify email for Google users
+                if (!user.EmailVerified)
+                {
+                    user.EmailVerified = true;
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Auto-verified email for Google user: {Email}", user.Email);
+                }
+
+                var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
+                var refreshToken = _jwtHelper.GenerateRefreshToken();
+
+                return new AuthResponseDto
+                {
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    User = _mapper.Map<UserDto>(user)
+                };
+            }
+            else
+            {
+                // New user - create account
+                _logger.LogInformation("Creating new user from Google OAuth: {Email}", email);
+
+                // Get Bronze tier
+                var bronzeTier = await _context.MemberTiers.FirstOrDefaultAsync(mt => mt.Id == 1);
+                if (bronzeTier == null)
+                {
+                    bronzeTier = new MemberTier 
+                    { 
+                        Id = 1,
+                        Name = "Bronze", 
+                        MinPoint = 0, 
+                        DiscountPercent = 0,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.MemberTiers.Add(bronzeTier);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Create user in Supabase Auth with a random password (user won't need it)
+                var randomPassword = Guid.NewGuid().ToString() + "Aa1!"; // Meets password requirements
+                
+                Supabase.Gotrue.Session? session;
+                try
+                {
+                    session = await _supabaseClient.Auth.SignUp(email, randomPassword);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create Supabase user for Google OAuth");
+                    throw new InvalidOperationException("Không thể tạo tài khoản. Vui lòng thử lại.");
+                }
+
+                if (session?.User == null || string.IsNullOrEmpty(session.User.Id))
+                {
+                    _logger.LogError("Supabase Auth failed to create user for Google OAuth");
+                    throw new InvalidOperationException("Không thể tạo tài khoản. Vui lòng thử lại.");
+                }
+
+                var supabaseUserId = Guid.Parse(session.User.Id);
+
+                // Create user in our database
+                var newUser = new User
+                {
+                    Id = supabaseUserId,
+                    Email = email,
+                    FullName = name,
+                    AvatarUrl = picture,
+                    TierId = bronzeTier.Id,
+                    LoyaltyPoints = 0,
+                    Role = UserRole.customer,
+                    IsActive = true,
+                    EmailVerified = true, // Google emails are pre-verified
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+
+                // Load Tier for DTO mapping
+                await _context.Entry(newUser).Reference(u => u.Tier).LoadAsync();
+
+                _logger.LogInformation("New user created successfully via Google OAuth: {Email}", newUser.Email);
+
+                // Send welcome email
+                try
+                {
+                    await _emailService.SendWelcomeEmailAsync(newUser.Email, newUser.FullName ?? "User");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send welcome email to {Email}", newUser.Email);
+                }
+
+                var token = _jwtHelper.GenerateToken(newUser.Id, newUser.Email, newUser.Role.ToString());
+                var refreshToken = _jwtHelper.GenerateRefreshToken();
+
+                return new AuthResponseDto
+                {
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    User = _mapper.Map<UserDto>(newUser)
+                };
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during Google authentication");
+            throw new InvalidOperationException("Đã xảy ra lỗi khi đăng nhập bằng Google. Vui lòng thử lại.");
+        }
     }
 
     public async Task<UserDto?> GetUserByIdAsync(Guid userId)

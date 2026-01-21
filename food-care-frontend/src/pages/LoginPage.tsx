@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
 import { EmailVerificationNotice } from '../components/EmailVerificationNotice';
+import { useGoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -145,18 +146,32 @@ export default function LoginPage() {
         }
     };
 
-    const handleGoogleLogin = async () => {
-        setIsGoogleLoading(true);
-        try {
-            await loginWithGoogle();
-            toast.success('Đăng nhập bằng Google thành công!');
-            navigate('/');
-        } catch (error) {
+    const handleGoogleLogin = useGoogleLogin({
+        flow: 'implicit', // Use popup flow instead of redirect
+        onSuccess: async (tokenResponse) => {
+            console.log('🔵 Google OAuth Success - Token received');
+            setIsGoogleLoading(true);
+            try {
+                console.log('🔵 Calling backend with access token...');
+                await loginWithGoogle(tokenResponse.access_token);
+
+                console.log('🔵 Backend login successful, navigating to home...');
+                toast.success('Đăng nhập bằng Google thành công!');
+                navigate('/', { replace: true }); // Use replace to avoid back navigation
+            } catch (error: any) {
+                console.error('🔴 Google login error:', error);
+                const errorMessage = error?.response?.data?.message || 'Đăng nhập bằng Google thất bại. Vui lòng thử lại.';
+                toast.error(errorMessage);
+            } finally {
+                setIsGoogleLoading(false);
+            }
+        },
+        onError: (error) => {
+            console.error('🔴 Google OAuth Error:', error);
             toast.error('Đăng nhập bằng Google thất bại. Vui lòng thử lại.');
-        } finally {
             setIsGoogleLoading(false);
-        }
-    };
+        },
+    });
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center py-12 px-4">
@@ -269,7 +284,7 @@ export default function LoginPage() {
                                         type="button"
                                         variant="ghost"
                                         className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium h-11 rounded-xl transition-all shadow-sm"
-                                        onClick={handleGoogleLogin}
+                                        onClick={() => handleGoogleLogin()}
                                         disabled={isGoogleLoading}
                                     >
                                         <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -405,7 +420,7 @@ export default function LoginPage() {
                                         type="button"
                                         variant="ghost"
                                         className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium h-11 rounded-xl transition-all shadow-sm"
-                                        onClick={handleGoogleLogin}
+                                        onClick={() => handleGoogleLogin()}
                                         disabled={isGoogleLoading}
                                     >
                                         <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
