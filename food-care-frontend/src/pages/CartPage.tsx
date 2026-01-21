@@ -10,7 +10,6 @@ export default function CartPage() {
         items,
         removeFromCart,
         updateQuantity,
-        getTotal,
         toggleSelectItem,
         toggleSelectAll,
         getSelectedTotal,
@@ -57,7 +56,7 @@ export default function CartPage() {
 
                                 <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
                                     <img
-                                        src={item.product.images[0]}
+                                        src={item.product.images?.[0] || '/placeholder-product.png'}
                                         alt={item.product.name}
                                         className="w-full h-full object-cover"
                                     />

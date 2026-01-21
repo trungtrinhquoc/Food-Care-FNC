@@ -145,4 +145,54 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { message = "An error occurred" });
         }
     }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Email))
+            {
+                return BadRequest(new { message = "Email is required" });
+            }
+
+            await _authService.RequestPasswordResetAsync(request.Email);
+            return Ok(new { message = "If your email exists in our system, you will receive a password reset link shortly." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error requesting password reset");
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Token) || string.IsNullOrEmpty(request.NewPassword))
+            {
+                return BadRequest(new { message = "Token and new password are required" });
+            }
+
+            var result = await _authService.ResetPasswordAsync(request.Token, request.NewPassword);
+
+            if (!result)
+            {
+                return BadRequest(new { message = "Invalid or expired reset link" });
+            }
+
+            return Ok(new { message = "Password reset successfully! You can now login with your new password." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password");
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
 }

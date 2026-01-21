@@ -38,6 +38,9 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
     public virtual DbSet<ZaloTemplate> ZaloTemplates { get; set; }
+    public virtual DbSet<Transaction> Transaction { get; set; }
+
+
     public DbSet<LoginLog> LoginLogs { get; set; }
     public DbSet<PointsHistory> PointsHistories { get; set; }
     public DbSet<PaymentLog> PaymentLogs { get; set; }
@@ -295,6 +298,33 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.PaymentMethods).HasForeignKey(d => d.UserId).HasConstraintName("payment_methods_user_id_fkey");
         });
 
+        modelBuilder.Entity<Transaction>(entity =>
+        {
+            entity.ToTable("transactions", t =>
+            {
+                t.HasCheckConstraint(
+                    "check_attempt_number",
+                    "\"AttemptNumber\" >= 1"
+                );
+            });
+
+            entity.Property(e => e.TransactionType)
+                  .HasConversion<string>();
+
+            entity.Property(e => e.Status)
+                  .HasConversion<string>();
+
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.SubscriptionId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+
+            //entity.HasCheckConstraint(
+            //    "check_attempt_number",
+            //    "\"AttemptNumber\" >= 1"
+            //);
+        });
+
         modelBuilder.Entity<Product>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("products_pkey");
@@ -509,6 +539,13 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             
             entity.Property(e => e.EmailVerificationExpiry)
                 .HasColumnName("email_verification_expiry");
+                            // Password Reset Columns Mapping
+            entity.Property(e => e.PasswordResetToken)
+                .HasColumnName("password_reset_token")
+                .HasMaxLength(255);
+            
+            entity.Property(e => e.PasswordResetExpiry)
+                .HasColumnName("password_reset_expiry");
         });
         modelBuilder.Entity<LoginLog>(entity => {
             entity.ToTable("login_logs");

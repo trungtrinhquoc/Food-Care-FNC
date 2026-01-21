@@ -87,6 +87,9 @@ var supabaseOptions = new Supabase.SupabaseOptions
 };
 builder.Services.AddScoped<Supabase.Client>(_ => new Supabase.Client(supabaseUrl, supabaseKey, supabaseOptions));
 
+// Register HttpClient for API calls
+builder.Services.AddHttpClient();
+
 // Register Helpers
 builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddHttpContextAccessor();
@@ -109,6 +112,8 @@ builder.Services.AddScoped<IAdminZaloService, AdminZaloService>();
 builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPayOsService,PayOsService >();
 
 var app = builder.Build();
 

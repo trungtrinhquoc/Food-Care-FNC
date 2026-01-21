@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { profileApi } from '../services/api';
 import { toast } from 'sonner';
 import type { Order, Address, PaymentMethod, OrderStatus } from '../types';
@@ -57,6 +58,7 @@ const memberTiers: Record<MemberTierName, TierData> = {
 
 export default function ProfilePage() {
     const { user, logout, refreshUser } = useAuth();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
 
     // State for data
@@ -161,6 +163,11 @@ export default function ProfilePage() {
         } finally {
             setLoadingPaymentMethods(false);
         }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
     };
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -494,7 +501,7 @@ export default function ProfilePage() {
                             </div>
                         </div>
                         <Button
-                            onClick={logout}
+                            onClick={handleLogout}
                             className="bg-white/10 backdrop-blur-sm text-white border border-white/30 hover:bg-white/20"
                         >
                             Đăng xuất

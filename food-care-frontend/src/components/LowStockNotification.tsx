@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Product } from '../types';
 import { productsApi } from '../services/productsApi';
+import { useAuth } from '../contexts/AuthContext';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface LowStockNotificationProps {
@@ -9,13 +10,19 @@ interface LowStockNotificationProps {
 }
 
 export function LowStockNotification({ onNavigate: _onNavigate, onAddToCart }: LowStockNotificationProps) {
+    const { isAuthenticated } = useAuth();
     const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
     const [isVisible, setIsVisible] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetchLowStockProducts();
-    }, []);
+        // Only fetch if user is authenticated
+        if (isAuthenticated) {
+            fetchLowStockProducts();
+        } else {
+            setIsLoading(false);
+        }
+    }, [isAuthenticated]);
 
     const fetchLowStockProducts = async () => {
         try {
@@ -29,7 +36,8 @@ export function LowStockNotification({ onNavigate: _onNavigate, onAddToCart }: L
         }
     };
 
-    if (isLoading || !isVisible || lowStockProducts.length === 0) {
+    // Don't show if not authenticated, loading, hidden, or no products
+    if (!isAuthenticated || isLoading || !isVisible || lowStockProducts.length === 0) {
         return null;
     }
 
