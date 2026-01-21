@@ -16,6 +16,8 @@ public class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
     private readonly Supabase.Client _supabaseClient;
     private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
+    private readonly HttpClient _httpClient;
 
     public AuthService(
         FoodCareDbContext context,
@@ -23,7 +25,9 @@ public class AuthService : IAuthService
         JwtHelper jwtHelper,
         ILogger<AuthService> logger,
         Supabase.Client supabaseClient,
-        IEmailService emailService)
+        IEmailService emailService,
+        IConfiguration configuration,
+        IHttpClientFactory httpClientFactory)
     {
         _context = context;
         _mapper = mapper;
@@ -31,6 +35,8 @@ public class AuthService : IAuthService
         _logger = logger;
         _supabaseClient = supabaseClient;
         _emailService = emailService;
+        _configuration = configuration;
+        _httpClient = httpClientFactory.CreateClient();
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
@@ -203,6 +209,13 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Account is inactive");
         }
 
+        // Check if email is verified
+        if (!user.EmailVerified)
+        {
+            _logger.LogWarning("Login attempt with unverified email: {Email}", user.Email);
+            throw new UnauthorizedAccessException("Please verify your email before logging in. Check your inbox for the verification link.");
+        }
+
         var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = _jwtHelper.GenerateRefreshToken();
 
@@ -309,5 +322,119 @@ public class AuthService : IAuthService
         );
         
         _logger.LogInformation("Verification email resent successfully to: {Email}", email);
+    }
+
+    public async Task RequestPasswordResetAsync(string email)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("Password reset requested for non-existent email: {Email}", email);
+            // Don't reveal that user doesn't exist for security reasons
+            // Just return success to prevent email enumeration
+            return;
+        }
+        
+        _logger.LogInformation("Password reset requested for: {Email}", email);
+        
+        // Generate reset token
+        var resetToken = Guid.NewGuid().ToString();
+        user.PasswordResetToken = resetToken;
+        user.PasswordResetExpiry = DateTime.UtcNow.AddHours(1); // Token expires in 1 hour
+        
+        await _context.SaveChangesAsync();
+        
+        // Send reset email
+        await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
+        
+        _logger.LogInformation("Password reset email sent successfully to: {Email}", email);
+    }
+
+    public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.PasswordResetToken == token);
+        
+        if (user == null)
+        {
+            _logger.LogWarning("Password reset failed: Token not found");
+            return false;
+        }
+        
+        // Check if token expired
+        if (user.PasswordResetExpiry == null || user.PasswordResetExpiry < DateTime.UtcNow)
+        {
+            _logger.LogWarning("Password reset failed: Token expired for user: {Email}", user.Email);
+            return false;
+        }
+        
+        // Validate new password strength
+        var (isValid, errors) = PasswordValidator.ValidatePassword(newPassword);
+        if (!isValid)
+        {
+            _logger.LogWarning("Password reset failed: Weak password for user: {Email}", user.Email);
+            throw new InvalidOperationException($"Password validation failed: {string.Join(", ", errors)}");
+        }
+        
+        _logger.LogInformation("Resetting password for user: {Email}", user.Email);
+        
+        // Update password in Supabase Auth using Admin API
+        try
+        {
+            var supabaseUrl = _configuration["Supabase:Url"];
+            var serviceRoleKey = _configuration["Supabase:ServiceRoleKey"];
+            
+            if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(serviceRoleKey))
+            {
+                _logger.LogError("Supabase configuration missing for password reset");
+                throw new InvalidOperationException("Server configuration error. Please contact support.");
+            }
+            
+            // Use Supabase Admin API to update user password
+            var updateUrl = $"{supabaseUrl}/auth/v1/admin/users/{user.Id}";
+            
+            var requestBody = new
+            {
+                password = newPassword
+            };
+            
+            var request = new HttpRequestMessage(HttpMethod.Put, updateUrl);
+            request.Headers.Add("apikey", serviceRoleKey);
+            request.Headers.Add("Authorization", $"Bearer {serviceRoleKey}");
+            request.Content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(requestBody),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+            
+            var response = await _httpClient.SendAsync(request);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to update password in Supabase: {StatusCode} - {Error}", 
+                    response.StatusCode, errorContent);
+                throw new InvalidOperationException("Failed to update password. Please try again.");
+            }
+            
+            _logger.LogInformation("Password updated successfully in Supabase for user: {Email}", user.Email);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "Error updating password in Supabase for user: {Email}", user.Email);
+            throw new InvalidOperationException("Failed to reset password. Please try again.");
+        }
+        
+        // Clear reset token
+        user.PasswordResetToken = null;
+        user.PasswordResetExpiry = null;
+        
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Password reset successfully for user: {Email}", user.Email);
+        
+        return true;
     }
 }

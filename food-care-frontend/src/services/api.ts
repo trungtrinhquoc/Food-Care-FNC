@@ -87,6 +87,16 @@ export const authApi = {
 
     resendVerification: (data: { email: string }) =>
         api.post('/auth/resend-verification', data),
+
+    forgotPassword: async (data: { email: string }): Promise<{ message: string }> => {
+        const response = await api.post('/auth/forgot-password', data);
+        return response.data;
+    },
+
+    resetPassword: async (data: { token: string; newPassword: string }): Promise<{ message: string }> => {
+        const response = await api.post('/auth/reset-password', data);
+        return response.data;
+    },
 };
 
 // Products API - calls Backend which connects to Supabase

@@ -87,6 +87,9 @@ var supabaseOptions = new Supabase.SupabaseOptions
 };
 builder.Services.AddScoped<Supabase.Client>(_ => new Supabase.Client(supabaseUrl, supabaseKey, supabaseOptions));
 
+// Register HttpClient for API calls
+builder.Services.AddHttpClient();
+
 // Register Helpers
 builder.Services.AddScoped<JwtHelper>();
 

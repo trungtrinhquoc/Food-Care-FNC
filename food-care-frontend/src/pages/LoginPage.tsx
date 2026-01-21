@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { ShoppingBag, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 import { PasswordStrengthIndicator } from '../components/PasswordStrengthIndicator';
 import { EmailVerificationNotice } from '../components/EmailVerificationNotice';
 
@@ -24,9 +25,24 @@ export default function LoginPage() {
     const [showRegisterPassword, setShowRegisterPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const [loginData, setLoginData] = useState({
-        email: '',
-        password: '',
+    // Remember Me state
+    const [rememberMe, setRememberMe] = useState(false);
+
+    const [loginData, setLoginData] = useState(() => {
+        // Load saved credentials from cookies if "Remember Me" was checked
+        const savedEmail = Cookies.get('rememberedEmail');
+        const savedPassword = Cookies.get('rememberedPassword');
+        if (savedEmail && savedPassword) {
+            setRememberMe(true);
+            return {
+                email: savedEmail,
+                password: savedPassword,
+            };
+        }
+        return {
+            email: '',
+            password: '',
+        };
     });
 
     const [registerData, setRegisterData] = useState({
@@ -42,6 +58,18 @@ export default function LoginPage() {
 
         try {
             const response = await login({ email: loginData.email, password: loginData.password });
+
+            // Handle Remember Me with cookies
+            if (rememberMe) {
+                // Set cookies with 30 days expiry
+                Cookies.set('rememberedEmail', loginData.email, { expires: 30, sameSite: 'strict' });
+                Cookies.set('rememberedPassword', loginData.password, { expires: 30, sameSite: 'strict' });
+            } else {
+                // Remove cookies if unchecked
+                Cookies.remove('rememberedEmail');
+                Cookies.remove('rememberedPassword');
+            }
+
             toast.success('Đăng nhập thành công!');
 
             // Redirect based on user role
@@ -204,10 +232,19 @@ export default function LoginPage() {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <label className="flex items-center gap-2 text-sm text-gray-600">
-                                            <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                checked={rememberMe}
+                                                onChange={(e) => setRememberMe(e.target.checked)}
+                                            />
                                             Ghi nhớ đăng nhập
                                         </label>
-                                        <button type="button" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline">
+                                        <button
+                                            type="button"
+                                            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+                                            onClick={() => navigate('/forgot-password')}
+                                        >
                                             Quên mật khẩu?
                                         </button>
                                     </div>
