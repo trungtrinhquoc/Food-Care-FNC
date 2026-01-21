@@ -536,6 +536,14 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             
             entity.Property(e => e.EmailVerificationExpiry)
                 .HasColumnName("email_verification_expiry");
+            
+            // Password Reset Columns Mapping
+            entity.Property(e => e.PasswordResetToken)
+                .HasColumnName("password_reset_token")
+                .HasMaxLength(255);
+            
+            entity.Property(e => e.PasswordResetExpiry)
+                .HasColumnName("password_reset_expiry");
         });
     }
 }

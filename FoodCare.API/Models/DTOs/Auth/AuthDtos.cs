@@ -48,6 +48,23 @@ public class ResendVerificationRequest
     public string Email { get; set; } = null!;
 }
 
+public class ForgotPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = null!;
+}
+
+public class ResetPasswordRequest
+{
+    [Required]
+    public string Token { get; set; } = null!;
+    
+    [Required]
+    [MinLength(8)]
+    public string NewPassword { get; set; } = null!;
+}
+
 public class UserDto
 {
     public Guid Id { get; set; }

@@ -38,6 +38,11 @@ public partial class User
 
     public DateTime? EmailVerificationExpiry { get; set; }
 
+    // Password Reset
+    public string? PasswordResetToken { get; set; }
+
+    public DateTime? PasswordResetExpiry { get; set; }
+
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();
