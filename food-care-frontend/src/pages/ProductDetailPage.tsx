@@ -17,9 +17,11 @@ import { toast } from 'sonner';
 import { cloudinaryResize } from '../utils/cloudinary'
 
 // import { SubscriptionDialog } from '../components/SubscriptionDialog';
-// import { ReviewSection } from '../components/ReviewSection';
+import { ReviewSection } from '../components/ReviewSection';
 
 export default function ProductDetailPage() {
+  const isLoggedIn = !!localStorage.getItem("token");
+
   const [thumbsSwiper, setThumbsSwiper] = useState<any>(null)
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,6 +72,15 @@ export default function ProductDetailPage() {
   const finalPrice = product.basePrice * (1 - discount / 100);
 
   const handleAddToCart = () => {
+    if (product.stockQuantity <= 0) {
+      toast.error('Sản phẩm đã hết hàng');
+      return;
+    }
+    if (quantity > product.stockQuantity) {
+      toast.error(`Chỉ còn ${product.stockQuantity} sản phẩm trong kho`);
+      setQuantity(product.stockQuantity);
+      return;
+    }
     addToCart(product, quantity);
     toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
   };
@@ -165,22 +176,35 @@ export default function ProductDetailPage() {
 
             {/* Quantity */}
             <div className="flex items-center gap-4 mb-6">
-              <Button onClick={() => setQuantity(q => Math.max(1, q - 1))}>
-                <Minus />
+              <Button
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={quantity <= 1 || product.stockQuantity === 0}
+                variant="outline"
+                size="sm"
+                className="px-2"
+              >
+                <Minus className="w-4 h-4" />
               </Button>
-              <span>{quantity}</span>
-              <Button onClick={() => setQuantity(q => q + 1)}>
-                <Plus />
+              <span className="w-8 text-center">{quantity}</span>
+              <Button
+                onClick={() => setQuantity(q => Math.min(product.stockQuantity, q + 1))}
+                disabled={quantity >= product.stockQuantity || product.stockQuantity === 0}
+                variant="outline"
+                size="sm"
+                className="px-2"
+              >
+                <Plus className="w-4 h-4" />
               </Button>
             </div>
 
             <Button
               size="lg"
-              className="w-full bg-emerald-600"
+              className={`w-full ${product.stockQuantity > 0 ? "bg-emerald-600" : "bg-gray-400"}`}
               onClick={handleAddToCart}
+              disabled={product.stockQuantity <= 0}
             >
               <ShoppingCart className="mr-2" />
-              Thêm vào giỏ hàng
+              {product.stockQuantity > 0 ? "Thêm vào giỏ hàng" : "Hết hàng"}
             </Button>
           </div>
         </div>
@@ -206,13 +230,19 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-600">Tình trạng:</dt>
-                  <dd className="text-emerald-600">Còn hàng ({product.stockQuantity})</dd>
+                  <dd className={product.stockQuantity > 0 ? "text-emerald-600" : "text-red-500"}>
+                    {product.stockQuantity > 0 ? `Còn hàng (${product.stockQuantity})` : "Hết hàng"}
+                  </dd>
                 </div>
               </dl>
             </div>
           </div>
         </div>
-
+        {/* REVIEW SECTION */}
+        <ReviewSection
+          productId={id!}
+          isLoggedIn={isLoggedIn}
+        />
         {/* {product.reviewList && (
           <ReviewSection
             reviews={product.reviewList}
