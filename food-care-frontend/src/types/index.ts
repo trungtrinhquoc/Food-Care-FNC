@@ -302,3 +302,38 @@ export interface ZaloReminder {
     status: 'pending' | 'sent';
     sentDate?: string;
 }
+
+export interface Review {
+    id: string;
+    userName: string;
+    userAvatar: string | null;
+    rating: number;
+    comment: string;
+    images: string[];
+    createdAt: string;
+    helpfulCount: number;
+    isVerifiedPurchase: boolean;
+    isHelpfulByCurrentUser?: boolean;
+}
+
+export interface RatingDistributionItem {
+    stars: number;
+    count: number;
+    percentage: number;
+}
+
+export interface ReviewResponse {
+    averageRating: number;
+    totalReviews: number;
+    ratingDistribution: {
+        stars: number;
+        count: number;
+        percentage: number;
+    }[];
+    reviews: Review[];
+}
+
+export interface ReviewEligibility {
+    canReview: boolean;
+    reason?: string;
+}
