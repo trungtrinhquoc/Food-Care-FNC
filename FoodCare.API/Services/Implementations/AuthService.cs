@@ -330,6 +330,11 @@ public class AuthService : IAuthService
         {
             _logger.LogInformation("Starting Google OAuth authentication");
             
+            // Get HTTP context for logging
+            var httpContext = _httpContextAccessor.HttpContext;
+            var ipAddress = httpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+            var userAgent = httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown";
+            
             // The request.IdToken is actually an access token from the frontend
             // We'll use it to get user info from Google's userinfo endpoint
             string email;
@@ -377,6 +382,7 @@ public class AuthService : IAuthService
                 
                 if (user.IsActive == false)
                 {
+                    await CreateLoginLogAsync(user.Id, ipAddress, userAgent, false, "Account inactive");
                     throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.");
                 }
 
@@ -390,6 +396,8 @@ public class AuthService : IAuthService
 
                 var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
                 var refreshToken = _jwtHelper.GenerateRefreshToken();
+
+                await CreateLoginLogAsync(user.Id, ipAddress, userAgent, true, null);
 
                 return new AuthResponseDto
                 {
@@ -477,6 +485,8 @@ public class AuthService : IAuthService
 
                 var token = _jwtHelper.GenerateToken(newUser.Id, newUser.Email, newUser.Role.ToString());
                 var refreshToken = _jwtHelper.GenerateRefreshToken();
+
+                await CreateLoginLogAsync(newUser.Id, ipAddress, userAgent, true, null);
 
                 return new AuthResponseDto
                 {
