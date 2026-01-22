@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/admin/Button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { SimplePagination } from "../../components/ui/pagination";
@@ -152,7 +152,10 @@ export function SuppliersTab() {
         <SimplePagination
           currentPage={currentPage}
           totalPages={totalPages}
+          totalItems={filteredSuppliers.length}
+          pageSize={pageSize}
           onPageChange={setCurrentPage}
+          itemLabel="nhà cung cấp"
         />
       </CardContent>
     </Card>

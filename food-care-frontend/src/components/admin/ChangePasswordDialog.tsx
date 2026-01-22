@@ -7,10 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Button } from './Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { changeUserPassword } from '../../services/usersApi';
+import { usersService } from '../../services/admin';
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -49,7 +49,7 @@ export function ChangePasswordDialog({
 
     setSaving(true);
     try {
-      await changeUserPassword(userId, newPassword);
+      await usersService.changeUserPassword(userId, newPassword);
       alert('Đổi mật khẩu thành công');
       setNewPassword('');
       setConfirmPassword('');

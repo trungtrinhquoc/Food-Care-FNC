@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/admin/Button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
@@ -182,7 +182,10 @@ export function ZaloTab() {
           <SimplePagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalItems={filteredReminders.length}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
+            itemLabel="lời nhắc"
           />
         </CardContent>
       </Card>

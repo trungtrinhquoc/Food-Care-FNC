@@ -1,43 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/admin/Button";
 import { Input } from "../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Search, Download, Eye, MessageSquare, Users, Crown, ShoppingBag, CreditCard, RefreshCw, Mail, Phone, Loader2 } from "lucide-react";
+import { Search, Download, Eye, MessageSquare, Users, Crown, ShoppingBag, CreditCard, RefreshCw, Mail, Phone, Loader2, Edit, Clock } from "lucide-react";
 import { TierBadge } from "../../components/ui/status-badge";
 import { SimplePagination } from "../../components/ui/pagination";
-import api from "../../services/api";
-import type { MemberTier } from "../../types/admin";
-
-interface Customer {
-  id: string;
-  email: string;
-  fullName: string;
-  phoneNumber: string | null;
-  avatarUrl: string | null;
-  tierName: string;
-  tierId: number | null;
-  loyaltyPoints: number;
-  totalOrders: number;
-  totalSpent: number;
-  activeSubscriptions: number;
-  totalReviews: number;
-  isActive: boolean;
-  createdAt: string;
-  lastOrderDate: string | null;
-}
-
-interface CustomerStats {
-  totalUsers: number;
-  activeUsers: number;
-  newUsersThisMonth: number;
-  usersByTier: Record<string, number>;
-}
+import { CustomerDialog } from "../../components/admin/CustomerDialog";
+import { CustomerDetailDialog } from "../../components/admin/CustomerDetailDialog";
+import { customersService } from "../../services/admin";
+import type { AdminUser, CustomerStats, MemberTier } from "../../types/admin";
 
 export function CustomersTab() {
   // State
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<AdminUser[]>([]);
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,26 +24,29 @@ export function CustomersTab() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10;
+  
+  // Dialog state
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<AdminUser | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [viewingCustomerId, setViewingCustomerId] = useState<string | null>(null);
 
   // Fetch customers from API
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string | number | boolean> = {
+      const response = await customersService.getCustomers({
         page,
         pageSize,
-        role: 'customer', // Only fetch customers
-      };
+        role: 'customer',
+        search: searchTerm || undefined,
+        tierId: tierFilter !== 'all' ? parseInt(tierFilter) : undefined,
+        isActive: statusFilter !== 'all' ? statusFilter === 'active' : undefined,
+      });
       
-      if (searchTerm) params.search = searchTerm;
-      if (tierFilter !== 'all') params.tierId = parseInt(tierFilter);
-      if (statusFilter !== 'all') params.isActive = statusFilter === 'active';
-
-      const response = await api.get('/admin/users', { params });
-      
-      setCustomers(response.data.items || []);
-      setTotalPages(response.data.totalPages || 1);
-      setTotalItems(response.data.totalItems || 0);
+      setCustomers(response.items || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalItems(response.totalItems || 0);
     } catch (error) {
       console.error('Error fetching customers:', error);
     } finally {
@@ -77,8 +57,8 @@ export function CustomersTab() {
   // Fetch stats
   const fetchStats = useCallback(async () => {
     try {
-      const response = await api.get('/admin/users/stats');
-      setStats(response.data);
+      const data = await customersService.getCustomerStats();
+      setStats(data);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -97,6 +77,33 @@ export function CustomersTab() {
     setPage(1);
   }, [searchTerm, tierFilter, statusFilter]);
 
+  const handleEdit = (customer: AdminUser) => {
+    setEditingCustomer(customer);
+    setCustomerDialogOpen(true);
+  };
+
+  const handleDialogSuccess = () => {
+    setCustomerDialogOpen(false);
+    setEditingCustomer(null);
+    fetchCustomers();
+    fetchStats();
+  };
+
+  const handleViewDetail = (customerId: string) => {
+    setViewingCustomerId(customerId);
+    setDetailDialogOpen(true);
+  };
+
+  const handleEditFromDetail = () => {
+    if (viewingCustomerId) {
+      const customer = customers.find(c => c.id === viewingCustomerId);
+      if (customer) {
+        setDetailDialogOpen(false);
+        handleEdit(customer);
+      }
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     if (amount >= 1000000) {
       return `${(amount / 1000000).toFixed(1)}M`;
@@ -106,6 +113,18 @@ export function CustomersTab() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -253,7 +272,7 @@ export function CustomersTab() {
                       <TableHead className="text-center">Điểm</TableHead>
                       <TableHead className="text-center">Đơn hàng</TableHead>
                       <TableHead className="text-right">Chi tiêu</TableHead>
-                      <TableHead className="text-center">Định kỳ</TableHead>
+                      <TableHead>Đăng nhập gần nhất</TableHead>
                       <TableHead>Trạng thái</TableHead>
                       <TableHead className="text-right">Hành động</TableHead>
                     </TableRow>
@@ -269,7 +288,7 @@ export function CustomersTab() {
                             <div>
                               <div className="font-medium">{customer.fullName || 'Chưa cập nhật'}</div>
                               <div className="text-xs text-gray-500">
-                                Tham gia: {formatDate(customer.createdAt)}
+                                Tham gia: {customer.createdAt ? formatDate(customer.createdAt) : 'N/A'}
                               </div>
                             </div>
                           </div>
@@ -298,14 +317,14 @@ export function CustomersTab() {
                         <TableCell className="text-right font-medium text-emerald-600">
                           {formatCurrency(customer.totalSpent)}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {customer.activeSubscriptions > 0 ? (
-                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                              {customer.activeSubscriptions} gói
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            {customer.lastLoginAt 
+                              ? formatDateTime(customer.lastLoginAt)
+                              : <span className="text-gray-400">Chưa đăng nhập</span>
+                            }
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -318,7 +337,20 @@ export function CustomersTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm" title="Xem chi tiết">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(customer)}
+                              title="Chỉnh sửa"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Xem chi tiết"
+                              onClick={() => handleViewDetail(customer.id)}
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="sm" title="Gửi tin nhắn">
@@ -347,6 +379,28 @@ export function CustomersTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Customer Edit Dialog */}
+      <CustomerDialog
+        open={customerDialogOpen}
+        onOpenChange={(open) => {
+          setCustomerDialogOpen(open);
+          if (!open) setEditingCustomer(null);
+        }}
+        customer={editingCustomer}
+        onSuccess={handleDialogSuccess}
+      />
+
+      {/* Customer Detail Dialog */}
+      <CustomerDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          setDetailDialogOpen(open);
+          if (!open) setViewingCustomerId(null);
+        }}
+        customerId={viewingCustomerId}
+        onEdit={handleEditFromDetail}
+      />
     </div>
   );
 }

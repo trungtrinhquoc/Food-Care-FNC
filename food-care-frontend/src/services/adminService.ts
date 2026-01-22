@@ -1,7 +1,21 @@
-import type { AdminStats, AdminOrder, AdminCustomer, Supplier, ZaloReminder } from '../types/admin';
+import type { AdminStats, AdminCustomer, Supplier, ZaloReminder } from '../types/admin';
+
+// Legacy mock order type for backwards compatibility
+interface LegacyAdminOrder {
+  id: string;
+  customerName: string;
+  date: string;
+  total: number;
+  status: string;
+  items: number;
+  subscription: boolean;
+  products: string[];
+  address: string;
+  phone: string;
+}
 
 // Mock data - will be replaced with actual API calls
-export const mockOrders: AdminOrder[] = [
+export const mockOrders: LegacyAdminOrder[] = [
   {
     id: 'ORD-001',
     customerName: 'Nguyễn Văn A',
@@ -31,7 +45,7 @@ export const mockOrders: AdminOrder[] = [
     customerName: 'Lê Văn C',
     date: '2025-01-19',
     total: 320000,
-    status: 'processing',
+    status: 'preparing',
     items: 2,
     subscription: true,
     products: ['Cà phê', 'Ngũ cốc'],
@@ -170,13 +184,15 @@ export const adminService = {
     });
   },
 
-  // Orders
-  async getOrders(): Promise<AdminOrder[]> {
+  // Orders (Legacy mock)
+  async getOrders(): Promise<LegacyAdminOrder[]> {
     // TODO: Replace with actual API call
     return Promise.resolve(mockOrders);
   },
 
   async updateOrderStatus(_orderId: string, _status: string): Promise<void> {
+    void _orderId;
+    void _status;
     // TODO: Replace with actual API call
     return Promise.resolve();
   },
@@ -204,6 +220,7 @@ export const adminService = {
   },
 
   async deleteSupplier(_id: string): Promise<void> {
+    void _id;
     // TODO: Replace with actual API call
     return Promise.resolve();
   },
@@ -215,11 +232,13 @@ export const adminService = {
   },
 
   async sendZaloReminder(_reminderId: string): Promise<void> {
+    void _reminderId;
     // TODO: Replace with actual API call
     return Promise.resolve();
   },
 
   async sendBulkZaloReminders(_reminderIds: string[]): Promise<void> {
+    void _reminderIds;
     // TODO: Replace with actual API call
     return Promise.resolve();
   },

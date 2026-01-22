@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Button } from './Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -18,15 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import {
-  createUser,
-  updateUser,
-  getMemberTiers,
-  type AdminUser,
-  type CreateUserDto,
-  type UpdateUserDto,
-  type MemberTier,
-} from '../../services/usersApi';
+import { usersService, customersService } from '../../services/admin';
+import type {
+  AdminUser,
+  CreateUserDto,
+  UpdateUserDto,
+  MemberTierInfo,
+} from '../../types/admin';
 
 interface UserDialogProps {
   open: boolean;
@@ -66,14 +64,14 @@ export function UserDialog({
   onSuccess,
 }: UserDialogProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [tiers, setTiers] = useState<MemberTier[]>([]);
+  const [tiers, setTiers] = useState<MemberTierInfo[]>([]);
   const [tiersLoading, setTiersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadTiers = useCallback(async () => {
     setTiersLoading(true);
     try {
-      const data = await getMemberTiers();
+      const data = await customersService.getMemberTiers();
       setTiers(data);
     } catch (error) {
       console.error('Failed to load tiers:', error);
@@ -127,7 +125,7 @@ export function UserDialog({
           loyaltyPoints: parseInt(formData.loyaltyPoints) || 0,
           isActive: formData.isActive,
         };
-        await updateUser(user.id, updateData);
+        await usersService.updateUser(user.id, updateData);
       } else {
         // Create
         const createData: CreateUserDto = {
@@ -138,12 +136,15 @@ export function UserDialog({
           phoneNumber: formData.phoneNumber || undefined,
           avatarUrl: formData.avatarUrl || undefined,
         };
-        await createUser(createData);
+        await usersService.createUser(createData);
       }
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save user:', error);
-      alert(error.response?.data?.message || 'Không thể lưu người dùng. Vui lòng thử lại.');
+      const errMsg = error instanceof Error && 'response' in error 
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
+        : undefined;
+      alert(errMsg || 'Không thể lưu người dùng. Vui lòng thử lại.');
     } finally {
       setSaving(false);
     }

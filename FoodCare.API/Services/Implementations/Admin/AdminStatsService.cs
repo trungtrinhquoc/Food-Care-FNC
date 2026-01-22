@@ -135,4 +135,103 @@ public class AdminStatsService : IAdminStatsService
             TopProducts = topProducts
         };
     }
+
+    public async Task<List<OrderChartDataDto>> GetOrdersChartDataAsync(int days = 7)
+    {
+        var result = new List<OrderChartDataDto>();
+        var startDate = DateTime.UtcNow.AddDays(-days);
+
+        if (days == 7)
+        {
+            // Weekly data - last 7 days
+            var dayNames = new[] { "CN", "T2", "T3", "T4", "T5", "T6", "T7" };
+            
+            for (int i = 6; i >= 0; i--)
+            {
+                var date = DateTime.UtcNow.AddDays(-i).Date;
+                var dayName = dayNames[(int)date.DayOfWeek];
+
+                var ordersForDay = await _context.Orders
+                    .Where(o => o.CreatedAt.HasValue && o.CreatedAt.Value.Date == date)
+                    .ToListAsync();
+
+                var pending = ordersForDay.Count(o => o.Status == OrderStatus.pending);
+                var confirmed = ordersForDay.Count(o => o.Status == OrderStatus.confirmed);
+                var delivered = ordersForDay.Count(o => o.Status == OrderStatus.delivered);
+                var cancelled = ordersForDay.Count(o => o.Status == OrderStatus.cancelled);
+
+                result.Add(new OrderChartDataDto
+                {
+                    Period = dayName,
+                    Pending = pending,
+                    Confirmed = confirmed,
+                    Delivered = delivered,
+                    Cancelled = cancelled,
+                    Total = pending + confirmed + delivered + cancelled
+                });
+            }
+        }
+        else if (days == 30)
+        {
+            // Monthly data - by week (4 weeks)
+            for (int week = 3; week >= 0; week--)
+            {
+                var weekStart = DateTime.UtcNow.AddDays(-(week * 7 + 7)).Date;
+                var weekEnd = DateTime.UtcNow.AddDays(-(week * 7)).Date;
+
+                var ordersForWeek = await _context.Orders
+                    .Where(o => o.CreatedAt.HasValue && 
+                           o.CreatedAt.Value.Date >= weekStart && 
+                           o.CreatedAt.Value.Date < weekEnd)
+                    .ToListAsync();
+
+                var pending = ordersForWeek.Count(o => o.Status == OrderStatus.pending);
+                var confirmed = ordersForWeek.Count(o => o.Status == OrderStatus.confirmed);
+                var delivered = ordersForWeek.Count(o => o.Status == OrderStatus.delivered);
+                var cancelled = ordersForWeek.Count(o => o.Status == OrderStatus.cancelled);
+
+                result.Add(new OrderChartDataDto
+                {
+                    Period = $"Tuần {4 - week}",
+                    Pending = pending,
+                    Confirmed = confirmed,
+                    Delivered = delivered,
+                    Cancelled = cancelled,
+                    Total = pending + confirmed + delivered + cancelled
+                });
+            }
+        }
+        else if (days >= 365)
+        {
+            // Yearly data - by month (last 12 months)
+            for (int month = 11; month >= 0; month--)
+            {
+                var date = DateTime.UtcNow.AddMonths(-month);
+                var monthName = $"T{date.Month}";
+
+                var ordersForMonth = await _context.Orders
+                    .Where(o => o.CreatedAt.HasValue && 
+                           o.CreatedAt.Value.Year == date.Year && 
+                           o.CreatedAt.Value.Month == date.Month)
+                    .ToListAsync();
+
+                var pending = ordersForMonth.Count(o => o.Status == OrderStatus.pending);
+                var confirmed = ordersForMonth.Count(o => o.Status == OrderStatus.confirmed);
+                var delivered = ordersForMonth.Count(o => o.Status == OrderStatus.delivered);
+                var cancelled = ordersForMonth.Count(o => o.Status == OrderStatus.cancelled);
+
+                result.Add(new OrderChartDataDto
+                {
+                    Period = monthName,
+                    Pending = pending,
+                    Confirmed = confirmed,
+                    Delivered = delivered,
+                    Cancelled = cancelled,
+                    Total = pending + confirmed + delivered + cancelled
+                });
+            }
+        }
+
+        return result;
+    }
 }
