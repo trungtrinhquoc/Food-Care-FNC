@@ -4,7 +4,7 @@ import { Button } from "../../components/admin/Button";
 import { Input } from "../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Search, Download, Eye, MessageSquare, Users, Crown, ShoppingBag, CreditCard, RefreshCw, Mail, Phone, Loader2, Edit } from "lucide-react";
+import { Search, Download, Eye, MessageSquare, Users, Crown, ShoppingBag, CreditCard, RefreshCw, Mail, Phone, Loader2, Edit, Clock } from "lucide-react";
 import { TierBadge } from "../../components/ui/status-badge";
 import { SimplePagination } from "../../components/ui/pagination";
 import { CustomerDialog } from "../../components/admin/CustomerDialog";
@@ -113,6 +113,18 @@ export function CustomersTab() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -260,7 +272,7 @@ export function CustomersTab() {
                       <TableHead className="text-center">Điểm</TableHead>
                       <TableHead className="text-center">Đơn hàng</TableHead>
                       <TableHead className="text-right">Chi tiêu</TableHead>
-                      <TableHead className="text-center">Định kỳ</TableHead>
+                      <TableHead>Đăng nhập gần nhất</TableHead>
                       <TableHead>Trạng thái</TableHead>
                       <TableHead className="text-right">Hành động</TableHead>
                     </TableRow>
@@ -305,14 +317,14 @@ export function CustomersTab() {
                         <TableCell className="text-right font-medium text-emerald-600">
                           {formatCurrency(customer.totalSpent)}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {customer.activeSubscriptions > 0 ? (
-                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                              {customer.activeSubscriptions} gói
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            {customer.lastLoginAt 
+                              ? formatDateTime(customer.lastLoginAt)
+                              : <span className="text-gray-400">Chưa đăng nhập</span>
+                            }
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${

@@ -85,6 +85,24 @@ public class AdminUserService : IAdminUserService
 
         var items = users.Select(MapToDto).ToList();
 
+        // Fetch last login dates for all users in this page
+        var userIds = users.Select(u => u.Id).ToList();
+        var lastLogins = await _context.LoginLogs
+            .Where(l => userIds.Contains(l.UserId) && l.Success == true)
+            .GroupBy(l => l.UserId)
+            .Select(g => new { UserId = g.Key, LastLoginAt = g.Max(l => l.LoginAt) })
+            .ToListAsync();
+
+        // Apply last login dates to items
+        foreach (var item in items)
+        {
+            var lastLogin = lastLogins.FirstOrDefault(l => l.UserId == item.Id);
+            if (lastLogin != null)
+            {
+                item.LastLoginAt = lastLogin.LastLoginAt;
+            }
+        }
+
         return new PagedResult<AdminUserDto>
         {
             Items = items,
