@@ -251,4 +251,27 @@ public class RecommendationsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred" });
         }
     }
+    
+    /// <summary>
+    /// Get low stock notifications based on user's purchase history
+    /// </summary>
+    [HttpGet("low-stock-notifications")]
+    [Authorize]
+    public async Task<IActionResult> GetLowStockNotifications([FromQuery] int limit = 3)
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized();
+
+            var notifications = await _recommendationService.GetLowStockNotificationsAsync(userId, limit);
+            return Ok(notifications);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting low stock notifications");
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
 }

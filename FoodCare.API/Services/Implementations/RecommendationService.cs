@@ -191,7 +191,7 @@ public class RecommendationService : IRecommendationService
                 ProductId = g.Key,
                 OrderCount = g.Count(),
                 Product = g.First().Product,
-                DiscountPercentage = ((g.First().Product!.OriginalPrice - g.First().Product.BasePrice) / g.First().Product.OriginalPrice) * 100
+                DiscountPercentage = ((g.First().Product!.OriginalPrice.Value - g.First().Product.BasePrice) / g.First().Product.OriginalPrice.Value) * 100
             })
             .OrderByDescending(x => x.DiscountPercentage)
             .ThenByDescending(x => x.OrderCount)
@@ -373,5 +373,89 @@ public class RecommendationService : IRecommendationService
         }
 
         return _mapper.Map<List<ProductDto>>(products);
+    }
+    
+    public async Task<List<LowStockNotificationDto>> GetLowStockNotificationsAsync(Guid userId, int limit = 3)
+    {
+        var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90);
+        
+        // Get user's purchase history for frequently bought items
+        var purchaseHistory = await _context.OrderItems
+            .Include(oi => oi.Product)
+                .ThenInclude(p => p!.Category)
+            .Include(oi => oi.Order)
+            .Where(oi => oi.Order!.UserId == userId &&
+                        oi.Order.CreatedAt >= ninetyDaysAgo &&
+                        oi.Product!.IsActive == true &&
+                        oi.Product.IsDeleted == false)
+            .GroupBy(oi => oi.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                Product = g.First().Product,
+                PurchaseCount = g.Count(),
+                FirstPurchase = g.Min(oi => oi.Order!.CreatedAt),
+                LastPurchase = g.Max(oi => oi.Order!.CreatedAt),
+                PurchaseDates = g.Select(oi => oi.Order!.CreatedAt).OrderBy(d => d).ToList()
+            })
+            .Where(x => x.PurchaseCount >= 2) // Only products purchased at least twice
+            .ToListAsync();
+        
+        var notifications = new List<LowStockNotificationDto>();
+        
+        foreach (var purchase in purchaseHistory)
+        {
+            // Calculate average days between purchases
+            var daysBetweenPurchases = new List<int>();
+            for (int i = 1; i < purchase.PurchaseDates.Count; i++)
+            {
+                var d1 = purchase.PurchaseDates[i];
+                var d2 = purchase.PurchaseDates[i - 1];
+                
+                if (d1.HasValue && d2.HasValue)
+                {
+                    var days = (d1.Value - d2.Value).Days;
+                    daysBetweenPurchases.Add(days);
+                }
+            }
+            
+            var averageUsageDays = daysBetweenPurchases.Count > 0 
+                ? (int)daysBetweenPurchases.Average() 
+                : 30; // Default to 30 days if only one purchase
+            
+            // Calculate days since last purchase
+            var daysSinceLastPurchase = 0;
+            if (purchase.LastPurchase.HasValue)
+            {
+                daysSinceLastPurchase = (DateTime.UtcNow - purchase.LastPurchase.Value).Days;
+            }
+            
+            // Estimate days left (with some buffer)
+            var estimatedDaysLeft = Math.Max(0, averageUsageDays - daysSinceLastPurchase);
+            
+            // Only notify if estimated to run out within 7 days
+            if (estimatedDaysLeft <= 7 && purchase.LastPurchase.HasValue)
+            {
+                var productDto = _mapper.Map<ProductDto>(purchase.Product);
+                
+                notifications.Add(new LowStockNotificationDto
+                {
+                    Product = productDto,
+                    LastPurchaseDate = purchase.LastPurchase.Value,
+                    EstimatedDaysLeft = estimatedDaysLeft,
+                    AverageUsageDays = averageUsageDays,
+                    PurchaseCount = purchase.PurchaseCount
+                });
+            }
+        }
+        
+        // Sort by urgency (least days left first)
+        var sortedNotifications = notifications
+            .OrderBy(n => n.EstimatedDaysLeft)
+            .ThenByDescending(n => n.PurchaseCount)
+            .Take(limit)
+            .ToList();
+        
+        return sortedNotifications;
     }
 }

@@ -27,6 +27,14 @@ export interface SubscriptionRecommendation {
     subscriptionDiscount: number;
 }
 
+export interface LowStockNotification {
+    product: Product;
+    lastPurchaseDate: string;
+    estimatedDaysLeft: number;
+    averageUsageDays: number;
+    purchaseCount: number;
+}
+
 export interface PersonalizedRecommendations {
     forYou: Product[];
     highRated: Product[];
@@ -185,6 +193,19 @@ export const recommendationsApi = {
             params: { limit }
         });
         return response.data.map(transformProduct);
+    },
+
+    /**
+     * Get low stock notifications based on user's purchase history (authenticated users only)
+     */
+    getLowStockNotifications: async (limit: number = 3): Promise<LowStockNotification[]> => {
+        const response = await api.get<LowStockNotification[]>('/recommendations/low-stock-notifications', {
+            params: { limit }
+        });
+        return response.data.map(item => ({
+            ...item,
+            product: transformProduct(item.product)
+        }));
     },
 };
 

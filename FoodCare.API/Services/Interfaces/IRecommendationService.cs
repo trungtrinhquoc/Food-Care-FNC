@@ -61,4 +61,9 @@ public interface IRecommendationService
     /// Get healthy products (filtered by health tags)
     /// </summary>
     Task<List<ProductDto>> GetHealthyProductsAsync(int limit = 8);
+    
+    /// <summary>
+    /// Get low stock notifications based on user's purchase history and estimated usage
+    /// </summary>
+    Task<List<LowStockNotificationDto>> GetLowStockNotificationsAsync(Guid userId, int limit = 3);
 }
