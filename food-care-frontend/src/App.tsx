@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
+import RecommendationsPage from './pages/RecommendationsPage';
 
 
 // Components
@@ -78,6 +79,7 @@ function AppRoutes() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/recommendations" element={<RecommendationsPage />} />
 
 
           <Route
