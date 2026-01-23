@@ -115,6 +115,7 @@ builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 
 var app = builder.Build();
 
