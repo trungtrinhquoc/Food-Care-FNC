@@ -167,15 +167,19 @@ export default function CheckoutPage() {
                     productId: item.product.id,
                     productName: item.product.name,
                     quantity: item.quantity,
-                    price: item.product.basePrice,
+                    price: item.subscription
+                        ? item.product.basePrice * (1 - (item.subscription.discount || 0) / 100)
+                        : item.product.basePrice,
                     variantSnapshot: {
-                        isSubscription: item.isSubscription,
-                        subscription: item.isSubscription
-                            ? {
-                                frequency: item.subscription!.frequency,
-                            }
-                            : undefined,
+                        isSubscription: !!item.subscription,
+                        subscription: item.subscription ? {
+                            frequency: item.subscription.frequency
+                        } : undefined
                     },
+                    // Subscription fields for backend
+                    isSubscription: !!item.subscription,
+                    subscriptionFrequency: item.subscription?.frequency,
+                    subscriptionDiscount: item.subscription?.discount,
                 })),
             };
 

@@ -127,7 +127,38 @@ namespace FoodCare.API.Services.Implementations
                     _context.PaymentLogs.Add(paymentLog);
                 }
 
+
                 await _context.SaveChangesAsync();
+
+                // 5. Create Subscriptions for subscription items
+                var subscriptionItems = dto.Items.Where(i => i.IsSubscription).ToList();
+                if (subscriptionItems.Any() && dto.UserId.HasValue)
+                {
+                    foreach (var item in subscriptionItems)
+                    {
+                        var subscription = new Subscription
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = dto.UserId.Value,
+                            ProductId = item.ProductId,
+                            Frequency = MapFrequency(item.SubscriptionFrequency),
+                            Quantity = item.Quantity,
+                            DiscountPercent = item.SubscriptionDiscount,
+                            Status = SubStatus.active,
+                            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                            NextDeliveryDate = CalculateNextDeliveryDate(item.SubscriptionFrequency),
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Subscriptions.Add(subscription);
+                        _logger.LogInformation("Created subscription {SubscriptionId} for product {ProductId}", 
+                            subscription.Id, item.ProductId);
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
                 await transaction.CommitAsync();
 
                 _logger.LogInformation("Order created successfully: {OrderId}", order.Id);
@@ -151,6 +182,29 @@ namespace FoodCare.API.Services.Implementations
                 "VNPAY" => "VNPay",
                 "BANKING" => "Chuyển khoản ngân hàng",
                 _ => "Thanh toán khi nhận hàng"
+            };
+        }
+
+        private static SubFrequency MapFrequency(string? frequency)
+        {
+            return frequency?.ToLower() switch
+            {
+                "weekly" => SubFrequency.weekly,
+                "biweekly" => SubFrequency.biweekly,
+                "monthly" => SubFrequency.monthly,
+                _ => SubFrequency.monthly
+            };
+        }
+
+        private static DateOnly CalculateNextDeliveryDate(string? frequency)
+        {
+            var today = DateTime.UtcNow;
+            return frequency?.ToLower() switch
+            {
+                "weekly" => DateOnly.FromDateTime(today.AddDays(7)),
+                "biweekly" => DateOnly.FromDateTime(today.AddDays(14)),
+                "monthly" => DateOnly.FromDateTime(today.AddMonths(1)),
+                _ => DateOnly.FromDateTime(today.AddMonths(1))
             };
         }
 

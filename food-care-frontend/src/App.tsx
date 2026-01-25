@@ -19,6 +19,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelPage from './pages/PaymentCancelPage';
+import SubscriptionConfirmPage from './pages/SubscriptionConfirmPage';
+import SubscriptionsPage from './pages/SubscriptionsPage';
 
 
 
@@ -86,6 +88,7 @@ function AppRoutes() {
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/payment/success" element={<PaymentSuccessPage />} />
           <Route path="/payment/cancel" element={<PaymentCancelPage />} />
+          <Route path="/subscription-confirm" element={<SubscriptionConfirmPage />} />
 
 
           <Route
@@ -101,6 +104,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscriptions"
+            element={
+              <ProtectedRoute>
+                <SubscriptionsPage />
               </ProtectedRoute>
             }
           />

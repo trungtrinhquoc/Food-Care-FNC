@@ -126,6 +126,7 @@ export interface CartItem {
     isSubscription: boolean;
     subscription?: {
         frequency: SubscriptionFrequency;
+        discount: number;
     };
 }
 

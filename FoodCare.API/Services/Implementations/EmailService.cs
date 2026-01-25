@@ -147,6 +147,72 @@ namespace FoodCare.API.Services.Implementations
             await SendEmailAsync(email, subject, body);
         }
 
+        public async Task SendSubscriptionReminderAsync(string email, string fullName, string productName, DateOnly nextDeliveryDate, string confirmationToken)
+        {
+            var appUrl = _configuration["AppUrl"] ?? "http://localhost:5173";
+            var continueUrl = $"{appUrl}/subscription-confirm?token={confirmationToken}&action=continue";
+            var pauseUrl = $"{appUrl}/subscription-confirm?token={confirmationToken}&action=pause";
+            var cancelUrl = $"{appUrl}/subscription-confirm?token={confirmationToken}&action=cancel";
+
+            var subject = $"📦 Nhắc nhở đơn hàng định kỳ - {productName}";
+            var body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .product-info {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }}
+        .actions {{ margin: 30px 0; }}
+        .button {{ display: inline-block; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 8px 4px; font-weight: bold; text-align: center; min-width: 150px; }}
+        .btn-continue {{ background: #10b981; color: white; }}
+        .btn-pause {{ background: #f59e0b; color: white; }}
+        .btn-cancel {{ background: #ef4444; color: white; }}
+        .footer {{ text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }}
+        .highlight {{ color: #10b981; font-weight: bold; }}
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <div class=""header"">
+            <h1>📦 Food & Care</h1>
+            <p>Nhắc nhở đơn hàng định kỳ</p>
+        </div>
+        <div class=""content"">
+            <h2>Xin chào {fullName}!</h2>
+            <p>Đơn hàng định kỳ của bạn sắp được giao trong <span class=""highlight"">3 ngày tới</span>.</p>
+            
+            <div class=""product-info"">
+                <h3>📋 Thông tin đơn hàng</h3>
+                <p><strong>Sản phẩm:</strong> {productName}</p>
+                <p><strong>Ngày giao dự kiến:</strong> {nextDeliveryDate:dd/MM/yyyy}</p>
+            </div>
+
+            <p>Bạn có muốn tiếp tục nhận đơn hàng này không?</p>
+
+            <div class=""actions"" style=""text-align: center;"">
+                <a href=""{continueUrl}"" class=""button btn-continue"">✅ Tiếp tục đặt hàng</a><br/>
+                <a href=""{pauseUrl}"" class=""button btn-pause"">⏸️ Tạm dừng</a>
+                <a href=""{cancelUrl}"" class=""button btn-cancel"">❌ Hủy đăng ký</a>
+            </div>
+
+            <p style=""color: #6b7280; font-size: 14px; margin-top: 30px;"">
+                ℹ️ Nếu bạn không thực hiện hành động nào, đơn hàng sẽ tự động được tạo và giao đến bạn vào ngày dự kiến.
+            </p>
+        </div>
+        <div class=""footer"">
+            <p>© 2024 Food & Care. All rights reserved.</p>
+            <p>Email này được gửi tự động. Vui lòng không trả lời email này.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+            await SendEmailAsync(email, subject, body);
+        }
+
         private async Task SendEmailAsync(string to, string subject, string body)
         {
             try
