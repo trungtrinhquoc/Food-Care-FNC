@@ -34,6 +34,7 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<ReviewHelpful> ReviewHelpfuls { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SubscriptionSchedule> SubscriptionSchedules { get; set; }
+    public virtual DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
     public virtual DbSet<Supplier> Suppliers { get; set; }
     public virtual DbSet<User> Users { get; set; }
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
@@ -454,6 +455,28 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
 
             entity.HasOne(d => d.Order).WithMany(p => p.SubscriptionSchedules).HasForeignKey(d => d.OrderId).HasConstraintName("subscription_schedules_order_id_fkey");
             entity.HasOne(d => d.Subscription).WithMany(p => p.SubscriptionSchedules).HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("subscription_schedules_subscription_id_fkey");
+        });
+
+        modelBuilder.Entity<SubscriptionConfirmation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("subscription_confirmations_pkey");
+            entity.ToTable("subscription_confirmations");
+            entity.HasIndex(e => e.Token, "idx_subscription_confirmations_token");
+            entity.HasIndex(e => e.SubscriptionId, "idx_subscription_confirmations_subscription_id");
+            entity.HasIndex(e => e.ExpiresAt, "idx_subscription_confirmations_expires_at").HasFilter("(is_confirmed = false)");
+            
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.Token).HasMaxLength(255).HasColumnName("token");
+            entity.Property(e => e.ScheduledDeliveryDate).HasColumnName("scheduled_delivery_date");
+            entity.Property(e => e.IsConfirmed).HasDefaultValue(false).HasColumnName("is_confirmed");
+            entity.Property(e => e.CustomerResponse).HasMaxLength(50).HasColumnName("customer_response");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+
+            entity.HasOne(d => d.Subscription).WithMany().HasForeignKey(d => d.SubscriptionId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("subscription_confirmations_subscription_id_fkey");
         });
 
         modelBuilder.Entity<Supplier>(entity =>

@@ -212,6 +212,27 @@ export const profileApi = {
         const response = await api.get('/orders/my-orders');
         return response.data;
     },
+
+    // Subscription Management
+    getSubscriptions: async (): Promise<any[]> => {
+        const response = await api.get('/subscriptions/my');
+        return response.data;
+    },
+
+    pauseSubscription: async (subscriptionId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.put(`/subscriptions/${subscriptionId}/pause`);
+        return response.data;
+    },
+
+    resumeSubscription: async (subscriptionId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.put(`/subscriptions/${subscriptionId}/resume`);
+        return response.data;
+    },
+
+    cancelSubscription: async (subscriptionId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.delete(`/subscriptions/${subscriptionId}`);
+        return response.data;
+    },
 };
 
 export default api;

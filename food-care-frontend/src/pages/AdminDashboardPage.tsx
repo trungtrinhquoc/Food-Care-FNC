@@ -27,6 +27,7 @@ const ZaloTab = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.Zal
 const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
 const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
+const SubscriptionRemindersTab = lazy(() => import("./SubscriptionRemindersAdminPage"));
 
 // Tab configuration
 const TABS = [
@@ -38,6 +39,7 @@ const TABS = [
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
   { value: "zalo", label: "Zalo", icon: MessageSquare },
+  { value: "reminders", label: "Email Nhắc Nhở", icon: MessageSquare },
 ] as const;
 
 // Loading fallback component
@@ -70,7 +72,7 @@ export default function AdminDashboardPage() {
   }, [stats]);
 
   // Memoized revenue data
-  const formattedRevenueData = useMemo(() => 
+  const formattedRevenueData = useMemo(() =>
     revenueData.map(r => ({ month: r.month, revenue: r.revenue })),
     [revenueData]
   );
@@ -90,9 +92,8 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex">
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-orange-200 via-orange-100/200 to-white border-r border-orange-200 shadow-xl transition-all duration-300 z-40 ${
-          sidebarOpen ? "w-64" : "w-20"
-        }`}
+        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-orange-200 via-orange-100/200 to-white border-r border-orange-200 shadow-xl transition-all duration-300 z-40 ${sidebarOpen ? "w-64" : "w-20"
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
@@ -128,11 +129,10 @@ export default function AdminDashboardPage() {
               <button
                 key={value}
                 onClick={() => handleTabChange(value)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  selectedTab === value
-                    ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold shadow-lg shadow-orange-500/30 scale-105"
-                    : "text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:shadow-md"
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${selectedTab === value
+                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold shadow-lg shadow-orange-500/30 scale-105"
+                  : "text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:shadow-md"
+                  }`}
               >
                 <Icon className={`w-5 h-5 flex-shrink-0 ${selectedTab === value ? "text-white" : "text-gray-500"}`} />
                 {sidebarOpen && <span className="truncate">{label}</span>}
@@ -236,6 +236,13 @@ export default function AdminDashboardPage() {
                 {selectedTab === "zalo" && (
                   <div>
                     <ZaloTab />
+                  </div>
+                )}
+
+                {/* Subscription Reminders Tab */}
+                {selectedTab === "reminders" && (
+                  <div>
+                    <SubscriptionRemindersTab />
                   </div>
                 )}
               </Suspense>

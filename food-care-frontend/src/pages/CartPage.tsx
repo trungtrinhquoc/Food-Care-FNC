@@ -60,12 +60,29 @@ export default function CartPage() {
                                         alt={item.product.name}
                                         className="w-full h-full object-cover"
                                     />
-                                </div>                                <div className="flex-1">
+                                </div>
+
+                                <div className="flex-1">
                                     <h3 className="font-semibold">{item.product.name}</h3>
                                     <p className="text-sm text-gray-600">{item.product.unit || 'Cái'}</p>
-                                    <p className="text-primary font-bold">
-                                        {item.product.basePrice.toLocaleString('vi-VN')}đ
-                                    </p>
+
+                                    {item.subscription ? (
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-gray-400 line-through text-sm">
+                                                {item.product.basePrice.toLocaleString('vi-VN')}đ
+                                            </p>
+                                            <p className="text-emerald-600 font-bold">
+                                                {(item.product.basePrice * (1 - item.subscription.discount / 100)).toLocaleString('vi-VN')}đ
+                                            </p>
+                                            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
+                                                -{item.subscription.discount}%
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <p className="text-primary font-bold">
+                                            {item.product.basePrice.toLocaleString('vi-VN')}đ
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button

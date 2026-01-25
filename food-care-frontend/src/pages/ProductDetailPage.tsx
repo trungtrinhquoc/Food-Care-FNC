@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../services/productsApi';
 import { useState } from 'react';
 import {
-  Star, Plus, Minus, ShoppingCart, ChevronLeft
+  Star, Plus, Minus, ShoppingCart, ChevronLeft, Calendar, Repeat
 } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination, Thumbs } from 'swiper/modules'
@@ -16,7 +16,7 @@ import { useCart } from '../contexts/CartContext';
 import { toast } from 'sonner';
 import { cloudinaryResize } from '../utils/cloudinary'
 
-// import { SubscriptionDialog } from '../components/SubscriptionDialog';
+import { SubscriptionDialog } from '../components/SubscriptionDialog';
 import { ReviewSection } from '../components/ReviewSection';
 
 export default function ProductDetailPage() {
@@ -28,14 +28,11 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
 
   const [quantity, setQuantity] = useState(1);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [subscriptionType, _setSubscriptionType] =
+  const [subscriptionType, setSubscriptionType] =
     useState<'one-time' | 'subscription'>('one-time');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [frequency, _setFrequency] =
-    useState<'weekly' | 'biweekly' | 'monthly'>('monthly');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_showSubscriptionDialog, _setShowSubscriptionDialog] = useState(false);
+  const [frequency, setFrequency] =
+    useState<'Weekly' | 'BiWeekly' | 'Monthly'>('Monthly');
+  const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
 
   const { data: product, isLoading, error } = useQuery({
 
@@ -59,9 +56,9 @@ export default function ProductDetailPage() {
 
   // ===== Logic giữ nguyên =====
   const subscriptionDiscounts = {
-    weekly: 15,
-    biweekly: 12,
-    monthly: 10,
+    Weekly: 15,
+    BiWeekly: 12,
+    Monthly: 10,
   };
 
   const discount =
@@ -81,8 +78,37 @@ export default function ProductDetailPage() {
       setQuantity(product.stockQuantity);
       return;
     }
-    addToCart(product, quantity);
+
+    const isSubscription = subscriptionType === 'subscription';
+    const freq = isSubscription ? frequency : undefined;
+
+    addToCart(product, quantity, isSubscription, freq);
     toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
+  };
+
+
+  const handleSubscriptionConfirm = (
+    freq: 'Weekly' | 'BiWeekly' | 'Monthly',
+    qty: number
+  ) => {
+    const frequencyText = {
+      Weekly: 'hàng tuần',
+      BiWeekly: '2 tuần/lần',
+      Monthly: 'hàng tháng',
+    };
+
+    const discounts = {
+      Weekly: 15,
+      BiWeekly: 12,
+      Monthly: 10,
+    };
+
+    const discount = discounts[freq];
+    addToCart(product, qty, true, freq, discount);
+
+    toast.success(`Đã đăng ký đặt hàng định kỳ ${product.name}`, {
+      description: `Giao hàng ${frequencyText[freq]} - Giảm ${discount}%`,
+    });
   };
 
 
@@ -90,13 +116,13 @@ export default function ProductDetailPage() {
   // ===== UI giữ gần như 100% =====
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
-          <ChevronLeft className="w-4 h-4 mr-2" />
+      <div className="container mx-auto px-4 py-4 max-w-7xl">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4" size="sm">
+          <ChevronLeft className="w-4 h-4 mr-1" />
           Quay lại
         </Button>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Image */}
           <div>
             {/* MAIN SLIDER */}
@@ -147,88 +173,160 @@ export default function ProductDetailPage() {
 
           {/* Info */}
           <div>
-            <Badge className="mb-2">{product.categoryName}</Badge>
-            <h1 className="mb-4 text-3xl font-bold">{product.name}</h1>
+            <Badge className="mb-1.5 text-xs">{product.categoryName}</Badge>
+            <h1 className="mb-2 text-xl font-bold leading-tight">{product.name}</h1>
 
             {/* Rating */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-1.5 mb-2.5">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
-                  className={`w-5 h-5 ${i < Math.floor(product.ratingAverage)
+                  className={`w-4 h-4 ${i < Math.floor(product.ratingAverage)
                     ? 'fill-yellow-400 text-yellow-400'
                     : 'text-gray-300'
                     }`}
                 />
               ))}
-              <span>({product.ratingCount})</span>
+              <span className="text-sm text-gray-600">({product.ratingCount})</span>
             </div>
 
             {/* Price */}
-            <div className="mb-6">
-              <span className="text-3xl text-emerald-600">
+            <div className="mb-3">
+              <span className="text-xl font-bold text-emerald-600">
                 {finalPrice.toLocaleString('vi-VN')}đ
               </span>
-              <p className="text-gray-500 mt-2">Đơn vị: {product.unit}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Đơn vị: {product.unit}</p>
             </div>
 
-            <p className="text-gray-600 mb-6">{product.description}</p>
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{product.description}</p>
 
-            {/* Quantity */}
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                disabled={quantity <= 1 || product.stockQuantity === 0}
-                variant="outline"
-                size="sm"
-                className="px-2"
-              >
-                <Minus className="w-4 h-4" />
-              </Button>
-              <span className="w-8 text-center">{quantity}</span>
-              <Button
-                onClick={() => setQuantity(q => Math.min(product.stockQuantity, q + 1))}
-                disabled={quantity >= product.stockQuantity || product.stockQuantity === 0}
-                variant="outline"
-                size="sm"
-                className="px-2"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
+            {/* Simple Subscription Options - Matching Reference */}
+            <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm font-semibold text-emerald-900">Đặt Hàng Định Kỳ</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="one-time"
+                    name="subscription-type"
+                    value="one-time"
+                    checked={subscriptionType === 'one-time'}
+                    onChange={() => setSubscriptionType('one-time')}
+                    className="w-4 h-4 text-emerald-600"
+                  />
+                  <label htmlFor="one-time" className="text-sm text-gray-700 cursor-pointer">
+                    Mua một lần
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="subscription"
+                    name="subscription-type"
+                    value="subscription"
+                    checked={subscriptionType === 'subscription'}
+                    onChange={() => setSubscriptionType('subscription')}
+                    className="w-4 h-4 text-emerald-600"
+                  />
+                  <label htmlFor="subscription" className="text-sm text-emerald-700 cursor-pointer font-medium">
+                    Đặt hàng định kỳ (Tiết kiệm 10-15%)
+                  </label>
+                </div>
+              </div>
             </div>
 
-            <Button
-              size="lg"
-              className={`w-full ${product.stockQuantity > 0 ? "bg-emerald-600" : "bg-gray-400"}`}
-              onClick={handleAddToCart}
-              disabled={product.stockQuantity <= 0}
-            >
-              <ShoppingCart className="mr-2" />
-              {product.stockQuantity > 0 ? "Thêm vào giỏ hàng" : "Hết hàng"}
-            </Button>
+            {/* Compact Quantity & Buttons */}
+            <div className="space-y-2.5">
+              {/* Quantity Row */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-700">Số lượng:</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    disabled={quantity <= 1 || product.stockQuantity === 0}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-10 text-center font-medium">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(q => Math.min(product.stockQuantity, q + 1))}
+                    disabled={quantity >= product.stockQuantity || product.stockQuantity === 0}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <span className="text-xs text-gray-500">
+                  ({product.stockQuantity} sản phẩm có sẵn)
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2.5">
+                <Button
+                  size="lg"
+                  className={`flex-1 h-11 ${product.stockQuantity > 0 ? "bg-emerald-600 hover:bg-emerald-700" : "bg-gray-400"}`}
+                  onClick={handleAddToCart}
+                  disabled={product.stockQuantity <= 0}
+                >
+                  <ShoppingCart className="mr-2 w-4 h-4" />
+                  <span className="text-sm">Thêm vào giỏ hàng</span>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => {
+                    handleAddToCart();
+                    navigate('/cart');
+                  }}
+                  disabled={product.stockQuantity <= 0}
+                  className="px-6 h-11"
+                >
+                  <span className="text-sm">Mua ngay</span>
+                </Button>
+              </div>
+
+              {/* Subscription Button */}
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 h-11"
+                onClick={() => setShowSubscriptionDialog(true)}
+                disabled={product.stockQuantity <= 0}
+              >
+                <Repeat className="w-4 h-4 mr-2" />
+                <span className="text-sm font-medium">Đăng Ký Đặt Hàng Định Kỳ (Giảm 10-15%)</span>
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Product Details */}
-        <div className="bg-white rounded-lg p-8">
-          <h2 className="mb-6">Thông Tin Chi Tiết</h2>
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Thông Tin Chi Tiết</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <h3 className="mb-3">Mô tả sản phẩm</h3>
-              <p className="text-gray-600">{product.description}</p>
+              <h3 className="text-base font-semibold mb-2">Mô tả sản phẩm</h3>
+              <p className="text-sm text-gray-600">{product.description}</p>
             </div>
             <div>
-              <h3 className="mb-3">Thông số</h3>
-              <dl className="space-y-2">
-                <div className="flex justify-between">
+              <h3 className="text-base font-semibold mb-2">Thông số</h3>
+              <dl className="space-y-1.5">
+                <div className="flex justify-between text-sm">
                   <dt className="text-gray-600">Danh mục:</dt>
                   <dd>{product.categoryName}</dd>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <dt className="text-gray-600">Đơn vị:</dt>
                   <dd>{product.unit}</dd>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <dt className="text-gray-600">Tình trạng:</dt>
                   <dd className={product.stockQuantity > 0 ? "text-emerald-600" : "text-red-500"}>
                     {product.stockQuantity > 0 ? `Còn hàng (${product.stockQuantity})` : "Hết hàng"}
@@ -252,13 +350,13 @@ export default function ProductDetailPage() {
         )} */}
       </div>
 
-      {/* <SubscriptionDialog
+      <SubscriptionDialog
         open={showSubscriptionDialog}
         onOpenChange={setShowSubscriptionDialog}
         product={product}
-        onConfirm={() => {}}
+        onConfirm={handleSubscriptionConfirm}
         initialQuantity={quantity}
-      /> */}
+      />
     </div>
   );
 }
