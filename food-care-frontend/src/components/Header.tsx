@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-    ShoppingBag, User, ShoppingCart, Settings, Menu, 
-    X, ChevronDown, LogOut, Home, LayoutDashboard, Package 
+import {
+    ShoppingBag, User, ShoppingCart, Settings, Menu,
+    X, ChevronDown, LogOut, Home, LayoutDashboard, Package
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -12,7 +12,7 @@ export default function Header() {
     const { getItemCount } = useCart();
     const location = useLocation();
     const navigate = useNavigate();
-    
+
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -67,10 +67,9 @@ export default function Header() {
     };
 
     const navLinkClass = (path: string) =>
-        `relative px-1 py-2 text-sm font-medium transition-colors ${
-            isActiveLink(path)
-                ? 'text-emerald-600'
-                : 'text-gray-600 hover:text-emerald-600'
+        `relative px-1 py-2 text-sm font-medium transition-colors ${isActiveLink(path)
+            ? 'text-emerald-600'
+            : 'text-gray-600 hover:text-emerald-600'
         }`;
 
     const navLinkUnderline = (path: string) =>
@@ -85,12 +84,12 @@ export default function Header() {
                 <div className="container mx-auto px-4 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <Link to="/admin" className="flex items-center space-x-3 group">
-                            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:shadow-orange-500/30 transition-shadow">
-                                <LayoutDashboard className="h-5 w-5 text-white" />
+                            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:shadow-orange-500/30 transition-all duration-300">
+                                <LayoutDashboard className="h-6 w-6 text-white" />
                             </div>
                             <div className="hidden sm:block">
-                                <h1 className="text-lg font-bold text-gray-900 tracking-tight">Admin Panel</h1>
-                                <p className="text-xs text-gray-500 -mt-0.5">Food & Care Management</p>
+                                <h1 className="text-xl font-bold text-gray-900 tracking-tight">Admin Panel</h1>
+                                <p className="text-sm text-gray-500 -mt-0.5 font-medium">Food & Care Management</p>
                             </div>
                         </Link>
 
@@ -137,12 +136,12 @@ export default function Header() {
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     <Link to="/" className="flex items-center space-x-3 group">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30 transition-shadow">
-                            <ShoppingBag className="h-5 w-5 text-white" />
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30 transition-all duration-300">
+                            <ShoppingBag className="h-6 w-6 text-white" />
                         </div>
                         <div className="hidden sm:block">
-                            <h1 className="text-lg font-bold text-gray-900 tracking-tight">Food & Care</h1>
-                            <p className="text-xs text-gray-500 -mt-0.5">Giao hàng định kỳ</p>
+                            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Food & Care</h1>
+                            <p className="text-sm text-gray-500 -mt-0.5 font-medium border-b border-emerald-50/0 group-hover:border-emerald-500 transition-all duration-300">Giao hàng định kỳ</p>
                         </div>
                     </Link>
 

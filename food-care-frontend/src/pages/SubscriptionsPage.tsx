@@ -109,25 +109,25 @@ export default function SubscriptionsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
+        <div className="min-h-screen bg-gray-50 py-6">
             <div className="max-w-6xl mx-auto px-4">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">📦 Đơn Hàng Định Kỳ</h1>
-                    <p className="text-gray-600">Quản lý các đơn hàng tự động giao hàng định kỳ của bạn</p>
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-1">📦 Đơn Hàng Định Kỳ</h1>
+                    <p className="text-sm text-gray-500">Quản lý các đơn hàng tự động giao hàng định kỳ của bạn</p>
                 </div>
 
                 {/* Subscriptions List */}
                 {subscriptions.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">Chưa có đơn định kỳ nào</h3>
-                        <p className="text-gray-600 mb-6">
+                    <div className="bg-white rounded-xl shadow-md p-10 text-center">
+                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chưa có đơn định kỳ nào</h3>
+                        <p className="text-sm text-gray-500 mb-6">
                             Bạn chưa đăng ký đơn hàng định kỳ nào. Hãy khám phá các sản phẩm và đăng ký ngay!
                         </p>
                         <button
                             onClick={() => navigate('/products')}
-                            className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+                            className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition shadow-md"
                         >
                             Khám phá sản phẩm
                         </button>
@@ -154,7 +154,7 @@ export default function SubscriptionsPage() {
                                         <div className="flex-1">
                                             <div className="flex items-start justify-between mb-2">
                                                 <div>
-                                                    <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                                    <h3 className="text-lg font-bold text-gray-900 mb-1">
                                                         {subscription.productName}
                                                     </h3>
                                                     {getStatusBadge(subscription.status)}
@@ -163,36 +163,36 @@ export default function SubscriptionsPage() {
 
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                                                 <div className="flex items-center gap-2 text-gray-600">
-                                                    <Calendar className="w-4 h-4" />
+                                                    <Calendar className="w-4 h-4 text-gray-400" />
                                                     <div>
-                                                        <p className="text-xs text-gray-500">Tần suất</p>
-                                                        <p className="font-semibold">{getFrequencyText(subscription.frequency)}</p>
+                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tần suất</p>
+                                                        <p className="text-sm font-semibold">{getFrequencyText(subscription.frequency)}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 text-gray-600">
-                                                    <Package className="w-4 h-4" />
+                                                    <Package className="w-4 h-4 text-gray-400" />
                                                     <div>
-                                                        <p className="text-xs text-gray-500">Số lượng</p>
-                                                        <p className="font-semibold">{subscription.quantity}</p>
+                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Số lượng</p>
+                                                        <p className="text-sm font-semibold">{subscription.quantity}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 text-gray-600">
-                                                    <TrendingUp className="w-4 h-4" />
+                                                    <TrendingUp className="w-4 h-4 text-emerald-400" />
                                                     <div>
-                                                        <p className="text-xs text-gray-500">Giảm giá</p>
-                                                        <p className="font-semibold text-emerald-600">
+                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Giảm giá</p>
+                                                        <p className="text-sm font-bold text-emerald-600">
                                                             {subscription.discountPercent}%
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 text-gray-600">
-                                                    <Calendar className="w-4 h-4" />
+                                                    <Calendar className="w-4 h-4 text-gray-400" />
                                                     <div>
-                                                        <p className="text-xs text-gray-500">Giao tiếp theo</p>
-                                                        <p className="font-semibold">
+                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Giao tiếp theo</p>
+                                                        <p className="text-sm font-semibold">
                                                             {new Date(subscription.nextDeliveryDate).toLocaleDateString('vi-VN')}
                                                         </p>
                                                     </div>

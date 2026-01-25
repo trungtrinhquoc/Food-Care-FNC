@@ -76,25 +76,25 @@ export default function HomePage() {
                         </p>
                         <div className="flex flex-wrap justify-center gap-4">
                             <Button
-                                size="lg"
+                                size="sm"
                                 onClick={() => navigate('/recommendations')}
-                                className="bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40"
+                                className="bg-white text-emerald-600 hover:bg-emerald-50 font-bold px-4 py-1.5 text-sm shadow-md border-0"
                             >
                                 💡 Gợi ý cho bạn
-                                <ArrowRight className="w-4 h-4 ml-2" />
+                                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                             </Button>
                             <Button
-                                size="lg"
-                                variant="secondary"
+                                size="sm"
                                 onClick={() => navigate('/products')}
-                                className="shadow-lg"
+                                className="bg-emerald-500 text-white hover:bg-emerald-600 font-bold px-4 py-1.5 text-sm shadow-md border-0"
                             >
                                 Xem Sản Phẩm
                             </Button>
                             <Button
-                                size="lg"
+                                size="sm"
                                 variant="outline"
                                 onClick={() => window.scrollTo({ top: 800, behavior: 'smooth' })}
+                                className="bg-white/10 backdrop-blur-md border border-white/30 text-white hover:bg-white/20 font-semibold px-4 py-1.5 text-sm shadow-md"
                             >
                                 Tìm Hiểu Thêm
                             </Button>
@@ -140,25 +140,26 @@ export default function HomePage() {
 
             {/* Recommended Products Section */}
             {!isLoading && recommendedProducts.length > 0 && (
-                <section className="py-16 bg-white">
+                <section className="py-8 bg-white">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center justify-between mb-5">
                             <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
-                                    <h2 className="text-3xl font-bold">Sản Phẩm Được Đề Xuất</h2>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                                    <h2 className="text-2xl font-bold">Sản Phẩm Được Đề Xuất</h2>
                                 </div>
-                                <p className="text-gray-600">
+                                <p className="text-gray-600 text-[14px]">
                                     Những sản phẩm được khách hàng yêu thích và đánh giá cao nhất
                                 </p>
                             </div>
                             <Button
                                 variant="ghost"
+                                size="sm"
                                 onClick={() => navigate('/products')}
-                                className="hidden md:flex border-2 border-gray-200"
+                                className="hidden md:flex border-2 border-gray-200 py-1"
                             >
                                 Xem tất cả
-                                <ArrowRight className="w-4 h-4 ml-2" />
+                                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                             </Button>
                         </div>
 
@@ -189,25 +190,26 @@ export default function HomePage() {
 
             {/* Discounted Products Section */}
             {!isLoading && discountedProducts.length > 0 && (
-                <section className="py-16 bg-gradient-to-br from-amber-50 to-orange-50">
+                <section className="py-8 bg-gradient-to-br from-amber-50 to-orange-50">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center justify-between mb-5">
                             <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <TrendingUp className="w-6 h-6 text-orange-600" />
-                                    <h2 className="text-3xl font-bold">Ưu Đãi Đặc Biệt</h2>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <TrendingUp className="w-5 h-5 text-orange-600" />
+                                    <h2 className="text-2xl font-bold">Ưu Đãi Đặc Biệt</h2>
                                 </div>
-                                <p className="text-gray-600">
+                                <p className="text-gray-600 text-[14px]">
                                     Sản phẩm đang có chương trình giảm giá hấp dẫn
                                 </p>
                             </div>
                             <Button
                                 variant="ghost"
+                                size="sm"
                                 onClick={() => navigate('/products')}
-                                className="hidden md:flex border-2 border-gray-200"
+                                className="hidden md:flex border-2 border-gray-200 py-1"
                             >
                                 Xem tất cả
-                                <ArrowRight className="w-4 h-4 ml-2" />
+                                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                             </Button>
                         </div>
 
@@ -237,11 +239,11 @@ export default function HomePage() {
             )}
 
             {/* How It Works Section */}
-            <section className="py-16 bg-white">
+            <section className="py-10 bg-white">
                 <div className="container mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="mb-4 text-3xl font-bold">Đặt Hàng Định Kỳ Như Thế Nào?</h2>
-                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    <div className="text-center mb-8">
+                        <h2 className="mb-3 text-2xl font-bold">Đặt Hàng Định Kỳ Như Thế Nào?</h2>
+                        <p className="text-base text-gray-600 max-w-2xl mx-auto">
                             Chỉ với 3 bước đơn giản, bạn sẽ không bao giờ phải lo hết hàng thiết yếu
                         </p>
                     </div>
@@ -279,11 +281,11 @@ export default function HomePage() {
             </section>
 
             {/* Benefits Section */}
-            <section className="py-16 bg-emerald-600 text-white">
+            <section className="py-10 bg-emerald-600 text-white">
                 <div className="container mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="mb-4 text-white text-3xl font-bold">Tại Sao Chọn Chúng Tôi?</h2>
-                        <p className="text-lg text-emerald-50 max-w-2xl mx-auto">
+                    <div className="text-center mb-8">
+                        <h2 className="mb-3 text-white text-2xl font-bold">Tại Sao Chọn Chúng Tôi?</h2>
+                        <p className="text-base text-emerald-50 max-w-2xl mx-auto">
                             Tiết kiệm thời gian và chi phí với dịch vụ giao hàng tự động
                         </p>
                     </div>
@@ -331,13 +333,12 @@ export default function HomePage() {
                 </div>
 
                 <div className="relative container mx-auto px-4 text-center">
-                    <h2 className="mb-4 text-white text-3xl lg:text-4xl font-bold">Sẵn Sàng Bắt Đầu?</h2>
-                    <p className="text-xl text-emerald-50 mb-8 max-w-2xl mx-auto">
+                    <h2 className="mb-3 text-white text-2xl lg:text-3xl font-bold">Sẵn Sàng Bắt Đầu?</h2>
+                    <p className="text-base text-emerald-50 mb-6 max-w-2xl mx-auto">
                         Chọn sản phẩm yêu thích và kích hoạt đặt hàng định kỳ để nhận ưu đãi ngay hôm nay
                     </p>
                     <div className="flex flex-wrap justify-center gap-4">
                         <Button
-                            size="lg"
                             onClick={() => navigate('/products')}
                             className="bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40"
                         >
@@ -345,9 +346,8 @@ export default function HomePage() {
                             <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                         <Button
-                            size="lg"
-                            variant="outline"
                             onClick={() => navigate('/login')}
+                            className="bg-orange-500 text-white hover:bg-orange-600 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 border-0"
                         >
                             Đăng Ký Ngay
                         </Button>

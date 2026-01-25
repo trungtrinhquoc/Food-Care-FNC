@@ -72,14 +72,14 @@ export function LowStockNotification({ }: LowStockNotificationProps) {
 
     return (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-orange-100 w-full">
-            <div className="w-full px-4 md:px-8 py-6">
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-                            <AlertCircle className="w-6 h-6 text-white" />
+            <div className="w-full px-4 md:px-8 py-4">
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                            <AlertCircle className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h3 className="mb-0 font-semibold text-gray-900">🔔 Sản phẩm có thể sắp hết</h3>
+                            <h3 className="mb-0 font-bold text-lg text-gray-900">🔔 Sản phẩm có thể sắp hết</h3>
                             <p className="text-sm text-gray-600">
                                 Dựa vào lịch sử mua hàng, những sản phẩm này có thể sắp hết trong nhà bạn
                             </p>
@@ -100,9 +100,9 @@ export function LowStockNotification({ }: LowStockNotificationProps) {
 
                         return (
                             <Card key={item.product.id} className={`border-2 ${getUrgencyColor(item.estimatedDaysLeft)} shadow-sm`}>
-                                <CardContent className="pt-4 p-4">
-                                    <div className="flex gap-3 mb-3">
-                                        <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
+                                <CardContent className="pt-3 p-3">
+                                    <div className="flex gap-2 mb-2">
+                                        <div className="w-14 h-14 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
                                             <ImageWithFallback
                                                 src={item.product.imageUrl}
                                                 alt={item.product.name}
@@ -110,44 +110,44 @@ export function LowStockNotification({ }: LowStockNotificationProps) {
                                             />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="mb-1 font-medium text-gray-900 truncate" title={item.product.name}>
+                                            <div className="mb-0.5 font-medium text-sm text-gray-900 truncate" title={item.product.name}>
                                                 {item.product.name}
                                             </div>
-                                            <div className="text-sm text-gray-600">{item.product.unit || 'Đơn vị: Gói'}</div>
+                                            <div className="text-xs text-gray-600">{item.product.unit || 'Đơn vị: Gói'}</div>
                                         </div>
                                         <div className="flex-shrink-0">
                                             {getUrgencyBadge(item.estimatedDaysLeft)}
                                         </div>
                                     </div>
 
-                                    <div className="bg-white rounded-lg p-3 mb-3 text-sm space-y-1">
+                                    <div className="bg-white rounded-lg p-2.5 mb-2.5 text-sm space-y-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-gray-600">Mua lần cuối:</span>
-                                            <span className="font-medium text-gray-900">{daysAgo} ngày trước</span>
+                                            <span className="font-semibold text-gray-900">{daysAgo} ngày trước</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-gray-600">Ước tính còn:</span>
-                                            <span className={`font-semibold ${item.estimatedDaysLeft <= 3 ? 'text-red-600' : 'text-gray-900'}`}>
+                                            <span className={`font-bold ${item.estimatedDaysLeft <= 3 ? 'text-red-600' : 'text-gray-900'}`}>
                                                 ~{item.estimatedDaysLeft} ngày
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1.5">
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border-gray-200"
+                                            className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border-gray-200 text-sm py-2 font-medium"
                                             onClick={() => handleDetailClick(item.product)}
                                         >
                                             Xem chi tiết
                                         </Button>
                                         <Button
                                             size="sm"
-                                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 shadow-sm"
+                                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 shadow-sm text-sm py-2 font-bold"
                                             onClick={() => handleReorderClick(item.product)}
                                         >
-                                            <ShoppingCart className="w-4 h-4 mr-1" />
+                                            <ShoppingCart className="w-4 h-4 mr-1.5" />
                                             Mua lại
                                         </Button>
                                     </div>
@@ -155,12 +155,12 @@ export function LowStockNotification({ }: LowStockNotificationProps) {
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="w-full mt-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                        className="w-full mt-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 text-sm py-2 font-semibold"
                                         onClick={() => navigate('/subscriptions')}
                                     >
-                                        <Calendar className="w-4 h-4 mr-1" />
+                                        <Calendar className="w-4 h-4 mr-1.5" />
                                         Đặt định kỳ - Tiết kiệm 10%
-                                        <ArrowRight className="w-4 h-4 ml-1" />
+                                        <ArrowRight className="w-4 h-4 ml-1.5" />
                                     </Button>
                                 </CardContent>
                             </Card>
