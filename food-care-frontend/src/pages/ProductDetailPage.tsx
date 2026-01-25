@@ -152,7 +152,11 @@ export default function ProductDetailPage() {
                 modules={[Thumbs]}
                 onSwiper={setThumbsSwiper}
                 spaceBetween={10}
-                slidesPerView={6}
+                slidesPerView={4}
+                breakpoints={{
+                  640: { slidesPerView: 5 },
+                  768: { slidesPerView: 6 }
+                }}
                 watchSlidesProgress
                 className="mt-4"
               >
@@ -268,15 +272,15 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2.5">
+              <div className="flex flex-col sm:flex-row gap-2.5">
                 <Button
                   size="lg"
-                  className={`flex-1 h-11 ${product.stockQuantity > 0 ? "bg-emerald-600 hover:bg-emerald-700" : "bg-gray-400"}`}
+                  className={`flex-1 h-12 shadow-md ${product.stockQuantity > 0 ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20" : "bg-gray-400"}`}
                   onClick={handleAddToCart}
                   disabled={product.stockQuantity <= 0}
                 >
-                  <ShoppingCart className="mr-2 w-4 h-4" />
-                  <span className="text-sm">Thêm vào giỏ hàng</span>
+                  <ShoppingCart className="mr-2 w-5 h-5" />
+                  <span className="text-base font-bold">Thêm vào giỏ</span>
                 </Button>
                 <Button
                   size="lg"
@@ -286,9 +290,9 @@ export default function ProductDetailPage() {
                     navigate('/cart');
                   }}
                   disabled={product.stockQuantity <= 0}
-                  className="px-6 h-11"
+                  className="px-8 h-12 border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-bold"
                 >
-                  <span className="text-sm">Mua ngay</span>
+                  <span className="text-base">Mua ngay</span>
                 </Button>
               </div>
 
@@ -296,12 +300,12 @@ export default function ProductDetailPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 h-11"
+                className="w-full border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 h-12 shadow-sm"
                 onClick={() => setShowSubscriptionDialog(true)}
                 disabled={product.stockQuantity <= 0}
               >
                 <Repeat className="w-4 h-4 mr-2" />
-                <span className="text-sm font-medium">Đăng Ký Đặt Hàng Định Kỳ (Giảm 10-15%)</span>
+                <span className="text-sm font-bold uppercase tracking-wide">Đặt Hàng Định Kỳ (Giảm 10-15%)</span>
               </Button>
             </div>
           </div>

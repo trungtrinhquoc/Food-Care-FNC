@@ -503,37 +503,54 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header Section */}
-            <section className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-12">
-                <div className="container mx-auto px-4">
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                        <Avatar className="w-24 h-24 border-4 border-white/30">
-                            <AvatarImage src={user.avatarUrl} />
-                            <AvatarFallback className="bg-white text-emerald-600 text-2xl">
-                                {user.fullName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 text-center md:text-left">
-                            <div className="flex items-center gap-3 justify-center md:justify-start mb-2">
-                                <h1 className="text-white text-3xl font-bold">{user.fullName}</h1>
-                                <StatusBadge className={`${currentTier.color} text-white border-0`}>
-                                    {currentTier.icon} {userTierName}
+            <section className="relative overflow-hidden text-white py-8 md:py-12">
+                {/* Background Image with Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=1600&h=400&fit=crop"
+                        alt="Header Background"
+                        className="w-full h-full object-cover opacity-60"
+                    />
+                    <div className="absolute inset-0 bg-emerald-700/70 mix-blend-multiply"></div>
+                </div>
+
+                <div className="container mx-auto px-4 relative z-10">
+                    <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                        <div className="relative">
+                            <Avatar className="w-20 h-20 md:w-28 md:h-28 border-4 border-white/20 shadow-2xl">
+                                <AvatarImage src={user.avatarUrl} />
+                                <AvatarFallback className="bg-white text-emerald-600 text-2xl md:text-3xl font-bold">
+                                    {user.fullName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2">
+                                <StatusBadge className={`${currentTier.color} text-white border-2 border-white shadow-lg text-[10px] md:text-xs h-6 md:h-8`}>
+                                    {currentTier.icon}
                                 </StatusBadge>
                             </div>
-                            <p className="text-emerald-100 mb-2">Khách hàng từ {joinDate}</p>
-                            <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
-                                <div className="flex items-center gap-2">
-                                    <Package className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex flex-col md:flex-row items-center gap-3 mb-2">
+                                <h1 className="text-white text-2xl md:text-3xl font-extrabold tracking-tight">{user.fullName}</h1>
+                                <StatusBadge className={`hidden md:flex ${currentTier.color} text-white border-0 px-3 py-1 shadow-sm text-xs font-bold`}>
+                                    {userTierName}
+                                </StatusBadge>
+                            </div>
+                            <p className="text-emerald-50/80 mb-4 text-sm font-medium">Khách hàng từ {joinDate}</p>
+                            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                                <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md text-xs border border-white/10 font-semibold shadow-sm">
+                                    <Package className="w-3.5 h-3.5 text-emerald-100" />
                                     <span>{totalOrders} đơn hàng</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4" />
+                                <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md text-xs border border-white/10 font-semibold shadow-sm">
+                                    <TrendingUp className="w-3.5 h-3.5 text-teal-100" />
                                     <span>{(userTotalSpent / 1000000).toFixed(1)}M đã mua</span>
                                 </div>
                             </div>
                         </div>
                         <Button
                             onClick={handleLogout}
-                            className="bg-white/10 backdrop-blur-sm text-white border border-white/30 hover:bg-white/20"
+                            className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold px-6 h-10 shadow-lg md:self-center text-sm rounded-xl transition-all"
                         >
                             Đăng xuất
                         </Button>
@@ -544,66 +561,78 @@ export default function ProfilePage() {
             {/* Main Content */}
             <section className="container mx-auto px-4 py-8">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-6 bg-white shadow-sm">
-                        <TabsTrigger value="overview">
-                            <User className="w-4 h-4" /> <span className="ml-2">Tổng quan</span>
+                    <TabsList className="mb-10 w-full justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide no-scrollbar bg-gray-100/80 p-1.5 rounded-2xl border-none h-auto">
+                        <TabsTrigger value="overview" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <User className="w-4 h-4" /> <span>Tổng quan</span>
                         </TabsTrigger>
-                        <TabsTrigger value="orders">
-                            <Package className="w-4 h-4" /> <span className="ml-2">Đơn hàng</span>
+                        <TabsTrigger value="orders" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <Package className="w-4 h-4" /> <span>Đơn hàng</span>
                         </TabsTrigger>
-                        <TabsTrigger value="membership">
-                            <Crown className="w-4 h-4" /> <span className="ml-2">Hạng thành viên</span>
+                        <TabsTrigger value="membership" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <Crown className="w-4 h-4" /> <span>Hạng thành viên</span>
                         </TabsTrigger>
-                        <TabsTrigger value="settings">
-                            <Settings className="w-4 h-4" /> <span className="ml-2">Cài đặt</span>
+                        <TabsTrigger value="settings" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <Settings className="w-4 h-4" /> <span>Cài đặt</span>
                         </TabsTrigger>
                     </TabsList>
 
                     {/* Overview Tab */}
                     <TabsContent value="overview" className="space-y-6">
                         {/* Quick Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Đơn hàng</p>
-                                            <p className="text-2xl font-bold mt-1">{totalOrders}</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-emerald-50 md:bg-transparent rounded-lg text-emerald-600 md:text-emerald-600">
+                                            <Package className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <Package className="w-8 h-8 text-emerald-600" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Đơn hàng</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{totalOrders}</p>
+                                        </div>
+                                        <Package className="hidden md:block w-8 h-8 text-emerald-600 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Tổng chi tiêu</p>
-                                            <p className="text-2xl font-bold mt-1">{(userTotalSpent / 1000000).toFixed(1)}M</p>
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-blue-50 md:bg-transparent rounded-lg text-blue-600 md:text-blue-600">
+                                            <TrendingUp className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <TrendingUp className="w-8 h-8 text-blue-600" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Chi tiêu</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{(userTotalSpent / 1000000).toFixed(1)}M</p>
+                                        </div>
+                                        <TrendingUp className="hidden md:block w-8 h-8 text-blue-600 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Điểm tích lũy</p>
-                                            <p className="text-2xl font-bold mt-1">{user.loyaltyPoints?.toLocaleString('vi-VN') || 0}</p>
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-amber-50 md:bg-transparent rounded-lg text-amber-600 md:text-amber-600">
+                                            <Star className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <Star className="w-8 h-8 text-amber-500" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Điểm tích lũy</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{user.loyaltyPoints || 0}</p>
+                                        </div>
+                                        <Star className="hidden md:block w-8 h-8 text-amber-500 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Địa chỉ</p>
-                                            <p className="text-2xl font-bold mt-1">{addresses.length}</p>
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-purple-50 md:bg-transparent rounded-lg text-purple-600 md:text-purple-600">
+                                            <MapPin className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <MapPin className="w-8 h-8 text-purple-600" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Địa chỉ</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{addresses.length}</p>
+                                        </div>
+                                        <MapPin className="hidden md:block w-8 h-8 text-purple-600 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -633,8 +662,8 @@ export default function ProfilePage() {
                                         </div>
                                     )}
                                     <Separator />
-                                    <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
-                                        <Edit className="w-4 h-4 mr-2" />
+                                    <Button variant="outline" size="sm" className="w-full text-xs h-9 bg-gray-50/50 hover:bg-white transition-all shadow-none border-gray-200" onClick={() => setActiveTab('settings')}>
+                                        <Edit className="w-3.5 h-3.5 mr-2" />
                                         Chỉnh sửa thông tin
                                     </Button>
                                 </CardContent>
@@ -669,7 +698,7 @@ export default function ProfilePage() {
                                         <p className="text-sm text-gray-500 text-center py-4">Chưa có địa chỉ nào</p>
                                     )}
                                     <Separator />
-                                    <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
+                                    <Button variant="outline" size="sm" className="w-full text-xs h-9 bg-gray-50/50 hover:bg-white transition-all shadow-none border-gray-200" onClick={() => setActiveTab('settings')}>
                                         Quản lý địa chỉ
                                     </Button>
                                 </CardContent>

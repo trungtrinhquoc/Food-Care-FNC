@@ -72,106 +72,91 @@ export default function ProductsPage() {
 
     return (
         <div>
-            <section >
-                <div className="container mx-auto px-4 py-8">
-                    <h1 className="mb-2">Sản Phẩm Thiết Yếu</h1>
-                    <p className="text-gray-600">
+            <section className="bg-emerald-50/30">
+                <div className="container mx-auto px-4 py-6 md:py-10">
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">Sản Phẩm Thiết Yếu</h1>
+                    <p className="text-sm md:text-base text-gray-600 max-w-2xl">
                         Khám phá các sản phẩm chất lượng cao với giá ưu đãi khi đặt hàng định kỳ
                     </p>
                 </div>
             </section>
 
-            <section className="bg-white border-b sticky top-[73px] z-40">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-
+            <section className="bg-white border-b sticky top-[64px] z-40 shadow-sm">
+                <div className="container mx-auto px-4 py-3 md:py-4">
+                    <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
                         {/* Category Tabs */}
-                        <Tabs defaultValue="all">
-                            <TabsList
-                                className="
-            flex gap-2
-            overflow-x-auto
-            whitespace-nowrap
-            max-w-full
-            scrollbar-hide
-        "
-                            >
-                                <TabsTrigger
-                                    value="all"
-                                    onClick={() => handleCategoryChange('all')}
-                                    className={`
-                px-4 py-2 rounded-md transition
-                ${selectedCategory === 'all'
-                                            ? 'bg-primary text-white'
-                                            : 'bg-muted text-muted-foreground hover:bg-accent'
-                                        }
-            `}
+                        <div className="w-full lg:w-auto overflow-hidden">
+                            <Tabs value={selectedCategory} className="w-full">
+                                <TabsList
+                                    className="flex gap-1.5 p-1 bg-gray-50/50 rounded-xl overflow-x-auto whitespace-nowrap scrollbar-hide no-scrollbar"
                                 >
-                                    Tất cả
-                                </TabsTrigger>
+                                    <TabsTrigger
+                                        value="all"
+                                        onClick={() => handleCategoryChange('all')}
+                                        className={`
+                                            px-4 py-1.5 text-sm font-medium rounded-lg transition-all
+                                            ${selectedCategory === 'all'
+                                                ? 'bg-white text-emerald-600 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                                            }
+                                        `}
+                                    >
+                                        Tất cả
+                                    </TabsTrigger>
 
-                                {categories?.map((category) => {
-                                    const value = category.id.toString();
-                                    const isActive = selectedCategory === value;
+                                    {categories?.map((category) => {
+                                        const value = category.id.toString();
+                                        const isActive = selectedCategory === value;
 
-                                    return (
-                                        <TabsTrigger
-                                            key={category.id}
-                                            value={value}
-                                            onClick={() => handleCategoryChange(value)}
-                                            className={`
-                        px-4 py-2 rounded-md transition
-                        ${isActive
-                                                    ? 'bg-primary text-white'
-                                                    : 'bg-muted text-muted-foreground hover:bg-accent'
-                                                }
-                    `}
-                                        >
-                                            {category.name}
-                                        </TabsTrigger>
-                                    );
-                                })}
-                            </TabsList>
-                        </Tabs>
+                                        return (
+                                            <TabsTrigger
+                                                key={category.id}
+                                                value={value}
+                                                onClick={() => handleCategoryChange(value)}
+                                                className={`
+                                                    px-4 py-1.5 text-sm font-medium rounded-lg transition-all
+                                                    ${isActive
+                                                        ? 'bg-white text-emerald-600 shadow-sm'
+                                                        : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                                                    }
+                                                `}
+                                            >
+                                                {category.name}
+                                            </TabsTrigger>
+                                        );
+                                    })}
+                                </TabsList>
+                            </Tabs>
+                        </div>
 
                         {/* Search */}
-                        <div className="relative w-full md:w-80">
-                            <input
-                                type="text"
-                                placeholder="Tìm kiếm sản phẩm..."
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleSearch();
-                                    }
-                                }}
-                                className="w-full pl-10 pr-20 py-2 border rounded-md"
-                            />
-
-
+                        <div className="relative w-full lg:w-80">
+                            <div className="relative group">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm sản phẩm..."
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleSearch();
+                                        }
+                                    }}
+                                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all duration-300"
+                                />
+                            </div>
                         </div>
-                        {/* <div className="flex gap-2 items-center">
-                            <button
-                                onClick={() => {
-                                    setEditingProduct(undefined)
-                                    setOpenDialog(true)
-                                }}
-                                className="btn-primary"
-                            >
-                                + Thêm sản phẩm
-                            </button>
-                        </div> */}
-
                     </div>
                 </div>
             </section>
 
-
-
-
-            <div className="container mx-auto px-4 py-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="container mx-auto px-4 py-6 md:py-8 lg:py-12">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
                     {data?.products.map((product) => (
                         <ProductCard
                             key={product.id}
