@@ -7,7 +7,8 @@ import type {
     Address,
     PaymentMethod,
     Supplier,
-
+    Order,
+    OrderStatus
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -203,6 +204,12 @@ export const profileApi = {
 
     setDefaultPaymentMethod: async (paymentMethodId: string): Promise<{ message: string; success: boolean }> => {
         const response = await api.patch(`/profile/payment-methods/${paymentMethodId}/set-default`);
+        return response.data;
+    },
+
+    // Order Management
+    getOrders: async (): Promise<Order[]> => {
+        const response = await api.get('/orders/my-orders');
         return response.data;
     },
 };

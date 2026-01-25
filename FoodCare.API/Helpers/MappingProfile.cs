@@ -51,12 +51,52 @@ public class MappingProfile : Profile
         // Category mappings
         CreateMap<Category, CategoryDto>();
         CreateMap<Subscription, SubscriptionDto>();
-            CreateMap<Order, OrdersDto>();
+        
+        CreateMap<Order, OrdersDto>()
+            .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.OrderItems))
+            .ForMember(dest => dest.IsSubscriptionOrder, opt => opt.MapFrom(src => src.IsSubscriptionOrder ?? false))
+            .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src => src.DiscountAmount ?? 0))
+            .ForMember(dest => dest.ShippingFee, opt => opt.MapFrom(src => src.ShippingFee ?? 0))
+            .ForMember(dest => dest.MemberDiscountAmount, opt => opt.MapFrom(src => 0m)) // Placeholder
+            .ForMember(dest => dest.SubscriptionDiscountAmount, opt => opt.MapFrom(src => 0m)); // Placeholder
+
         CreateMap<OrderItem, OrdersItemDto>()
-    .ForMember(
-        dest => dest.ProductName,
-        opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : string.Empty)
-    );
+            .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.ProductName) ? src.ProductName : (src.Product != null ? src.Product.Name : string.Empty)))
+            .ForMember(dest => dest.UnitPrice, opt => opt.MapFrom(src => src.Price))
+            .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalPrice ?? (src.Price * src.Quantity)))
+            .ForMember(dest => dest.IsSubscription, opt => opt.MapFrom(src => ParseIsSubscription(src.VariantSnapshot)))
+            .ForMember(dest => dest.SubscriptionFrequency, opt => opt.MapFrom(src => ParseFrequency(src.VariantSnapshot)));
+    }
+
+    private static bool ParseIsSubscription(string? snapshot)
+    {
+        if (string.IsNullOrEmpty(snapshot)) return false;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(snapshot);
+            if (doc.RootElement.TryGetProperty("isSubscription", out var prop))
+            {
+                return prop.GetBoolean();
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    private static string? ParseFrequency(string? snapshot)
+    {
+        if (string.IsNullOrEmpty(snapshot)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(snapshot);
+            if (doc.RootElement.TryGetProperty("subscription", out var sub) &&
+                sub.TryGetProperty("frequency", out var freq))
+            {
+                return freq.GetString();
+            }
+        }
+        catch { }
+        return null;
     }
 
     private static string GenerateSlug(string text)

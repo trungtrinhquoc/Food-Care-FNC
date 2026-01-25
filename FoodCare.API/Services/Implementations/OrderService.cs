@@ -134,5 +134,17 @@ namespace FoodCare.API.Services.Implementations
 
             return order == null ? null : _mapper.Map<OrdersDto>(order);
         }
+
+        public async Task<List<OrdersDto>> GetOrdersByUserIdAsync(Guid userId)
+        {
+            var orders = await _context.Orders
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+
+            return _mapper.Map<List<OrdersDto>>(orders);
+        }
     }
 }

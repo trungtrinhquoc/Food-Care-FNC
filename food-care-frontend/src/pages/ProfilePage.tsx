@@ -19,6 +19,7 @@ import {
     Crown, TrendingUp, Star, Phone, Mail, Edit,
     Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2
 } from 'lucide-react';
+import { OrderDetailDialog } from '../components/OrderDetailDialog';
 
 type MemberTierName = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
@@ -62,9 +63,11 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState('overview');
 
     // State for data
-    const [orders] = useState<Order[]>([]); // TODO: Implement orders API
+    const [orders, setOrders] = useState<Order[]>([]);
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     // Orders pagination
     const [ordersPage, setOrdersPage] = useState(1);
@@ -77,6 +80,7 @@ export default function ProfilePage() {
 
     // Loading states
     const [loading, setLoading] = useState(false);
+    const [loadingOrders, setLoadingOrders] = useState(true);
     const [loadingAddresses, setLoadingAddresses] = useState(true);
     const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
 
@@ -117,6 +121,11 @@ export default function ProfilePage() {
     const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
 
+    // Load orders on mount
+    useEffect(() => {
+        loadOrders();
+    }, []);
+
     // Load addresses on mount
     useEffect(() => {
         loadAddresses();
@@ -138,6 +147,19 @@ export default function ProfilePage() {
             });
         }
     }, [user]);
+
+    const loadOrders = async () => {
+        try {
+            setLoadingOrders(true);
+            const data = await profileApi.getOrders();
+            setOrders(data);
+        } catch (error: any) {
+            console.error('Error loading orders:', error);
+            // toast.error('Không thể tải danh sách đơn hàng');
+        } finally {
+            setLoadingOrders(false);
+        }
+    };
 
     const loadAddresses = async () => {
         try {
@@ -430,39 +452,46 @@ export default function ProfilePage() {
 
     const getStatusIcon = (status: OrderStatus) => {
         switch (status) {
-            case 'Pending':
+            case 'pending':
                 return <Clock className="w-5 h-5 text-yellow-600" />;
-            case 'Processing':
+            case 'confirmed':
+            case 'processing':
                 return <AlertCircle className="w-5 h-5 text-blue-600" />;
-            case 'Shipping':
+            case 'shipping':
                 return <Truck className="w-5 h-5 text-purple-600" />;
-            case 'Delivered':
+            case 'delivered':
                 return <CheckCircle className="w-5 h-5 text-green-600" />;
-            case 'Cancelled':
+            case 'cancelled':
                 return <XCircle className="w-5 h-5 text-red-600" />;
+            default:
+                return <Clock className="w-5 h-5 text-gray-600" />;
         }
     };
 
     const getStatusText = (status: OrderStatus) => {
         const statusMap: Record<OrderStatus, string> = {
-            Pending: 'Chờ xác nhận',
-            Processing: 'Đang xử lý',
-            Shipping: 'Đang giao',
-            Delivered: 'Đã giao',
-            Cancelled: 'Đã hủy',
+            pending: 'Chờ xác nhận',
+            confirmed: 'Đã xác nhận',
+            processing: 'Đang xử lý',
+            shipping: 'Đang giao',
+            delivered: 'Đã giao',
+            cancelled: 'Đã hủy',
+            returned: 'Đã trả hàng'
         };
-        return statusMap[status];
+        return statusMap[status] || status;
     };
 
     const getStatusColor = (status: OrderStatus) => {
         const colorMap: Record<OrderStatus, string> = {
-            Pending: 'bg-yellow-100 text-yellow-800',
-            Processing: 'bg-blue-100 text-blue-800',
-            Shipping: 'bg-purple-100 text-purple-800',
-            Delivered: 'bg-green-100 text-green-800',
-            Cancelled: 'bg-red-100 text-red-800',
+            pending: 'bg-yellow-100 text-yellow-800',
+            confirmed: 'bg-blue-100 text-blue-800',
+            processing: 'bg-blue-100 text-blue-800',
+            shipping: 'bg-purple-100 text-purple-800',
+            delivered: 'bg-green-100 text-green-800',
+            cancelled: 'bg-red-100 text-red-800',
+            returned: 'bg-gray-100 text-gray-800'
         };
-        return colorMap[status];
+        return colorMap[status] || 'bg-gray-100 text-gray-800';
     };
 
     // Mock total orders count
@@ -652,11 +681,16 @@ export default function ProfilePage() {
                             <CardHeader>
                                 <CardTitle>Lịch sử đơn hàng</CardTitle>
                                 <CardDescription>
-                                    {orders.length > 0 ? `Tất cả đơn hàng của bạn (${orders.length})` : 'Bạn chưa có đơn hàng nào'}
+                                    {loadingOrders ? 'Đang tải danh sách đơn hàng...' : orders.length > 0 ? `Tất cả đơn hàng của bạn (${orders.length})` : 'Bạn chưa có đơn hàng nào'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {orders.length === 0 ? (
+                                {loadingOrders ? (
+                                    <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                                        <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
+                                        <p className="text-gray-500">Đang tải đơn hàng...</p>
+                                    </div>
+                                ) : orders.length === 0 ? (
                                     <div className="text-center py-12">
                                         <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                                         <p className="text-gray-500">Chưa có đơn hàng nào</p>
@@ -664,7 +698,14 @@ export default function ProfilePage() {
                                 ) : (
                                     <div className="space-y-4">
                                         {paginatedOrders.map(order => (
-                                            <Card key={order.id} className="border-2">
+                                            <Card
+                                                key={order.id}
+                                                className="border-2 cursor-pointer hover:border-emerald-500 transition-all hover:shadow-md group"
+                                                onClick={() => {
+                                                    setSelectedOrder(order);
+                                                    setIsDetailOpen(true);
+                                                }}
+                                            >
                                                 <CardContent className="pt-6">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div>
@@ -1261,6 +1302,12 @@ export default function ProfilePage() {
                     </TabsContent>
                 </Tabs>
             </section>
+
+            <OrderDetailDialog
+                open={isDetailOpen}
+                onOpenChange={setIsDetailOpen}
+                order={selectedOrder}
+            />
         </div>
     );
 }
