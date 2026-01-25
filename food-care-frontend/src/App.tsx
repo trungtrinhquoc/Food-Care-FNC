@@ -17,6 +17,8 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
 import RecommendationsPage from './pages/RecommendationsPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentCancelPage from './pages/PaymentCancelPage';
 
 
 
@@ -82,6 +84,8 @@ function AppRoutes() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/recommendations" element={<RecommendationsPage />} />
+          <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          <Route path="/payment/cancel" element={<PaymentCancelPage />} />
 
 
           <Route
