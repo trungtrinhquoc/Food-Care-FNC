@@ -25,6 +25,7 @@ api.interceptors.request.use(
 
 // Types
 export interface AdminStats {
+
   totalRevenue: number;
   totalOrders: number;
   totalCustomers: number;

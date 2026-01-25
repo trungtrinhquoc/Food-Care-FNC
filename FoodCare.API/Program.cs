@@ -20,6 +20,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -116,6 +117,14 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
+// Register Chat Services (Simplified - Stateless)
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSingleton<MessageClassifier>(); // Singleton - no state
+builder.Services.AddScoped<FaqCacheService>();
+builder.Services.AddScoped<GeminiAiService>();
+
+
 
 var app = builder.Build();
 

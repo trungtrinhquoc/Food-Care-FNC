@@ -45,6 +45,11 @@ public partial class FoodCareDbContext : DbContext
     public DbSet<PointsHistory> PointsHistories { get; set; }
     public DbSet<PaymentLog> PaymentLogs { get; set; }
 
+    // Chat-related DbSets
+    public DbSet<ChatConversation> ChatConversations { get; set; }
+    public DbSet<ChatMessage> ChatMessages { get; set; }
+    public DbSet<ChatFaq> ChatFaqs { get; set; }
+
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
 
@@ -626,6 +631,111 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Chat entities configuration
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("chat_conversations_pkey");
+            entity.ToTable("chat_conversations");
+            
+            entity.HasIndex(e => e.UserId, "idx_chat_conversations_user");
+            entity.HasIndex(e => e.CreatedAt, "idx_chat_conversations_created").IsDescending();
+            
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("active")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            
+            entity.HasOne(d => d.User)
+                .WithMany(p => p.ChatConversations)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("chat_conversations_user_id_fkey");
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("chat_messages_pkey");
+            entity.ToTable("chat_messages");
+            
+            entity.HasIndex(e => e.ConversationId, "idx_chat_messages_conversation");
+            entity.HasIndex(e => e.CreatedAt, "idx_chat_messages_created").IsDescending();
+            
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("id");
+            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
+            entity.Property(e => e.Role)
+                .HasMaxLength(20)
+                .HasColumnName("role");
+            entity.Property(e => e.Content)
+                .HasColumnType("text");
+            entity.Property(e => e.Intent)
+                .HasMaxLength(50)
+                .HasColumnName("intent");
+            entity.Property(e => e.Metadata)
+                .HasColumnName("metadata")
+                .HasColumnType("jsonb");
+            entity.Property(e => e.TokensUsed).HasColumnName("tokens_used");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            
+            entity.HasOne(d => d.Conversation)
+                .WithMany(p => p.Messages)
+                .HasForeignKey(d => d.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("chat_messages_conversation_id_fkey");
+        });
+
+        modelBuilder.Entity<ChatFaq>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("chat_faqs_pkey");
+            entity.ToTable("chat_faqs");
+            
+            entity.HasIndex(e => e.Category, "idx_chat_faqs_category");
+            entity.HasIndex(e => e.HitCount, "idx_chat_faqs_hit").IsDescending();
+            
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("id");
+            entity.Property(e => e.QuestionPattern)
+                .HasColumnName("question_pattern")
+                .HasColumnType("text");
+            entity.Property(e => e.Answer)
+                .HasColumnName("answer")
+                .HasColumnType("text");
+            entity.Property(e => e.Category)
+                .HasMaxLength(100)
+                .HasColumnName("category");
+            entity.Property(e => e.HitCount)
+                .HasDefaultValue(0)
+                .HasColumnName("hit_count");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.Keywords)
+                .HasColumnName("keywords");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
         });
 
     }
