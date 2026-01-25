@@ -197,7 +197,7 @@ export default function Header() {
                                             <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <User className="w-5 h-5 text-gray-400" /> <span className="text-sm">Thông tin cá nhân</span>
                                             </Link>
-                                            <Link to="/profile?tab=orders" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                                            <Link to="/subscriptions" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Package className="w-5 h-5 text-gray-400" /> <span className="text-sm">Đơn hàng định kỳ</span>
                                             </Link>
                                         </div>
