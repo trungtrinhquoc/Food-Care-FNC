@@ -77,6 +77,8 @@ public class UserDto
     public int? LoyaltyPoints { get; set; }
     public bool? IsActive { get; set; }
     public MemberTierDto? MemberTier { get; set; }
+    public decimal TotalSpent { get; set; } = 0;
+    public DateTime? CreatedAt { get; set; }
 }
 
 public class MemberTierDto

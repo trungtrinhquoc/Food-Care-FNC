@@ -234,6 +234,7 @@ public class AuthService : IAuthService
         // Get user from our database
         var user = await _context.Users
             .Include(u => u.Tier)
+            .Include(u => u.Orders)
             .FirstOrDefaultAsync(u => u.Id == supabaseUserId);
 
         if (user == null)
@@ -373,6 +374,7 @@ public class AuthService : IAuthService
             // Check if user exists in our database
             var user = await _context.Users
                 .Include(u => u.Tier)
+                .Include(u => u.Orders)
                 .FirstOrDefaultAsync(u => u.Email == email);
 
             if (user != null)
@@ -515,6 +517,7 @@ public class AuthService : IAuthService
     {
         var user = await _context.Users
             .Include(u => u.Tier)
+            .Include(u => u.Orders)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         return user == null ? null : _mapper.Map<UserDto>(user);
