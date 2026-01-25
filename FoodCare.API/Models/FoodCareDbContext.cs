@@ -310,25 +310,45 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             {
                 t.HasCheckConstraint(
                     "check_attempt_number",
-                    "\"AttemptNumber\" >= 1"
+                    "\"attempt_number\" >= 1"
                 );
             });
 
-            entity.Property(e => e.TransactionType)
-                  .HasConversion<string>();
-
-            entity.Property(e => e.Status)
-                  .HasConversion<string>();
+            entity.HasKey(e => e.Id).HasName("transactions_pkey");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Provider).HasMaxLength(50).HasColumnName("provider");
+            entity.Property(e => e.TransactionType).HasConversion<string>().HasColumnName("transaction_type");
+            entity.Property(e => e.Amount).HasPrecision(15, 2).HasColumnName("amount");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasColumnName("currency");
+            entity.Property(e => e.Status).HasConversion<string>().HasColumnName("status");
+            entity.Property(e => e.AttemptNumber).HasDefaultValue(1).HasColumnName("attempt_number");
+            entity.Property(e => e.ProviderTransactionId).HasMaxLength(100).HasColumnName("provider_transaction_id");
+            entity.Property(e => e.ProviderResponse).HasColumnType("jsonb").HasColumnName("provider_response");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
 
             entity.HasIndex(e => e.OrderId);
             entity.HasIndex(e => e.SubscriptionId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
 
-            //entity.HasCheckConstraint(
-            //    "check_attempt_number",
-            //    "\"AttemptNumber\" >= 1"
-            //);
+            entity.HasOne(e => e.Order)
+                  .WithMany()
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Subscription)
+                  .WithMany()
+                  .HasForeignKey(e => e.SubscriptionId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Product>(entity =>

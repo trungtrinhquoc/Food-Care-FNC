@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -8,14 +10,17 @@ import type { Product } from '../types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { recommendationsApi } from '../services/recommendationsApi';
 import type { LowStockNotification as LowStockItem } from '../services/recommendationsApi';
+import { toast } from 'sonner';
 
 interface LowStockNotificationProps {
-    onNavigate: (page: string, product?: Product) => void;
+    onNavigate?: (page: string, product?: Product) => void;
     onAddToCart?: (product: Product) => void;
 }
 
-export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotificationProps) {
-    const { user, isAuthenticated } = useAuth();
+export function LowStockNotification({ }: LowStockNotificationProps) {
+    const { isAuthenticated } = useAuth();
+    const { addToCart } = useCart();
+    const navigate = useNavigate();
     const [isVisible, setIsVisible] = useState(true);
     const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -40,32 +45,41 @@ export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotifi
         fetchLowStockItems();
     }, [isAuthenticated]);
 
-    if (!user || !isVisible || isLoading || lowStockItems.length === 0) {
+    if (!isAuthenticated || !isVisible || isLoading || lowStockItems.length === 0) {
         return null;
     }
 
     const getUrgencyColor = (daysLeft: number) => {
-        if (daysLeft <= 3) return 'text-red-600 bg-red-50 border-red-200';
-        if (daysLeft <= 7) return 'text-orange-600 bg-orange-50 border-orange-200';
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        if (daysLeft <= 3) return 'border-red-500 bg-red-50';
+        if (daysLeft <= 7) return 'border-orange-500 bg-orange-50';
+        return 'border-yellow-500 bg-yellow-50';
     };
 
     const getUrgencyBadge = (daysLeft: number) => {
-        if (daysLeft <= 3) return <Badge className="bg-red-500">Khẩn cấp</Badge>;
-        if (daysLeft <= 7) return <Badge className="bg-orange-500">Sắp hết</Badge>;
-        return <Badge className="bg-yellow-500">Nên mua</Badge>;
+        if (daysLeft <= 3) return <Badge className="bg-red-500 hover:bg-red-600 whitespace-nowrap">Khẩn cấp</Badge>;
+        if (daysLeft <= 7) return <Badge className="bg-orange-500 hover:bg-orange-600 whitespace-nowrap">Sắp hết</Badge>;
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600 whitespace-nowrap">Nên mua</Badge>;
+    };
+
+    const handleDetailClick = (product: Product) => {
+        navigate(`/products/${product.id}`);
+    };
+
+    const handleReorderClick = (product: Product) => {
+        addToCart(product, 1);
+        toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
     };
 
     return (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-orange-100">
-            <div className="container mx-auto px-4 py-6">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-orange-100 w-full">
+            <div className="w-full px-4 md:px-8 py-6">
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
                             <AlertCircle className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h3 className="mb-0 text-orange-900">🔔 Sản phẩm có thể sắp hết</h3>
+                            <h3 className="mb-0 font-semibold text-gray-900">🔔 Sản phẩm có thể sắp hết</h3>
                             <p className="text-sm text-gray-600">
                                 Dựa vào lịch sử mua hàng, những sản phẩm này có thể sắp hết trong nhà bạn
                             </p>
@@ -85,8 +99,8 @@ export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotifi
                         const daysAgo = Math.floor((Date.now() - lastPurchaseDate.getTime()) / (24 * 60 * 60 * 1000));
 
                         return (
-                            <Card key={item.product.id} className={`border-2 transition-all hover:shadow-md ${getUrgencyColor(item.estimatedDaysLeft)}`}>
-                                <CardContent className="p-4">
+                            <Card key={item.product.id} className={`border-2 ${getUrgencyColor(item.estimatedDaysLeft)} shadow-sm`}>
+                                <CardContent className="pt-4 p-4">
                                     <div className="flex gap-3 mb-3">
                                         <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
                                             <ImageWithFallback
@@ -96,20 +110,24 @@ export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotifi
                                             />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="mb-1 font-medium text-gray-900 truncate">{item.product.name}</div>
-                                            <div className="text-sm text-gray-500">{item.product.unit || 'Đơn vị: Gói/Túi'}</div>
+                                            <div className="mb-1 font-medium text-gray-900 truncate" title={item.product.name}>
+                                                {item.product.name}
+                                            </div>
+                                            <div className="text-sm text-gray-600">{item.product.unit || 'Đơn vị: Gói'}</div>
                                         </div>
-                                        {getUrgencyBadge(item.estimatedDaysLeft)}
+                                        <div className="flex-shrink-0">
+                                            {getUrgencyBadge(item.estimatedDaysLeft)}
+                                        </div>
                                     </div>
 
-                                    <div className="bg-white/80 rounded-lg p-3 mb-3 text-sm space-y-1">
+                                    <div className="bg-white rounded-lg p-3 mb-3 text-sm space-y-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-gray-600">Mua lần cuối:</span>
-                                            <span className="font-medium">{daysAgo} ngày trước</span>
+                                            <span className="font-medium text-gray-900">{daysAgo} ngày trước</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-gray-600">Ước tính còn:</span>
-                                            <span className={`font-semibold ${item.estimatedDaysLeft <= 3 ? 'text-red-600' : 'text-orange-600'}`}>
+                                            <span className={`font-semibold ${item.estimatedDaysLeft <= 3 ? 'text-red-600' : 'text-gray-900'}`}>
                                                 ~{item.estimatedDaysLeft} ngày
                                             </span>
                                         </div>
@@ -119,19 +137,15 @@ export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotifi
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            className="flex-1 bg-white border-gray-200"
-                                            onClick={() => onNavigate('product-detail', item.product)}
+                                            className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border-gray-200"
+                                            onClick={() => handleDetailClick(item.product)}
                                         >
-                                            Chi tiết
+                                            Xem chi tiết
                                         </Button>
                                         <Button
                                             size="sm"
-                                            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
-                                            onClick={() => {
-                                                if (onAddToCart) {
-                                                    onAddToCart(item.product);
-                                                }
-                                            }}
+                                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 shadow-sm"
+                                            onClick={() => handleReorderClick(item.product)}
                                         >
                                             <ShoppingCart className="w-4 h-4 mr-1" />
                                             Mua lại
@@ -142,7 +156,7 @@ export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotifi
                                         size="sm"
                                         variant="ghost"
                                         className="w-full mt-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                        onClick={() => onNavigate('subscriptions')}
+                                        onClick={() => navigate('/subscriptions')}
                                     >
                                         <Calendar className="w-4 h-4 mr-1" />
                                         Đặt định kỳ - Tiết kiệm 10%
@@ -155,7 +169,7 @@ export function LowStockNotification({ onNavigate, onAddToCart }: LowStockNotifi
                 </div>
 
                 <div className="mt-4 text-center">
-                    <p className="text-sm text-gray-500 italic">
+                    <p className="text-sm text-gray-600 italic">
                         💡 Mẹo: Đặt hàng định kỳ để luôn có đủ sản phẩm và tiết kiệm 10-15%
                     </p>
                 </div>

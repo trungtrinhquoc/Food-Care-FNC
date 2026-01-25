@@ -9,10 +9,12 @@ namespace FoodCare.API.Services.Implementations
     public class PayOsService : IPayOsService
     {
         private readonly IConfiguration _config;
+        private readonly ILogger<PayOsService> _logger;
 
-        public PayOsService(IConfiguration config)
+        public PayOsService(IConfiguration config, ILogger<PayOsService> logger)
         {
             _config = config;
+            _logger = logger;
         }
 
         public async Task<PayOsCreateLinkResponse> CreatePaymentLinkAsync(
@@ -20,12 +22,12 @@ namespace FoodCare.API.Services.Implementations
             decimal amount,
             string description)
         {
-            var clientId = _config["PayOS:ClientId"];
-            var apiKey = _config["PayOS:ApiKey"];
-            var checksumKey = _config["PayOS:ChecksumKey"];
+            var clientId = _config["PaymentSettings:PayOS:ClientId"];
+            var apiKey = _config["PaymentSettings:PayOS:ApiKey"];
+            var checksumKey = _config["PaymentSettings:PayOS:ChecksumKey"];
 
-            var returnUrl = _config["PayOS:ReturnUrl"];
-            var cancelUrl = _config["PayOS:CancelUrl"];
+            var returnUrl = _config["PaymentSettings:PayOS:ReturnUrl"];
+            var cancelUrl = _config["PaymentSettings:PayOS:CancelUrl"];
 
             var signature = CreateSignature(
                 orderCode,
@@ -59,12 +61,27 @@ namespace FoodCare.API.Services.Implementations
                 )
             );
 
+            var json = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation($"PayOS Response: {json}");
+
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync();
-            var data = JsonDocument.Parse(json)
-                                   .RootElement
-                                   .GetProperty("data");
+            var root = JsonDocument.Parse(json).RootElement;
+            var code = root.GetProperty("code").GetString();
+            var desc = root.GetProperty("desc").GetString();
+
+            if (code != "00")
+            {
+                _logger.LogError($"PayOS Error: Code={code}, Desc={desc}");
+                throw new Exception($"PayOS Error: {desc}");
+            }
+
+            var data = root.GetProperty("data");
+
+            if (data.ValueKind == JsonValueKind.Null)
+            {
+                 throw new Exception("PayOS returned success but 'data' is null.");
+            }
 
             return new PayOsCreateLinkResponse
             {
@@ -74,7 +91,7 @@ namespace FoodCare.API.Services.Implementations
         }
         public bool VerifySignature(string payload, string receivedSignature)
         {
-            var checksumKey = _config["PayOS:ChecksumKey"];
+            var checksumKey = _config["PaymentSettings:PayOS:ChecksumKey"];
 
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(checksumKey));
             var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
@@ -92,12 +109,20 @@ namespace FoodCare.API.Services.Implementations
             string returnUrl,
             string checksumKey)
         {
+            // PayOS yêu cầu sắp xếp a-z
+            // amount, cancelUrl, description, orderCode, returnUrl
+            
+            // NOTE: amount phải là số nguyên (nếu VND), không có decimal point trong chuỗi ký
+            var amountStr = ((long)amount).ToString();
+
             var rawData =
-                $"amount={amount}&" +
+                $"amount={amountStr}&" +
                 $"cancelUrl={cancelUrl}&" +
                 $"description={description}&" +
                 $"orderCode={orderCode}&" +
                 $"returnUrl={returnUrl}";
+            
+            _logger.LogInformation($"Signature Raw Data: {rawData}");
 
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(checksumKey));
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData));
