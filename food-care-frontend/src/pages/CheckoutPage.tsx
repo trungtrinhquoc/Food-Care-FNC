@@ -12,6 +12,7 @@ import { Separator } from '../components/ui/separator';
 import { Badge } from '../components/ui/badge';
 import { AddressSelector } from '../components/AddressSelector';
 import { orderApi } from '../services/orderApi';
+import { paymentApi } from '../services/paymentApi';
 import { profileApi } from '../services/api';
 import type { Address, CreateOrderRequest } from '../types';
 
@@ -178,7 +179,7 @@ export default function CheckoutPage() {
                 })),
             };
 
-            await orderApi.createOrder(payload);
+            const order = await orderApi.createOrder(payload);
 
             // Auto-save address if it's new
             if (user && !selectedAddressId) {
@@ -194,6 +195,23 @@ export default function CheckoutPage() {
                     });
                 } catch (saveError) {
                     console.error('Error auto-saving address:', saveError);
+                }
+            }
+
+            // If online payment (bank or momo), create PayOS payment link
+            if (paymentMethod === 'bank' || paymentMethod === 'momo') {
+                try {
+                    toast.info('Đang chuyển hướng đến cổng thanh toán...');
+                    const paymentResponse = await paymentApi.createPayOsPayment({ orderId: order.id });
+                    if (paymentResponse.checkoutUrl) {
+                        window.location.href = paymentResponse.checkoutUrl;
+                        return; // Stop here, browser will redirect
+                    }
+                } catch (payError) {
+                    console.error('Payment redirect error:', payError);
+                    toast.error('Không thể tạo liên kết thanh toán. Vui lòng thử lại hoặc chọn COD.');
+                    // Don't navigate away, let user try another method
+                    return;
                 }
             }
 

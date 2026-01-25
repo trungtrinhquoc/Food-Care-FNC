@@ -341,3 +341,13 @@ export interface ReviewEligibility {
     canReview: boolean;
     reason?: string;
 }
+
+// Payment Request/Response Types
+export interface CreatePaymentRequest {
+    orderId: string;
+}
+
+export interface PayOsCreateLinkResponse {
+    checkoutUrl: string;
+    paymentLinkId: string;
+}
