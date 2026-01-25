@@ -6,5 +6,6 @@ namespace FoodCare.API.Services.Interfaces
     {
         Task<OrdersDto> CreateOrderAsync(CreateOrderDto dto);
         Task<OrdersDto?> GetOrderByIdAsync(Guid id);
+        Task<List<OrdersDto>> GetOrdersByUserIdAsync(Guid userId);
     }
 }
