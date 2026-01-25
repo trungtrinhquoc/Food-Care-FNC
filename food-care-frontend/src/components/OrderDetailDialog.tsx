@@ -22,13 +22,31 @@ interface OrderDetailDialogProps {
 export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDialogProps) {
     if (!order) return null;
 
+    // Debug log to see order data
+    if (open) {
+        console.log('Order Data in Dialog:', order);
+    }
+
     const shippingAddress = useMemo(() => {
         if (!order.shippingAddressSnapshot) return null;
         try {
             const parsed = JSON.parse(order.shippingAddressSnapshot);
-            return parsed.address || parsed;
+            // Support both old string format and new structured format
+            if (typeof parsed === 'string') return { addressLine1: parsed };
+
+            // If it's the old { address: "..." } format
+            if (parsed.address && typeof parsed.address === 'string' && !parsed.recipientName) {
+                return { addressLine1: parsed.address };
+            }
+
+            // New structured format
+            return {
+                recipientName: parsed.recipientName,
+                phoneNumber: parsed.phoneNumber,
+                addressLine1: parsed.address || parsed.addressLine1
+            };
         } catch (e) {
-            return order.shippingAddressSnapshot;
+            return { addressLine1: order.shippingAddressSnapshot };
         }
     }, [order.shippingAddressSnapshot]);
 
@@ -142,26 +160,30 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
                             Sản phẩm đã chọn
                         </h4>
                         <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                            {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-start gap-4">
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-900">{item.productName}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <p className="text-sm text-gray-500">
-                                                {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
-                                            </p>
-                                            {item.isSubscription && (
-                                                <StatusBadge variant="secondary" className="text-[10px] py-0">
-                                                    📦 Đăng ký định kỳ
-                                                </StatusBadge>
-                                            )}
+                            {!order.items || order.items.length === 0 ? (
+                                <p className="text-center text-gray-500 py-4 italic">Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.</p>
+                            ) : (
+                                order.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-start gap-4">
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-900">{item.productName}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className="text-sm text-gray-500">
+                                                    {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
+                                                </p>
+                                                {item.isSubscription && (
+                                                    <StatusBadge variant="secondary" className="text-[10px] py-0">
+                                                        📦 Đăng ký định kỳ
+                                                    </StatusBadge>
+                                                )}
+                                            </div>
                                         </div>
+                                        <p className="font-bold text-gray-900">
+                                            {(item.quantity * item.unitPrice).toLocaleString('vi-VN')}đ
+                                        </p>
                                     </div>
-                                    <p className="font-bold text-gray-900">
-                                        {(item.quantity * item.unitPrice).toLocaleString('vi-VN')}đ
-                                    </p>
-                                </div>
-                            ))}
+                                ))
+                            )}
                             <Separator className="my-2" />
                             <div className="space-y-1.5">
                                 <div className="flex justify-between text-sm text-gray-600">
@@ -196,12 +218,12 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
                             <div className="bg-white border rounded-lg p-4 h-full">
                                 {shippingAddress ? (
                                     <div className="text-sm space-y-1">
-                                        <p className="font-bold text-gray-900">{shippingAddress.recipientName || 'Người nhận'}</p>
-                                        <p className="text-gray-600">{shippingAddress.phoneNumber}</p>
+                                        <p className="font-bold text-gray-900">{(shippingAddress as any).recipientName || (shippingAddress as any).fullName || 'Người nhận'}</p>
+                                        <p className="text-gray-600">{(shippingAddress as any).phoneNumber || (shippingAddress as any).phone}</p>
                                         <p className="text-gray-600">
-                                            {shippingAddress.addressLine1}
-                                            {shippingAddress.district ? `, ${shippingAddress.district}` : ''}
-                                            {shippingAddress.city ? `, ${shippingAddress.city}` : ''}
+                                            {(shippingAddress as any).addressLine1 || (shippingAddress as any).address}
+                                            {(shippingAddress as any).district ? `, ${(shippingAddress as any).district}` : ''}
+                                            {(shippingAddress as any).city ? `, ${(shippingAddress as any).city}` : ''}
                                         </p>
                                     </div>
                                 ) : (

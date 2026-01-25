@@ -12,6 +12,8 @@ using FoodCare.API.Services.Implementations.Admin;
 using System.Text.Json.Serialization;
 using FoodCare.API.Models;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
