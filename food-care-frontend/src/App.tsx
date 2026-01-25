@@ -19,8 +19,10 @@ import CheckoutPage from './pages/CheckoutPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 
 
+
 // Components
 import Header from './components/Header';
+import ChatWidget from './components/ChatWidget';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +100,7 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin"
             element={
@@ -109,9 +112,18 @@ function AppRoutes() {
         </Routes>
 
       </main>
+
+      {/* Chat Widget - only show when logged in */}
+      <ChatWidgetWrapper />
     </div>
   );
 }
+
+// Wrapper component for Chat Widget
+function ChatWidgetWrapper() {
+  return <ChatWidget />;
+}
+
 
 function App() {
   return (

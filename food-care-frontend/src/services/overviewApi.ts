@@ -25,6 +25,7 @@ api.interceptors.request.use(
 
 // Types for Overview Tab
 export interface OrderChartData {
+
   period: string;
   pending: number;
   confirmed: number;
@@ -78,7 +79,7 @@ export const overviewApi = {
       // Return mock data as fallback with proper date logic
       const today = new Date();
       const mockData: OrderChartData[] = [];
-      
+
       if (days === 7) {
         // Weekly data - show last 7 days
         const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -86,12 +87,12 @@ export const overviewApi = {
           const date = new Date(today);
           date.setDate(date.getDate() - i);
           const dayName = dayNames[date.getDay()];
-          
+
           const pending = Math.floor(Math.random() * 15) + 5;
           const confirmed = Math.floor(Math.random() * 12) + 3;
           const delivered = Math.floor(Math.random() * 40) + 30;
           const cancelled = Math.floor(Math.random() * 3) + 1;
-          
+
           mockData.push({
             period: dayName,
             pending,
@@ -108,7 +109,7 @@ export const overviewApi = {
           const confirmed = Math.floor(Math.random() * 40) + 15;
           const delivered = Math.floor(Math.random() * 150) + 100;
           const cancelled = Math.floor(Math.random() * 10) + 2;
-          
+
           mockData.push({
             period: `Tuần ${4 - week}`,
             pending,
@@ -124,12 +125,12 @@ export const overviewApi = {
           const date = new Date(today);
           date.setMonth(date.getMonth() - month);
           const monthName = `T${date.getMonth() + 1}`;
-          
+
           const pending = Math.floor(Math.random() * 80) + 30;
           const confirmed = Math.floor(Math.random() * 100) + 50;
           const delivered = Math.floor(Math.random() * 400) + 300;
           const cancelled = Math.floor(Math.random() * 30) + 10;
-          
+
           mockData.push({
             period: monthName,
             pending,
@@ -140,7 +141,7 @@ export const overviewApi = {
           });
         }
       }
-      
+
       return mockData;
     }
   },
@@ -195,9 +196,8 @@ export const overviewApi = {
       // Return mock data as fallback for demo
       const today = new Date();
       const mockData: UserTrafficData[] = [];
-      
+
       // Adjust data points based on time range
-      let dataPoints = days;
       if (days === 1) {
         // For 1 day, show hourly data (24 hours)
         for (let i = 23; i >= 0; i--) {
@@ -237,7 +237,7 @@ export const overviewApi = {
           });
         }
       }
-      
+
       return mockData;
     }
   },

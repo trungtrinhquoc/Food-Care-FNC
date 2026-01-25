@@ -66,4 +66,6 @@ public partial class User
     public virtual MemberTier? Tier { get; set; }
 
     public virtual ICollection<ZaloMessagesLog> ZaloMessagesLogs { get; set; } = new List<ZaloMessagesLog>();
+
+    public virtual ICollection<ChatConversation> ChatConversations { get; set; } = new List<ChatConversation>();
 }
