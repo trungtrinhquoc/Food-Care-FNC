@@ -50,7 +50,9 @@ namespace FoodCare.API.Services.Implementations
 
                     ShippingAddressSnapshot = JsonSerializer.Serialize(new
                     {
-                        address = dto.ShippingAddress
+                        address = dto.ShippingAddress,
+                        recipientName = dto.RecipientName,
+                        phoneNumber = dto.PhoneNumber
                     }),
 
                     PaymentMethodSnapshot = JsonSerializer.Serialize(new
@@ -82,9 +84,35 @@ namespace FoodCare.API.Services.Implementations
 
                 _context.OrderItems.AddRange(orderItems);
 
-                // 4. Tạo PaymentLog nếu có UserId
+                // 4. Cập nhật thông tin Profile người dùng nếu còn thiếu
                 if (dto.UserId.HasValue)
                 {
+                    var user = await _context.Users.FindAsync(dto.UserId.Value);
+                    if (user != null)
+                    {
+                        bool needsUpdate = false;
+                        
+                        // Cập nhật Họ tên nếu user chưa có (ví dụ mới đăng ký qua Google/Social)
+                        if (string.IsNullOrEmpty(user.FullName) && !string.IsNullOrEmpty(dto.RecipientName))
+                        {
+                            user.FullName = dto.RecipientName;
+                            needsUpdate = true;
+                        }
+                        
+                        // Cập nhật số điện thoại nếu user chưa có
+                        if ((string.IsNullOrEmpty(user.PhoneNumber) || user.PhoneNumber == "string") && !string.IsNullOrEmpty(dto.PhoneNumber))
+                        {
+                            user.PhoneNumber = dto.PhoneNumber;
+                            needsUpdate = true;
+                        }
+
+                        if (needsUpdate)
+                        {
+                            user.UpdatedAt = DateTime.UtcNow;
+                            _context.Users.Update(user);
+                        }
+                    }
+
                     var paymentLog = new PaymentLog
                     {
                         Id = Guid.NewGuid(),
@@ -130,6 +158,7 @@ namespace FoodCare.API.Services.Implementations
         {
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             return order == null ? null : _mapper.Map<OrdersDto>(order);

@@ -180,6 +180,8 @@ export interface CreateOrderItemRequest {
 export interface CreateOrderRequest {
     userId: string;
     shippingAddress: string;
+    recipientName?: string;
+    phoneNumber?: string;
     paymentMethod: string;
     note?: string;
     items: CreateOrderItemRequest[];

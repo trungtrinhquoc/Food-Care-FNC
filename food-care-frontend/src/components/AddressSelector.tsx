@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '../components/ui/select';
+import { SearchableSelect } from './ui/searchable-select';
 
 interface AddressValue {
     province?: string;
@@ -23,16 +17,39 @@ export function AddressSelector({ value, onChange }: AddressSelectorProps) {
     const [districts, setDistricts] = useState<any[]>([]);
     const [wards, setWards] = useState<any[]>([]);
 
+    // Store selected codes locally to manage levels correctly
+    const [selectedProvCode, setSelectedProvCode] = useState<string>("");
+    const [selectedDistCode, setSelectedDistCode] = useState<string>("");
+
     /* ================= LOAD PROVINCES ================= */
     useEffect(() => {
         fetch('https://provinces.open-api.vn/api/p/')
             .then(res => res.json())
-            .then(setProvinces);
+            .then(data => {
+                setProvinces(data);
+                // Try to find code if name exists in props
+                if (value.province) {
+                    const found = data.find((p: any) => p.name === value.province);
+                    if (found) setSelectedProvCode(String(found.code));
+                }
+            });
     }, []);
+
+    // Sync codes if names change from outside
+    useEffect(() => {
+        if (value.province && provinces.length > 0) {
+            const found = provinces.find(p => p.name === value.province);
+            if (found) setSelectedProvCode(String(found.code));
+        } else if (!value.province) {
+            setSelectedProvCode("");
+        }
+    }, [value.province, provinces]);
 
     /* ================= HANDLERS ================= */
     const handleProvinceChange = async (code: string) => {
         const province = provinces.find(p => p.code === Number(code));
+        setSelectedProvCode(code);
+        setSelectedDistCode("");
 
         onChange({
             province: province?.name,
@@ -52,6 +69,7 @@ export function AddressSelector({ value, onChange }: AddressSelectorProps) {
 
     const handleDistrictChange = async (code: string) => {
         const district = districts.find(d => d.code === Number(code));
+        setSelectedDistCode(code);
 
         onChange({
             province: value.province,
@@ -68,11 +86,12 @@ export function AddressSelector({ value, onChange }: AddressSelectorProps) {
         setWards(data.wards || []);
     };
 
-    const handleWardChange = (name: string) => {
+    const handleWardChange = (nameWithCode: string) => {
+        // Since searchable select uses value as key, we use name here
         onChange({
             province: value.province,
             district: value.district,
-            ward: name,
+            ward: nameWithCode,
         });
     };
 
@@ -80,58 +99,30 @@ export function AddressSelector({ value, onChange }: AddressSelectorProps) {
     return (
         <div className="grid md:grid-cols-3 gap-4">
             {/* PROVINCE */}
-            <Select onValueChange={handleProvinceChange}>
-                <SelectTrigger className="h-11 bg-white text-base">
-                    <SelectValue placeholder="Tỉnh / Thành phố" />
-                </SelectTrigger>
-                <SelectContent
-                    className="bg-white border shadow-lg z-50"
-                    position="popper"
-                >
-                    {provinces.map(p => (
-                        <SelectItem key={p.code} value={String(p.code)} className="py-2">
-                            {p.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <SearchableSelect
+                placeholder="Tỉnh / Thành phố"
+                options={provinces.map(p => ({ value: String(p.code), label: p.name }))}
+                value={selectedProvCode}
+                onValueChange={handleProvinceChange}
+            />
 
             {/* DISTRICT */}
-            <Select
-                onValueChange={handleDistrictChange}
+            <SearchableSelect
+                placeholder="Quận / Huyện"
                 disabled={!districts.length}
-            >
-                <SelectTrigger className="h-11 bg-white text-base">
-                    <SelectValue placeholder="Quận / Huyện" />
-                </SelectTrigger>
-                <SelectContent
-                    className="bg-white border shadow-lg z-50"
-                    position="popper"
-                >
-                    {districts.map(d => (
-                        <SelectItem key={d.code} value={String(d.code)} className="py-2">
-                            {d.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                options={districts.map(d => ({ value: String(d.code), label: d.name }))}
+                value={selectedDistCode}
+                onValueChange={handleDistrictChange}
+            />
 
             {/* WARD */}
-            <Select onValueChange={handleWardChange} disabled={!wards.length}>
-                <SelectTrigger className="h-11 bg-white text-base">
-                    <SelectValue placeholder="Phường / Xã" />
-                </SelectTrigger>
-                <SelectContent
-                    className="bg-white border shadow-lg z-50"
-                    position="popper"
-                >
-                    {wards.map(w => (
-                        <SelectItem key={w.code} value={w.name} className="py-2">
-                            {w.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <SearchableSelect
+                placeholder="Phường / Xã"
+                disabled={!wards.length}
+                options={wards.map(w => ({ value: w.name, label: w.name }))}
+                value={value.ward}
+                onValueChange={handleWardChange}
+            />
         </div>
     );
 }

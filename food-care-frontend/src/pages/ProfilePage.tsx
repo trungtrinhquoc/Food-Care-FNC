@@ -13,12 +13,14 @@ import { StatusBadge } from '../components/ui/status-badge';
 import { Progress } from '../components/ui/progress';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { SimplePagination } from '../components/ui/pagination';
 import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
-    Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2
+    Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2,
+    Check
 } from 'lucide-react';
+import { SimplePagination } from '../components/ui/pagination';
+import { AddressSelector } from '../components/AddressSelector';
 import { OrderDetailDialog } from '../components/OrderDetailDialog';
 
 type MemberTierName = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
@@ -980,21 +982,20 @@ export default function ProfilePage() {
                                                     required
                                                 />
                                             </div>
-                                            <div>
-                                                <Label htmlFor="addressCity">Thành phố *</Label>
-                                                <Input
-                                                    id="addressCity"
-                                                    value={addressForm.city}
-                                                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="addressDistrict">Quận/Huyện</Label>
-                                                <Input
-                                                    id="addressDistrict"
-                                                    value={addressForm.district}
-                                                    onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                                            <div className="md:col-span-2 space-y-2">
+                                                <Label>Tỉnh/Thành, Quận/Huyện, Phường/Xã *</Label>
+                                                <AddressSelector
+                                                    value={{
+                                                        province: addressForm.city,
+                                                        district: addressForm.district,
+                                                        ward: addressForm.ward
+                                                    }}
+                                                    onChange={(val) => setAddressForm({
+                                                        ...addressForm,
+                                                        city: val.province,
+                                                        district: val.district,
+                                                        ward: val.ward
+                                                    })}
                                                 />
                                             </div>
                                             <div className="md:col-span-2">
@@ -1032,39 +1033,48 @@ export default function ProfilePage() {
                                         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
                                     </div>
                                 ) : addresses.length === 0 ? (
-                                    <p className="text-center text-gray-500 py-8">Chưa có địa chỉ nào</p>
+                                    <div className="text-center py-8">
+                                        <p className="text-gray-500 mb-2">Chưa có địa chỉ nào được lưu</p>
+                                        <p className="text-xs text-gray-400">Địa chỉ sẽ được tự động lưu lại khi bạn đặt hàng lần đầu</p>
+                                    </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {addresses.map(address => (
-                                            <div key={address.id} className="p-4 border rounded-lg">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
+                                        {addresses.map(addr => (
+                                            <div key={addr.id} className={`p-4 border-2 rounded-xl transition-all relative overflow-hidden ${addr.isDefault ? 'border-orange-200 bg-orange-50/10' : 'border-gray-100 bg-white'}`}>
+                                                <div className="flex items-start justify-between relative z-10">
+                                                    <div className="flex-1 space-y-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-medium">{address.recipientName}</p>
-                                                            {address.isDefault && (
-                                                                <StatusBadge variant="secondary">Mặc định</StatusBadge>
+                                                            <p className="font-bold text-gray-900">{addr.recipientName}</p>
+                                                            {addr.isDefault && (
+                                                                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm border border-orange-200 uppercase tracking-wider">
+                                                                    Mặc định
+                                                                </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-sm text-gray-600">{address.phoneNumber}</p>
-                                                        <p className="text-sm text-gray-600">
-                                                            {address.addressLine1}, {address.district}, {address.city}
+                                                        <p className="text-sm text-gray-600 font-medium flex items-center gap-1.5">
+                                                            <span className="opacity-70 text-xs">📞</span> {addr.phoneNumber}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500 leading-relaxed">
+                                                            {addr.addressLine1}
+                                                            <span className="text-gray-400 mx-1">•</span>
+                                                            {addr.ward}, {addr.district}, {addr.city}
                                                         </p>
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => handleEditAddress(address)}
+                                                            onClick={() => handleEditAddress(addr)}
                                                             disabled={loading}
                                                         >
                                                             Sửa
                                                         </Button>
-                                                        {!address.isDefault && (
+                                                        {!addr.isDefault && (
                                                             <>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={() => handleSetDefaultAddress(address.id)}
+                                                                    onClick={() => handleSetDefaultAddress(addr.id)}
                                                                     disabled={loading}
                                                                 >
                                                                     Đặt mặc định
@@ -1073,7 +1083,7 @@ export default function ProfilePage() {
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     className="text-red-600"
-                                                                    onClick={() => handleDeleteAddress(address.id)}
+                                                                    onClick={() => handleDeleteAddress(addr.id)}
                                                                     disabled={loading}
                                                                 >
                                                                     Xóa
@@ -1308,6 +1318,6 @@ export default function ProfilePage() {
                 onOpenChange={setIsDetailOpen}
                 order={selectedOrder}
             />
-        </div>
+        </div >
     );
 }
