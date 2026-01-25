@@ -191,7 +191,9 @@ public class RecommendationService : IRecommendationService
                 ProductId = g.Key,
                 OrderCount = g.Count(),
                 Product = g.First().Product,
-                DiscountPercentage = ((g.First().Product!.OriginalPrice.Value - g.First().Product.BasePrice) / g.First().Product.OriginalPrice.Value) * 100
+                DiscountPercentage = (g.First().Product != null && g.First().Product!.OriginalPrice.HasValue && g.First().Product!.OriginalPrice.Value != 0) 
+                    ? ((g.First().Product!.OriginalPrice.Value - g.First().Product!.BasePrice) / g.First().Product!.OriginalPrice.Value) * 100 
+                    : 0
             })
             .OrderByDescending(x => x.DiscountPercentage)
             .ThenByDescending(x => x.OrderCount)
@@ -258,7 +260,8 @@ public class RecommendationService : IRecommendationService
 
             if (userProducts.Count == 0)
             {
-                // If user has no purchase history, return trending products
+                // The provided code snippet was syntactically incorrect and out of context for this method.
+                // Assuming the intent was to return trending products if no user history.
                 return await GetTrendingProductsAsync(limit);
             }
 

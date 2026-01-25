@@ -27,7 +27,7 @@ const ZaloTab = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.Zal
 const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
 const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
-const SubscriptionRemindersTab = lazy(() => import("./SubscriptionRemindersAdminPage"));
+const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
 
 // Tab configuration
 const TABS = [
@@ -39,7 +39,7 @@ const TABS = [
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
   { value: "zalo", label: "Zalo", icon: MessageSquare },
-  { value: "reminders", label: "Email Nhắc Nhở", icon: MessageSquare },
+  { value: "subscriptions", label: "Subscriptions", icon: Package },
 ] as const;
 
 // Loading fallback component
@@ -240,9 +240,9 @@ export default function AdminDashboardPage() {
                 )}
 
                 {/* Subscription Reminders Tab */}
-                {selectedTab === "reminders" && (
+                {selectedTab === "subscriptions" && (
                   <div>
-                    <SubscriptionRemindersTab />
+                    <SubscriptionsTab />
                   </div>
                 )}
               </Suspense>
