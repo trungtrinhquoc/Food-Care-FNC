@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/admin/Button';
@@ -18,9 +18,9 @@ import { StatsCard } from '../../components/admin/StatsCard';
 import { DateRangeFilter, type DateRange } from '../../components/admin/DateRangeFilter';
 import { TrafficDateRangeFilter, type TrafficDateRange } from '../../components/admin/TrafficDateRangeFilter';
 import { RevenueChart } from '../../components/admin/RevenueChart';
-import { OrdersChart, type OrderChartData } from '../../components/admin/OrdersChart';
-import { CategoryRevenueChart, type CategoryRevenue } from '../../components/admin/CategoryRevenueChart';
-import { UserTrafficChart, type UserTrafficData } from '../../components/admin/UserTrafficChart';
+import { OrdersChart } from '../../components/admin/OrdersChart';
+import { CategoryRevenueChart } from '../../components/admin/CategoryRevenueChart';
+import { UserTrafficChart } from '../../components/admin/UserTrafficChart';
 import { LatestOrdersTable, type LatestOrder } from '../../components/admin/LatestOrdersTable';
 import { TopProductsPanel, type TopProduct } from '../../components/admin/TopProductsPanel';
 import { AlertsPanel, type SystemAlert } from '../../components/admin/AlertsPanel';
@@ -91,7 +91,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [trafficDateRange, setTrafficDateRange] = useState<TrafficDateRange>('7d');
   const [orderDateRange, setOrderDateRange] = useState<TrafficDateRange>('7d');
-  
+
   // Map traffic date range to days
   const trafficDaysMap: Record<TrafficDateRange, number> = {
     '1d': 1,
@@ -99,14 +99,14 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     '30d': 30,
     '1y': 365,
   };
-  
+
   const orderDaysMap: Record<TrafficDateRange, number> = {
     '1d': 1,
     '7d': 7,
     '30d': 30,
     '1y': 365,
   };
-  
+
   // Fetch overview data from API
   const {
     ordersChart,
@@ -302,7 +302,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
             )}
           </CardHeader>
           <CardContent>
-            <AlertsPanel alerts={alerts} onAction={handleAlertAction} />
+            <AlertsPanel alerts={alerts} onAlertAction={handleAlertAction} />
           </CardContent>
         </Card>
       </div>

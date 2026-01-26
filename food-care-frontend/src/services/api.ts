@@ -7,8 +7,7 @@ import type {
     Address,
     PaymentMethod,
     Supplier,
-    Order,
-    OrderStatus
+    Order
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
