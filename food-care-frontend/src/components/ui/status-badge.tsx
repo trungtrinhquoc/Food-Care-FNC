@@ -42,7 +42,7 @@ interface OrderStatusBadgeProps {
 }
 
 function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
-    const config = ORDER_STATUS_CONFIG[status] || { label: status, className: 'bg-gray-500' };
+    const config = (ORDER_STATUS_CONFIG as any)[status] || { label: status, className: 'bg-gray-500' };
     return <StatusBadge className={config.className}>{config.label}</StatusBadge>;
 }
 
@@ -55,8 +55,8 @@ interface TierBadgeProps {
 }
 
 function TierBadge({ tier }: TierBadgeProps) {
-    const className = MEMBER_TIER_CONFIG[tier];
-    return <StatusBadge className={className}>{tier}</StatusBadge>;
+    const config = MEMBER_TIER_CONFIG[tier];
+    return <StatusBadge className={config.className}>{tier}</StatusBadge>;
 }
 
 // ============ Stock Badge ============
@@ -124,11 +124,11 @@ function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {
     return <StatusBadge className={config.className}>{config.label}</StatusBadge>;
 }
 
-export { 
-    StatusBadge, 
-    OrderStatusBadge, 
-    TierBadge, 
-    StockBadge, 
+export {
+    StatusBadge,
+    OrderStatusBadge,
+    TierBadge,
+    StockBadge,
     ReminderDaysBadge,
     SupplierStatusBadge,
     PaymentStatusBadge,

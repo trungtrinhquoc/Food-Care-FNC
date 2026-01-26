@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { } from 'react'; // Keep React if needed for JSX
 
 export type TrafficDateRange = '1d' | '7d' | '30d' | '1y';
 
@@ -22,11 +22,10 @@ export function TrafficDateRangeFilter({ value, onChange, className = '' }: Traf
         <button
           key={range.value}
           onClick={() => onChange(range.value)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-            value === range.value
+          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${value === range.value
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md'
               : 'text-gray-700 hover:bg-white hover:text-orange-600'
-          }`}
+            }`}
         >
           {range.label}
         </button>

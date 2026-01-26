@@ -17,7 +17,7 @@ import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
     Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2,
-    Check, Camera
+    Camera
 } from 'lucide-react';
 import { SimplePagination } from '../components/ui/pagination';
 import { AddressSelector } from '../components/AddressSelector';

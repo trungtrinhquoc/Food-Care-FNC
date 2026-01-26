@@ -79,6 +79,7 @@ export function useProducts(initialProducts: Product[]) {
       ratingCount: editingProduct?.ratingCount || 0,
       isSubscriptionAvailable: editingProduct?.isSubscriptionAvailable || false,
       isActive: editingProduct?.isActive ?? true,
+      images: editingProduct?.images || [productForm.imageUrl || 'https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=400'],
     };
 
     if (editingProduct) {

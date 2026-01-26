@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export interface TrafficSource {
   source: string;
@@ -54,7 +54,7 @@ export function TrafficChart({ data, isLoading = false }: TrafficChartProps) {
             cx="50%"
             cy="50%"
             outerRadius={80}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }: any) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
             labelLine={true}
           >
             {data.map((entry, index) => (

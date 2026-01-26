@@ -30,7 +30,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [subscriptionType, setSubscriptionType] =
     useState<'one-time' | 'subscription'>('one-time');
-  const [frequency, setFrequency] =
+  const [frequency] =
     useState<'Weekly' | 'BiWeekly' | 'Monthly'>('Monthly');
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
 
