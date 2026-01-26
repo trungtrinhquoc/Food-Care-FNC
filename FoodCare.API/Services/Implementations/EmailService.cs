@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Mail;
 using FoodCare.API.Services.Interfaces;
+using SendGrid;
+using SendGrid.Helpers.Mail;
 
 namespace FoodCare.API.Services.Implementations
 {
