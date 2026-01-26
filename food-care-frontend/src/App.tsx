@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -73,6 +73,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function AppRoutes() {
+  const location = useLocation();
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -129,7 +130,7 @@ function AppRoutes() {
 
       </main>
 
-      <Footer />
+      {!location.pathname.startsWith('/admin') && <Footer />}
 
       {/* Chat Widget - only show when logged in */}
       <ChatWidgetWrapper />

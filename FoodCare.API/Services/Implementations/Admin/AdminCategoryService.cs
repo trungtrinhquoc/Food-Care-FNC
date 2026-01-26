@@ -20,6 +20,7 @@ public class AdminCategoryService : IAdminCategoryService
         var query = _context.Categories
             .Include(c => c.Parent)
             .Include(c => c.Products)
+            .Where(c => c.IsActive == true)
             .AsQueryable();
 
         // Apply search filter

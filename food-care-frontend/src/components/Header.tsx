@@ -84,8 +84,8 @@ export default function Header() {
                 <div className="container mx-auto px-4 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <Link to="/admin" className="flex items-center space-x-3 group">
-                            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:shadow-orange-500/30 transition-all duration-300">
-                                <LayoutDashboard className="h-6 w-6 text-white" />
+                            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30 transition-all duration-300">
+                                <ShoppingBag className="h-6 w-6 text-white" />
                             </div>
                             <div className="hidden sm:block">
                                 <h1 className="text-xl font-bold text-gray-900 tracking-tight">Admin Panel</h1>

@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  ShoppingBag,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -101,8 +102,8 @@ export default function AdminDashboardPage() {
             {sidebarOpen ? (
               <>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Package className="w-5 h-5 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <ShoppingBag className="w-5 h-5 text-white" />
                   </div>
                   Food & Care
                 </h2>
@@ -160,8 +161,8 @@ export default function AdminDashboardPage() {
             {/* Header */}
             <header className="mb-8 bg-gradient-to-r from-white to-orange-50 rounded-2xl p-6 shadow-lg border border-orange-100">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <BarChart3 className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <ShoppingBag className="w-6 h-6 text-white" />
                 </div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Admin Dashboard</h1>
               </div>
