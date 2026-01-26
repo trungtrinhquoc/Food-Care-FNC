@@ -41,6 +41,7 @@ appsettings.json
 .env.local
 .env.development
 .env.production
+story-generator-479404-ef2e8236954d.json
 
 # Database
 *.db

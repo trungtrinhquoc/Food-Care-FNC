@@ -2,39 +2,49 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Memory;
+using Google.Cloud.AIPlatform.V1;
+using Google.Protobuf.WellKnownTypes;
+using Value = Google.Protobuf.WellKnownTypes.Value;
 
 namespace FoodCare.API.Services.Implementations;
 
 /// <summary>
-/// Wrapper for Google Gemini AI API
+/// Vertex AI wrapper for Google Gemini models
 /// Cost-optimized with aggressive caching and quota protection
 /// </summary>
 public class GeminiAiService
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
+    private readonly string _projectId;
+    private readonly string _location;
+    private readonly string _model;
     private readonly ILogger<GeminiAiService> _logger;
     private readonly IMemoryCache _cache;
     
     // Model configuration
-    private const string MODEL = "gemini-2.0-flash";
     private const int MAX_TOKENS = 350;
-    private const double TEMPERATURE = 0.7;
+    private const double TEMPERATURE = 0.9;
     
     // Cache keys
     private const string COOLDOWN_KEY = "Gemini_Quota_Cooldown";
     private const string RESPONSE_CACHE_PREFIX = "Chat_AI_Resp_";
 
     public GeminiAiService(
-        IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
         IMemoryCache cache,
         ILogger<GeminiAiService> logger)
     {
-        _httpClient = httpClientFactory.CreateClient();
-        _apiKey = configuration["GeminiAI:ApiKey"] ?? throw new InvalidOperationException("GeminiAI:ApiKey not configured");
+        _projectId = configuration["VertexAI:ProjectId"] ?? throw new InvalidOperationException("VertexAI:ProjectId not configured");
+        _location = configuration["VertexAI:Location"] ?? "us-central1";
+        _model = configuration["VertexAI:Model"] ?? "gemini-2.5-flash-lite";
         _cache = cache;
         _logger = logger;
+        
+        // Set credentials path if provided
+        var credentialsPath = configuration["VertexAI:CredentialsPath"];
+        if (!string.IsNullOrEmpty(credentialsPath) && File.Exists(credentialsPath))
+        {
+            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath);
+        }
     }
     
     public async Task<(string response, int tokensUsed)> GenerateResponseAsync(
@@ -67,57 +77,44 @@ public class GeminiAiService
         {
             try
             {
-                // Use v1beta for Gemini 2.0
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={_apiKey}";
+                // Create Vertex AI client
+                var client = new PredictionServiceClientBuilder
+                {
+                    Endpoint = $"{_location}-aiplatform.googleapis.com"
+                }.Build();
                 
+                // Build endpoint name
+                var endpoint = $"projects/{_projectId}/locations/{_location}/publishers/google/models/{_model}";
+                
+                // Build contents
                 var contents = BuildContents(userMessage, conversationHistory);
                 
-                var requestBody = new
+                // Build request
+                var generateContentRequest = new GenerateContentRequest
                 {
-                    system_instruction = new
+                    Model = endpoint,
+                    SystemInstruction = new Content
                     {
-                        parts = new[] { new { text = systemPrompt } }
+                        Parts = { new Part { Text = systemPrompt } }
                     },
-                    contents,
-                    generationConfig = new
+                    GenerationConfig = new GenerationConfig
                     {
-                        maxOutputTokens = MAX_TOKENS,
-                        temperature = TEMPERATURE
+                        MaxOutputTokens = MAX_TOKENS,
+                        Temperature = (float)TEMPERATURE
                     }
                 };
                 
-                var jsonRequest = JsonSerializer.Serialize(requestBody);
-                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-                
-                var response = await _httpClient.PostAsync(url, content);
-                
-                if ((int)response.StatusCode == 429)
+                // Add contents
+                foreach (var content in contents)
                 {
-                    // Aggressive cooldown: Set global cooldown for 60 seconds
-                    _cache.Set(COOLDOWN_KEY, true, TimeSpan.FromSeconds(60));
-                    
-                    if (retryCount < maxRetries)
-                    {
-                        retryCount++;
-                        _logger.LogWarning("Gemini API Rate limited (429). Retrying {RetryCount}/{MaxRetries} after {Delay}ms...", retryCount, maxRetries, delayMs);
-                        await Task.Delay(delayMs);
-                        delayMs += 10000; // Increment backoff
-                        continue;
-                    }
-
-                    _logger.LogError("Gemini API Quota exhausted for MODEL: {Model}.", MODEL);
-                    return ("Hệ thống đang đạt giới hạn câu hỏi. Bạn vui lòng chờ 1 phút rồi hỏi tiếp nhé!", 0);
+                    generateContentRequest.Contents.Add(content);
                 }
-
-                response.EnsureSuccessStatusCode();
                 
-                var jsonResponse = await response.Content.ReadAsStringAsync();
+                // Call Vertex AI
+                var response = await client.GenerateContentAsync(generateContentRequest);
                 
-                // Use case-insensitive deserialization or PropertyName mapping
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var result = JsonSerializer.Deserialize<GeminiResponse>(jsonResponse, options);
-                
-                var aiResponse = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text 
+                // Extract response text
+                var aiResponse = response.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text 
                     ?? "Xin lỗi, tôi không thể xử lý yêu cầu này lúc này. Vui lòng thử lại sau.";
                 
                 // 3. Cache the successful response for 30 minutes
@@ -126,10 +123,30 @@ public class GeminiAiService
                 var tokensUsed = (systemPrompt.Length + userMessage.Length + aiResponse.Length) / 4;
                 return (aiResponse, tokensUsed);
             }
+            catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.ResourceExhausted)
+            {
+                // Handle rate limiting (429 equivalent in gRPC)
+                _cache.Set(COOLDOWN_KEY, true, TimeSpan.FromSeconds(60));
+                
+                if (retryCount < maxRetries)
+                {
+                    retryCount++;
+                    _logger.LogWarning("Vertex AI Rate limited. Retrying {RetryCount}/{MaxRetries} after {Delay}ms...", retryCount, maxRetries, delayMs);
+                    await Task.Delay(delayMs);
+                    delayMs += 10000; // Increment backoff
+                    continue;
+                }
+
+                _logger.LogError("Vertex AI Quota exhausted for MODEL: {Model}.", _model);
+                return ("Hệ thống đang đạt giới hạn câu hỏi. Bạn vui lòng chờ 1 phút rồi hỏi tiếp nhé!", 0);
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling Gemini AI");
-                if (retryCount >= maxRetries) throw;
+                _logger.LogError(ex, "Error calling Vertex AI");
+                if (retryCount >= maxRetries) 
+                {
+                    return ("Xin lỗi, có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau.", 0);
+                }
                 
                 retryCount++;
                 await Task.Delay(2000);
@@ -137,9 +154,9 @@ public class GeminiAiService
         }
     }
     
-    private List<object> BuildContents(string userMessage, List<ChatMessageDto>? history)
+    private List<Content> BuildContents(string userMessage, List<ChatMessageDto>? history)
     {
-        var contents = new List<object>();
+        var contents = new List<Content>();
         
         // Add conversation history (only last 3 messages to save tokens)
         if (history != null && history.Any())
@@ -147,47 +164,22 @@ public class GeminiAiService
             var recentHistory = history.TakeLast(3).ToList();
             foreach (var msg in recentHistory)
             {
-                contents.Add(new
+                contents.Add(new Content
                 {
-                    role = msg.Role == "user" ? "user" : "model",
-                    parts = new[] { new { text = msg.Content } }
+                    Role = msg.Role == "user" ? "user" : "model",
+                    Parts = { new Part { Text = msg.Content } }
                 });
             }
         }
         
         // Add current user message
-        contents.Add(new
+        contents.Add(new Content
         {
-            role = "user",
-            parts = new[] { new { text = userMessage } }
+            Role = "user",
+            Parts = { new Part { Text = userMessage } }
         });
         
         return contents;
-    }
-    
-    // Response models
-    private class GeminiResponse
-    {
-        [JsonPropertyName("candidates")]
-        public List<Candidate>? Candidates { get; set; }
-    }
-    
-    private class Candidate
-    {
-        [JsonPropertyName("content")]
-        public GeminiContent? Content { get; set; }
-    }
-    
-    private class GeminiContent
-    {
-        [JsonPropertyName("parts")]
-        public List<Part>? Parts { get; set; }
-    }
-    
-    private class Part
-    {
-        [JsonPropertyName("text")]
-        public string? Text { get; set; }
     }
 }
 
