@@ -31,6 +31,7 @@ export interface UpdateProductRequest {
     sku?: string;
     stockQuantity?: number;
     categoryId?: number;
+    supplierId?: number;
     isSubscriptionAvailable?: boolean;
     isActive?: boolean;
     images: string[];

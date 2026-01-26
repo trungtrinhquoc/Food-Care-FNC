@@ -32,7 +32,7 @@ public class AdminProductFilterDto
 {
     public string? SearchTerm { get; set; }
     public int? CategoryId { get; set; }
-    public int? SupplierId { get; set; }
+    public Guid? SupplierId { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
     public bool? IsActive { get; set; }

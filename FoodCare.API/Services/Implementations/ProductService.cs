@@ -26,6 +26,7 @@ public class ProductService : IProductService
     {
         var query = _context.Products
             .Include(p => p.Category)
+            .Include(p => p.Supplier)
             .Where(p => p.IsActive == true);
 
         if (filter.CategoryId.HasValue)
@@ -79,6 +80,7 @@ public class ProductService : IProductService
     {
         var product = await _context.Products
             .Include(p => p.Category)
+            .Include(p => p.Supplier)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         return product == null ? null : _mapper.Map<ProductDto>(product);
@@ -96,6 +98,7 @@ public class ProductService : IProductService
         await _context.SaveChangesAsync();
 
         await _context.Entry(product).Reference(p => p.Category).LoadAsync();
+        await _context.Entry(product).Reference(p => p.Supplier).LoadAsync();
 
         _logger.LogInformation("Product created: {ProductId} - {ProductName}", product.Id, product.Name);
 
@@ -115,6 +118,7 @@ public class ProductService : IProductService
 
         await _context.SaveChangesAsync();
         await _context.Entry(product).Reference(p => p.Category).LoadAsync();
+        await _context.Entry(product).Reference(p => p.Supplier).LoadAsync();
 
         _logger.LogInformation("Product updated: {ProductId}", id);
 

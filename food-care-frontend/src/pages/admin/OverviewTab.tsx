@@ -302,7 +302,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
             )}
           </CardHeader>
           <CardContent>
-            <AlertsPanel alerts={alerts} onAction={handleAlertAction} />
+            <AlertsPanel alerts={alerts} onAlertAction={handleAlertAction} />
           </CardContent>
         </Card>
       </div>

@@ -1,102 +1,89 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import type { Supplier, SupplierFormData } from '../types/admin';
+import { suppliersApi } from '../services/suppliersApi';
+import type { Supplier, CreateSupplierRequest, UpdateSupplierRequest, SupplierFilter } from '../types/supplier';
 
-export function useSuppliers(initialSuppliers: Supplier[]) {
-  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [supplierForm, setSupplierForm] = useState<SupplierFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    contact: '',
-    products: '',
-  });
+export function useSuppliers(initialFilter: SupplierFilter = {}) {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<SupplierFilter>({ page: 1, pageSize: 10, ...initialFilter });
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const resetForm = useCallback(() => {
-    setSupplierForm({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      contact: '',
-      products: '',
-    });
+  const fetchSuppliers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await suppliersApi.getSuppliers(filter);
+      setSuppliers(result.items);
+      setTotalCount(result.totalItems);
+      setTotalPages(result.totalPages);
+    } catch (error) {
+      toast.error('Không thể tải danh sách nhà cung cấp');
+      console.error('Error fetching suppliers:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  const createSupplier = useCallback(async (data: CreateSupplierRequest) => {
+    try {
+      const newSupplier = await suppliersApi.createSupplier(data);
+      setSuppliers(prev => [newSupplier, ...prev]);
+      setTotalCount(prev => prev + 1);
+      toast.success('Thêm nhà cung cấp thành công!');
+      return newSupplier;
+    } catch (error) {
+      toast.error('Không thể thêm nhà cung cấp');
+      console.error('Error creating supplier:', error);
+      throw error;
+    }
   }, []);
 
-  const openSupplierDialog = useCallback((supplier?: Supplier) => {
-    if (supplier) {
-      setEditingSupplier(supplier);
-      setSupplierForm({
-        name: supplier.name,
-        email: supplier.email,
-        phone: supplier.phone,
-        address: supplier.address,
-        contact: supplier.contact,
-        products: supplier.products.join(', '),
-      });
-    } else {
-      setEditingSupplier(null);
-      resetForm();
-    }
-    setIsSupplierDialogOpen(true);
-  }, [resetForm]);
-
-  const closeSupplierDialog = useCallback(() => {
-    setIsSupplierDialogOpen(false);
-    setEditingSupplier(null);
-    resetForm();
-  }, [resetForm]);
-
-  const saveSupplier = useCallback(() => {
-    if (!supplierForm.name || !supplierForm.email || !supplierForm.phone) {
-      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
-      return;
-    }
-
-    const newSupplier: Supplier = {
-      id: editingSupplier ? editingSupplier.id : `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
-      name: supplierForm.name,
-      email: supplierForm.email,
-      phone: supplierForm.phone,
-      address: supplierForm.address,
-      contact: supplierForm.contact,
-      products: supplierForm.products.split(',').map((p) => p.trim()),
-      totalProducts: supplierForm.products.split(',').length,
-      status: 'active',
-    };
-
-    if (editingSupplier) {
-      setSuppliers(suppliers.map((s) => (s.id === editingSupplier.id ? newSupplier : s)));
+  const updateSupplier = useCallback(async (id: number, data: UpdateSupplierRequest) => {
+    try {
+      const updatedSupplier = await suppliersApi.updateSupplier(id, data);
+      setSuppliers(prev => prev.map(s => s.id === id.toString() ? updatedSupplier : s));
       toast.success('Cập nhật nhà cung cấp thành công!');
-    } else {
-      setSuppliers([...suppliers, newSupplier]);
-      toast.success('Thêm nhà cung cấp mới thành công!');
+      return updatedSupplier;
+    } catch (error) {
+      toast.error('Không thể cập nhật nhà cung cấp');
+      console.error('Error updating supplier:', error);
+      throw error;
     }
-
-    closeSupplierDialog();
-  }, [supplierForm, editingSupplier, suppliers, closeSupplierDialog]);
-
-  const deleteSupplier = useCallback((supplierId: string) => {
-    setSuppliers(suppliers.filter((s) => s.id !== supplierId));
-    toast.success('Đã xóa nhà cung cấp');
-  }, [suppliers]);
-
-  const updateSupplierForm = useCallback((field: keyof SupplierFormData, value: string) => {
-    setSupplierForm((prev) => ({ ...prev, [field]: value }));
   }, []);
+
+  const deleteSupplier = useCallback(async (id: number) => {
+    try {
+      await suppliersApi.deleteSupplier(id);
+      setSuppliers(prev => prev.filter(s => s.id !== id.toString()));
+      setTotalCount(prev => prev - 1);
+      toast.success('Xóa nhà cung cấp thành công!');
+    } catch (error) {
+      toast.error('Không thể xóa nhà cung cấp');
+      console.error('Error deleting supplier:', error);
+      throw error;
+    }
+  }, []);
+
+  const updateFilter = useCallback((newFilter: Partial<SupplierFilter>) => {
+    setFilter(prev => ({ ...prev, ...newFilter }));
+  }, []);
+
+  const resetFilter = useCallback(() => {
+    setFilter({ page: 1, pageSize: 10, ...initialFilter });
+  }, [initialFilter]);
 
   return {
     suppliers,
-    isSupplierDialogOpen,
-    editingSupplier,
-    supplierForm,
-    openSupplierDialog,
-    closeSupplierDialog,
-    saveSupplier,
+    loading,
+    filter,
+    totalCount,
+    totalPages,
+    fetchSuppliers,
+    createSupplier,
+    updateSupplier,
     deleteSupplier,
-    updateSupplierForm,
+    updateFilter,
+    resetFilter
   };
 }

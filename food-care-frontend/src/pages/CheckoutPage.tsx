@@ -24,7 +24,7 @@ export default function CheckoutPage() {
         ward: '',
     });
     const navigate = useNavigate();
-    const { getSelectedItems, getSelectedTotal, clearCart, clearSelectedItems } = useCart();
+    const { getSelectedItems, getSelectedTotal, clearSelectedItems } = useCart();
     const { user } = useAuth();
 
     const selectedItems = getSelectedItems();

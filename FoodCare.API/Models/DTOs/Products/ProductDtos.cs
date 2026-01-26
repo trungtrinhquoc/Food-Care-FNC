@@ -17,6 +17,8 @@ public class ProductDto
     public string? ImageUrl { get; set; }
     public int? CategoryId { get; set; }
     public string? CategoryName { get; set; }
+    public Guid? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public decimal? RatingAverage { get; set; }
     public int? RatingCount { get; set; }
     public bool? IsSubscriptionAvailable { get; set; }
@@ -84,6 +86,7 @@ public class UpdateProductDto
     public int? CategoryId { get; set; }
     public int? SupplierId { get; set; }
     public string? Sku { get; set; }
+    public int? StockQuantity { get; set; }
     public string? Images { get; set; }
     public bool? IsSubscriptionAvailable { get; set; }
     public bool? IsActive { get; set; }

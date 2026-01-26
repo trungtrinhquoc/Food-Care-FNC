@@ -1,4 +1,5 @@
 using FoodCare.API.Models;
+using FoodCare.API.Models.Suppliers;
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Suppliers;
 using FoodCare.API.Services.Interfaces.Admin;
@@ -54,8 +55,8 @@ public class AdminSupplierService : IAdminSupplierService
                 Phone = s.Phone,
                 Address = s.Address,
                 TotalProducts = s.Products.Count,
-                IsActive = s.IsActive ?? false,
-                CreatedAt = s.CreatedAt ?? DateTime.UtcNow
+                IsActive = s.IsActive,
+                CreatedAt = s.CreatedAt 
             })
             .ToListAsync();
 
@@ -73,7 +74,7 @@ public class AdminSupplierService : IAdminSupplierService
     {
         var supplier = await _context.Suppliers
             .Include(s => s.Products.Where(p => p.IsDeleted != true))
-            .FirstOrDefaultAsync(s => s.Id == id);
+            .FirstOrDefaultAsync(s => s.Id.Equals(id));
 
         if (supplier == null)
         {
@@ -97,9 +98,67 @@ public class AdminSupplierService : IAdminSupplierService
             Phone = supplier.Phone,
             Address = supplier.Address,
             TotalProducts = supplier.Products.Count,
-            IsActive = supplier.IsActive ?? false,
-            CreatedAt = supplier.CreatedAt ?? DateTime.UtcNow,
+            IsActive = supplier.IsActive,
+            CreatedAt = supplier.CreatedAt,
             Products = products
         };
+    }
+
+    public async Task<AdminSupplierDetailDto> CreateSupplierAsync(AdminUpsertSupplierDto dto)
+    {
+        var supplier = new Models.Suppliers.Supplier {
+            Name = dto.Name,
+            ContactEmail = dto.ContactEmail,
+            Phone = dto.Phone,
+            Address = dto.Address,
+            IsActive = dto.IsActive ?? true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Suppliers.Add(supplier);
+        await _context.SaveChangesAsync();
+
+        return (await GetSupplierDetailAsync(supplier.Id))!;
+    }
+
+    public async Task<AdminSupplierDetailDto?> UpdateSupplierAsync(int id, AdminUpsertSupplierDto dto)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id.Equals(id));
+        if (supplier == null)
+        {
+            return null;
+        }
+
+        supplier.Name = dto.Name;
+        supplier.ContactEmail = dto.ContactEmail;
+        supplier.Phone = dto.Phone;
+        supplier.Address = dto.Address;
+        supplier.IsActive = dto.IsActive ?? supplier.IsActive;
+
+        await _context.SaveChangesAsync();
+
+        return await GetSupplierDetailAsync(id);
+    }
+
+    public async Task<bool> DeleteSupplierAsync(int id)
+    {
+        var supplier = await _context.Suppliers
+            .Include(s => s.Products)
+            .FirstOrDefaultAsync(s => s.Id.Equals(id));
+
+        if (supplier == null)
+        {
+            return false;
+        }
+
+        // Detach supplier from products to avoid FK constraint issues
+        foreach (var product in supplier.Products)
+        {
+            product.SupplierId = null;
+        }
+
+        _context.Suppliers.Remove(supplier);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

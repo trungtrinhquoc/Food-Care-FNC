@@ -34,6 +34,8 @@ export interface AdminStats {
   totalProducts: number;
   monthlyGrowth: number;
   activeSubscriptions: number;
+  pendingOrders: number;
+  lowStockProducts: number;
 }
 
 export interface RevenueData {

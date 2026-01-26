@@ -66,6 +66,8 @@ export default function AdminDashboardPage() {
       totalProducts: stats.totalProducts,
       monthlyGrowth: stats.monthlyGrowth,
       activeSubscriptions: stats.pendingOrders,
+      pendingOrders: stats.pendingOrders,
+      lowStockProducts: stats.lowStockProducts,
     };
   }, [stats]);
 

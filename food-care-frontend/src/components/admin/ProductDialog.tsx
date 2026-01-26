@@ -4,9 +4,9 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ProductDialog as SharedProductDialog } from '../ProductDialog';
-import type { Product, Category, CreateProductRequest } from '../../types';
+import type { Product, Category, CreateProductRequest, Supplier } from '../../types';
 import { categoriesApi } from '../../services/api';
-import { productsApi } from '../../services/productsApi';
+import { adminProductsService, suppliersService } from '../../services/admin';
 
 // Legacy types for backwards compatibility
 export interface ProductFormData {
@@ -71,6 +71,7 @@ export function ProductDialog({
   onUpdateForm: externalUpdateForm,
 }: AdminProductDialogProps) {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   
   // Use a simple state that gets reset based on dialog state
   const getDefaultRequest = useCallback((): CreateProductRequest => ({
@@ -92,6 +93,7 @@ export function ProductDialog({
   useEffect(() => {
     if (open) {
       categoriesApi.getCategories().then(setCategories);
+      suppliersService.getSuppliers({ page: 1, pageSize: 200 }).then(res => setSuppliers(res.items));
     }
   }, [open]);
 
@@ -102,6 +104,17 @@ export function ProductDialog({
     }
     return internalRequest;
   }, [externalForm, categories, internalRequest]);
+
+  // Prefill supplier when editing (ProductsTab attaches supplierId at runtime)
+  useEffect(() => {
+    if (!open) return;
+    if (editingProduct && !externalForm) {
+      const supplierId = (editingProduct as any).supplierId as number | null | undefined;
+      if (supplierId != null) {
+        setInternalRequest(prev => ({ ...prev, supplierId }));
+      }
+    }
+  }, [open, editingProduct, externalForm]);
 
   const handleFormChange = useCallback((newRequest: CreateProductRequest) => {
     if (externalUpdateForm) {
@@ -121,12 +134,12 @@ export function ProductDialog({
     try {
       if (editingProduct) {
         // Update existing product
-        await productsApi.updateProduct(editingProduct.id, {
+        await adminProductsService.updateProduct(editingProduct.id, {
           ...currentRequest,
         });
       } else {
         // Create new product
-        await productsApi.createProduct(currentRequest);
+        await adminProductsService.createProduct(currentRequest);
       }
       onSave(); // Callback to refresh list
     } catch (error) {
@@ -141,6 +154,7 @@ export function ProductDialog({
       onOpenChange={onOpenChange}
       product={editingProduct || undefined}
       categories={categories}
+      suppliers={suppliers}
       externalForm={currentRequest}
       onFormChange={handleFormChange}
       onSave={handleSave}

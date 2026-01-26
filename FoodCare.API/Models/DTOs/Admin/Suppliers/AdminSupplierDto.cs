@@ -43,3 +43,12 @@ public class AdminSupplierFilterDto
     public string? SortBy { get; set; }
     public bool SortDescending { get; set; } = false;
 }
+
+public class AdminUpsertSupplierDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? ContactEmail { get; set; }
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public bool? IsActive { get; set; }
+}

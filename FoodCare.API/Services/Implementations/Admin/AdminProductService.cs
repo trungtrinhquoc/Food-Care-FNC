@@ -39,7 +39,7 @@ public class AdminProductService : IAdminProductService
 
         if (filter.SupplierId.HasValue)
         {
-            query = query.Where(p => p.SupplierId == filter.SupplierId.Value);
+            query = query.Where(p => p.SupplierId.Equals(filter.SupplierId.Value));
         }
 
         if (filter.IsActive.HasValue)

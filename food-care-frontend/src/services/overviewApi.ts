@@ -197,7 +197,6 @@ export const overviewApi = {
       const mockData: UserTrafficData[] = [];
       
       // Adjust data points based on time range
-      let dataPoints = days;
       if (days === 1) {
         // For 1 day, show hourly data (24 hours)
         for (let i = 23; i >= 0; i--) {
