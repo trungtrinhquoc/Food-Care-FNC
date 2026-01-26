@@ -35,7 +35,7 @@ export default function Footer() {
                             Giải pháp mua sắm thông minh giúp bạn tiết kiệm thời gian và chi phí với mô hình giao hàng định kỳ các sản phẩm thiết yếu hàng ngày.
                         </p>
                         <div className="flex items-center gap-3">
-                            <a href="#" className="w-9 h-9 rounded-lg bg-white border border-emerald-100 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all duration-300 shadow-sm">
+                            <a href="https://www.facebook.com/profile.php?id=61551513965314" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-white border border-emerald-100 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all duration-300 shadow-sm">
                                 <Facebook className="w-4.5 h-4.5" />
                             </a>
                             <a href="#" className="w-9 h-9 rounded-lg bg-white border border-emerald-100 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all duration-300 shadow-sm">
