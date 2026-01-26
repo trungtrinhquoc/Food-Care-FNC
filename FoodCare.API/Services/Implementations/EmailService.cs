@@ -217,45 +217,89 @@ namespace FoodCare.API.Services.Implementations
         {
             try
             {
-                var smtpHost = _configuration["Email:SmtpHost"] ?? "smtp.gmail.com";
-                var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
-                var username = _configuration["Email:Username"];
-                var password = _configuration["Email:Password"];
-                var fromEmail = _configuration["Email:From"] ?? username;
-                var fromName = _configuration["Email:FromName"] ?? "Food & Care";
-
-                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+                // Try SendGrid first (works on Railway)
+                var sendGridApiKey = _configuration["SendGrid:ApiKey"];
+                
+                if (!string.IsNullOrEmpty(sendGridApiKey))
                 {
-                    _logger.LogWarning("Email credentials not configured. Email not sent to {Email}", to);
-                    // In development, just log instead of throwing
-                    _logger.LogInformation("Email would be sent to {Email} with subject: {Subject}", to, subject);
+                    await SendViaSendGridAsync(to, subject, body, sendGridApiKey);
                     return;
                 }
 
-                using var client = new SmtpClient(smtpHost, smtpPort)
-                {
-                    EnableSsl = true,
-                    Credentials = new NetworkCredential(username, password)
-                };
-
-                var message = new MailMessage
-                {
-                    From = new MailAddress(fromEmail, fromName),
-                    Subject = subject,
-                    Body = body,
-                    IsBodyHtml = true
-                };
-
-                message.To.Add(to);
-
-                await client.SendMailAsync(message);
-                _logger.LogInformation("Email sent successfully to {Email}", to);
+                // Fallback to SMTP (for local development)
+                await SendViaSmtpAsync(to, subject, body);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send email to {Email}", to);
                 // Don't throw - email failures shouldn't break registration
             }
+        }
+
+        private async Task SendViaSendGridAsync(string to, string subject, string body, string apiKey)
+        {
+            var fromEmail = _configuration["Email:From"] ?? "noreply@foodcare.com";
+            var fromName = _configuration["Email:FromName"] ?? "Food & Care";
+
+            var client = new SendGrid.SendGridClient(apiKey);
+            var from = new SendGrid.Helpers.Mail.EmailAddress(fromEmail, fromName);
+            var toAddress = new SendGrid.Helpers.Mail.EmailAddress(to);
+            var msg = SendGrid.Helpers.Mail.MailHelper.CreateSingleEmail(
+                from, 
+                toAddress, 
+                subject, 
+                null, // plain text content
+                body  // HTML content
+            );
+
+            var response = await client.SendEmailAsync(msg);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Email sent successfully via SendGrid to {Email}", to);
+            }
+            else
+            {
+                var responseBody = await response.Body.ReadAsStringAsync();
+                _logger.LogError("SendGrid API error: {StatusCode} - {Body}", response.StatusCode, responseBody);
+                throw new Exception($"SendGrid failed with status {response.StatusCode}");
+            }
+        }
+
+        private async Task SendViaSmtpAsync(string to, string subject, string body)
+        {
+            var smtpHost = _configuration["Email:SmtpHost"] ?? "smtp.gmail.com";
+            var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
+            var username = _configuration["Email:Username"];
+            var password = _configuration["Email:Password"];
+            var fromEmail = _configuration["Email:From"] ?? username;
+            var fromName = _configuration["Email:FromName"] ?? "Food & Care";
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                _logger.LogWarning("Email credentials not configured. Email not sent to {Email}", to);
+                _logger.LogInformation("Email would be sent to {Email} with subject: {Subject}", to, subject);
+                return;
+            }
+
+            using var client = new SmtpClient(smtpHost, smtpPort)
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(username, password)
+            };
+
+            var message = new MailMessage
+            {
+                From = new MailAddress(fromEmail, fromName),
+                Subject = subject,
+                Body = body,
+                IsBodyHtml = true
+            };
+
+            message.To.Add(to);
+
+            await client.SendMailAsync(message);
+            _logger.LogInformation("Email sent successfully via SMTP to {Email}", to);
         }
     }
 }
