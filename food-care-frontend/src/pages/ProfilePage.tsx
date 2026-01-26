@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { profileApi } from '../services/api';
@@ -17,11 +17,12 @@ import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
     Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2,
-    Check
+    Check, Camera
 } from 'lucide-react';
 import { SimplePagination } from '../components/ui/pagination';
 import { AddressSelector } from '../components/AddressSelector';
 import { OrderDetailDialog } from '../components/OrderDetailDialog';
+import { uploadToCloudinary } from '../utils/cloudinary';
 
 type MemberTierName = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
@@ -85,6 +86,10 @@ export default function ProfilePage() {
     const [loadingOrders, setLoadingOrders] = useState(true);
     const [loadingAddresses, setLoadingAddresses] = useState(true);
     const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+    // Ref for file input
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Form states
     const [profileForm, setProfileForm] = useState({
@@ -252,6 +257,52 @@ export default function ProfilePage() {
             setLoading(false);
         }
     };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Vui lòng chọn file ảnh');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Kích thước ảnh không được vượt quá 5MB');
+            return;
+        }
+
+        setUploadingAvatar(true);
+
+        try {
+            // Upload to Cloudinary
+            const result = await uploadToCloudinary(file);
+
+            // Update profile with new avatar URL
+            await profileApi.updateProfile({
+                ...profileForm,
+                avatarUrl: result.url,
+            });
+
+            toast.success('Cập nhật ảnh đại diện thành công!');
+
+            // Reload user data
+            await refreshUser();
+        } catch (error: any) {
+            console.error('Error uploading avatar:', error);
+            const message = error.message || 'Có lỗi xảy ra khi tải ảnh lên';
+            toast.error(message);
+        } finally {
+            setUploadingAvatar(false);
+            // Reset file input
+            if (avatarInputRef.current) {
+                avatarInputRef.current.value = '';
+            }
+        }
+    };
+
 
     const handleSaveAddress = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -896,6 +947,72 @@ export default function ProfilePage() {
                                 <CardTitle>Thông tin cá nhân</CardTitle>
                             </CardHeader>
                             <CardContent>
+                                {/* Avatar Upload Section */}
+                                <div className="mb-6">
+                                    <Label className="mb-3 block">Ảnh đại diện</Label>
+                                    <div className="flex items-center gap-6">
+                                        <div className="relative group">
+                                            <Avatar className="w-24 h-24 border-4 border-gray-100 shadow-lg">
+                                                <AvatarImage src={user.avatarUrl} />
+                                                <AvatarFallback className="bg-emerald-100 text-emerald-600 text-2xl font-bold">
+                                                    {user.fullName.charAt(0).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            {/* Upload overlay */}
+                                            <button
+                                                type="button"
+                                                onClick={() => avatarInputRef.current?.click()}
+                                                disabled={uploadingAvatar}
+                                                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                                            >
+                                                {uploadingAvatar ? (
+                                                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                                ) : (
+                                                    <Camera className="w-8 h-8 text-white" />
+                                                )}
+                                            </button>
+                                            {/* Hidden file input */}
+                                            <input
+                                                ref={avatarInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleAvatarUpload}
+                                                className="hidden"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-gray-700 mb-1">
+                                                Thay đổi ảnh đại diện
+                                            </p>
+                                            <p className="text-xs text-gray-500 mb-3">
+                                                Nhấp vào ảnh để tải lên ảnh mới. Kích thước tối đa 5MB.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => avatarInputRef.current?.click()}
+                                                disabled={uploadingAvatar}
+                                                className="text-xs"
+                                            >
+                                                {uploadingAvatar ? (
+                                                    <>
+                                                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                                        Đang tải lên...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Camera className="w-3 h-3 mr-2" />
+                                                        Chọn ảnh
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator className="my-6" />
+
                                 <form onSubmit={handleUpdateProfile} className="space-y-4">
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div>
@@ -924,15 +1041,6 @@ export default function ProfilePage() {
                                                 id="phoneNumber"
                                                 value={profileForm.phoneNumber}
                                                 onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
-                                                className="mt-1"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="avatarUrl">Avatar URL</Label>
-                                            <Input
-                                                id="avatarUrl"
-                                                value={profileForm.avatarUrl}
-                                                onChange={(e) => setProfileForm({ ...profileForm, avatarUrl: e.target.value })}
                                                 className="mt-1"
                                             />
                                         </div>
