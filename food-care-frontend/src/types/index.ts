@@ -82,7 +82,7 @@ export interface Product {
     sku: string;
     name: string;
     slug: string;
-    categoryId?: string;
+    categoryId?: number | string;
     categoryName?: string;
     description?: string;
     basePrice: number; // Changed from price

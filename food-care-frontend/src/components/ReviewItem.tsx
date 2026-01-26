@@ -2,7 +2,6 @@ import { memo } from "react";
 import { Star, ThumbsUp } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Card, CardContent } from "./ui/card";
-import { cn } from "../lib/utils"; // Giả sử bạn có utility này, nếu không có thể dùng template string thường
 import type { Review } from "../types";
 
 interface Props {

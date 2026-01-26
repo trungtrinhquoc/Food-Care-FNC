@@ -160,6 +160,13 @@ export interface AdminOrder {
   createdAt: string;
   updatedAt: string | null;
   orderItems: AdminOrderItem[];
+  // Additional fields used in UI
+  date?: string;
+  phone?: string;
+  address?: string;
+  products?: string[];
+  total?: number;
+  subscription?: boolean;
 }
 
 export interface AdminOrderItem {

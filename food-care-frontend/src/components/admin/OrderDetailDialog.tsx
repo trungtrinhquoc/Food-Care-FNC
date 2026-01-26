@@ -36,22 +36,22 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
             </div>
             <div>
               <Label className="text-gray-500">Ngày đặt</Label>
-              <p>{order.date}</p>
+              <p>{order.date || new Date(order.createdAt).toLocaleDateString("vi-VN")}</p>
             </div>
           </div>
           <div>
             <Label className="text-gray-500">Khách hàng</Label>
             <p>{order.customerName}</p>
-            <p className="text-sm text-gray-500">{order.phone}</p>
+            <p className="text-sm text-gray-500">{order.phone || "Không có số điện thoại"}</p>
           </div>
           <div>
             <Label className="text-gray-500">Địa chỉ giao hàng</Label>
-            <p>{order.address}</p>
+            <p>{order.address || order.shippingAddressSnapshot || "Không có địa chỉ"}</p>
           </div>
           <div>
             <Label className="text-gray-500">Sản phẩm</Label>
             <div className="mt-2 space-y-2">
-              {order.products.map((product, idx) => (
+              {order.products?.map((product: string, idx: number) => (
                 <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <span>{product}</span>
                 </div>
@@ -68,7 +68,7 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
             <div>
               <Label className="text-gray-500">Tổng tiền</Label>
               <p className="text-xl font-bold text-emerald-600">
-                {order.total.toLocaleString('vi-VN')}đ
+                {(order.total || order.totalAmount).toLocaleString('vi-VN')}đ
               </p>
             </div>
           </div>

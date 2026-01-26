@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export interface CategoryRevenue {
   categoryName: string;
@@ -54,7 +54,7 @@ export function CategoryRevenueChart({ data, isLoading = false }: CategoryRevenu
             cx="50%"
             cy="50%"
             outerRadius={80}
-            label={({ categoryName, percent }) => `${categoryName}: ${(percent * 100).toFixed(0)}%`}
+            label={({ categoryName, percent }: any) => `${categoryName}: ${((percent || 0) * 100).toFixed(0)}%`}
             labelLine={true}
           >
             {data.map((entry, index) => (
