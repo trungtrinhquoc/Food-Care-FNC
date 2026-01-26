@@ -21,6 +21,9 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelPage from './pages/PaymentCancelPage';
 import SubscriptionConfirmPage from './pages/SubscriptionConfirmPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import CookiePolicyPage from './pages/CookiePolicyPage';
 
 
 
@@ -126,6 +129,9 @@ function AppRoutes() {
               </AdminRoute>
             }
           />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
         </Routes>
 
       </main>

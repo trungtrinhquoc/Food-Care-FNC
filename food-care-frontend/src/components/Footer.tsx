@@ -138,9 +138,9 @@ export default function Footer() {
                         &copy; {currentYear} <span className="text-slate-900 font-bold">Food & Care</span>. All rights reserved.
                     </p>
                     <div className="flex items-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider order-1 md:order-2">
-                        <a href="#" className="hover:text-emerald-600 transition-colors">Privacy Policy</a>
-                        <a href="#" className="hover:text-emerald-600 transition-colors">Terms of Service</a>
-                        <a href="#" className="hover:text-emerald-600 transition-colors">Cookies</a>
+                        <Link to="/privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</Link>
+                        <Link to="/terms" className="hover:text-emerald-600 transition-colors">Terms of Service</Link>
+                        <Link to="/cookies" className="hover:text-emerald-600 transition-colors">Cookies</Link>
                     </div>
                     <p className="text-xs text-slate-400 flex items-center gap-1.5 order-3">
                         Made with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> in Vietnam
