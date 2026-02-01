@@ -100,23 +100,39 @@ namespace FoodCare.API.Services.Implementations
             if (dto.Rating < 1 || dto.Rating > 5)
                 throw new AppException("Rating phải từ 1 đến 5");
 
-            var orderItem = await _db.OrderItems
-                .Include(oi => oi.Order)
-                .FirstOrDefaultAsync(oi =>
-                    oi.ProductId == dto.ProductId &&
-                    oi.Order!.UserId == userId &&
-                    oi.Order.Status == OrderStatus.delivered
-                );
+            OrderItem? orderItem;
+
+            if (dto.OrderId.HasValue)
+            {
+                orderItem = await _db.OrderItems
+                    .Include(oi => oi.Order)
+                    .FirstOrDefaultAsync(oi =>
+                        oi.ProductId == dto.ProductId &&
+                        oi.OrderId == dto.OrderId &&
+                        oi.Order!.UserId == userId &&
+                        (oi.Order.Status == OrderStatus.delivered || oi.Order.Status == OrderStatus.confirmed) // Allow confirmed/paid too if consistent with frontend
+                    );
+            }
+            else
+            {
+                orderItem = await _db.OrderItems
+                    .Include(oi => oi.Order)
+                    .FirstOrDefaultAsync(oi =>
+                        oi.ProductId == dto.ProductId &&
+                        oi.Order!.UserId == userId &&
+                        oi.Order.Status == OrderStatus.delivered
+                    );
+            }
 
             if (orderItem == null)
-                throw new AppException("Bạn chỉ có thể đánh giá sản phẩm đã mua");
+                throw new AppException("Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng");
 
             var review = new Review
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 ProductId = dto.ProductId,
-                OrderId = orderItem.OrderId,
+                OrderId = orderItem.OrderId, // Will match dto.OrderId if provided and valid
                 Rating = dto.Rating,
                 Comment = dto.Comment,
                 Images = dto.Images != null ? JsonSerializer.Serialize(dto.Images, (JsonSerializerOptions?)null) : null,

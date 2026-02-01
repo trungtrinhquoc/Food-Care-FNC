@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
     Dialog,
     DialogContent,
@@ -9,9 +11,10 @@ import {
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { StatusBadge } from './ui/status-badge';
-import { MapPin, CreditCard, Package, Clock, Truck, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { MapPin, CreditCard, Package, Clock, Truck, CheckCircle, XCircle, AlertCircle, Star } from 'lucide-react';
 import type { Order, OrderStatus, PaymentStatus } from '../types';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ProductReviewDialog } from './ProductReviewDialog';
 
 interface OrderDetailDialogProps {
     open: boolean;
@@ -20,15 +23,21 @@ interface OrderDetailDialogProps {
 }
 
 export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDialogProps) {
-    if (!order) return null;
+    const navigate = useNavigate();
 
-    // Debug log to see order data
-    if (open) {
-        console.log('Order Data in Dialog:', order);
-    }
+    // 1. All hooks must be called unconditionally
+    const [reviewState, setReviewState] = useState<{
+        open: boolean;
+        productId: string;
+        productName: string;
+    }>({
+        open: false,
+        productId: '',
+        productName: ''
+    });
 
     const shippingAddress = useMemo(() => {
-        if (!order.shippingAddressSnapshot) return null;
+        if (!order?.shippingAddressSnapshot) return null;
         try {
             const parsed = JSON.parse(order.shippingAddressSnapshot);
             // Support both old string format and new structured format
@@ -48,17 +57,17 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
         } catch (e) {
             return { addressLine1: order.shippingAddressSnapshot };
         }
-    }, [order.shippingAddressSnapshot]);
+    }, [order?.shippingAddressSnapshot]);
 
     const paymentMethod = useMemo(() => {
-        if (!order.paymentMethodSnapshot) return 'COD';
+        if (!order?.paymentMethodSnapshot) return 'COD';
         try {
             const parsed = JSON.parse(order.paymentMethodSnapshot);
             return parsed.method || parsed;
         } catch (e) {
             return order.paymentMethodSnapshot;
         }
-    }, [order.paymentMethodSnapshot]);
+    }, [order?.paymentMethodSnapshot]);
 
     const getStatusIcon = (status: OrderStatus) => {
         switch (status) {
@@ -134,140 +143,191 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
         return methodMap[method.toUpperCase()] || method;
     };
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <DialogTitle className="text-2xl font-bold">Chi tiết đơn hàng</DialogTitle>
-                            <DialogDescription className="mt-1">
-                                Mã đơn: <span className="font-mono font-bold text-gray-900">{order.orderNumber}</span>
-                            </DialogDescription>
-                        </div>
-                        <StatusBadge className={getStatusColor(order.status)}>
-                            {getStatusIcon(order.status)}
-                            <span className="ml-1.5">{getStatusText(order.status)}</span>
-                        </StatusBadge>
-                    </div>
-                </DialogHeader>
+    // 2. Conditional Logic AFTER hooks
+    if (!order) return null;
 
-                <div className="space-y-6 py-4">
-                    {/* Items Section */}
-                    <div>
-                        <h4 className="flex items-center gap-2 font-semibold mb-3">
-                            <Package className="w-5 h-5 text-emerald-600" />
-                            Sản phẩm đã chọn
-                        </h4>
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                            {!order.items || order.items.length === 0 ? (
-                                <p className="text-center text-gray-500 py-4 italic">Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.</p>
-                            ) : (
-                                order.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-start gap-4">
-                                        <div className="flex-1">
-                                            <p className="font-medium text-gray-900">{item.productName}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <p className="text-sm text-gray-500">
-                                                    {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
+    const allowReview = order.status === 'delivered' || order.status === 'confirmed' || (order.paymentStatus === 'paid' && order.status !== 'cancelled');
+
+    return (
+        <>
+            <ProductReviewDialog
+                open={reviewState.open}
+                onOpenChange={(isOpen) => setReviewState(prev => ({ ...prev, open: isOpen }))}
+                productId={reviewState.productId}
+                productName={reviewState.productName}
+                orderId={order.id}
+            />
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <DialogTitle className="text-2xl font-bold">Chi tiết đơn hàng</DialogTitle>
+                                <DialogDescription className="mt-1">
+                                    Mã đơn: <span className="font-mono font-bold text-gray-900">{order.orderNumber}</span>
+                                </DialogDescription>
+                            </div>
+                            <StatusBadge className={getStatusColor(order.status)}>
+                                {getStatusIcon(order.status)}
+                                <span className="ml-1.5">{getStatusText(order.status)}</span>
+                            </StatusBadge>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="space-y-6 py-4">
+                        {/* Items Section */}
+                        <div>
+                            <h4 className="flex items-center gap-2 font-semibold mb-3">
+                                <Package className="w-5 h-5 text-emerald-600" />
+                                Sản phẩm đã chọn
+                            </h4>
+                            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                {!order.items || order.items.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-4 italic">Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.</p>
+                                ) : (
+                                    order.items.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-start gap-4">
+                                            <div className="flex-1">
+                                                <p
+                                                    className="font-medium text-gray-900 cursor-pointer hover:text-emerald-600 transition-colors"
+                                                    onClick={() => {
+                                                        navigate(`/products/${item.productId}`);
+                                                        onOpenChange(false);
+                                                    }}
+                                                >
+                                                    {item.productName}
                                                 </p>
-                                                {item.isSubscription && (
-                                                    <StatusBadge variant="secondary" className="text-[10px] py-0">
-                                                        📦 Đăng ký định kỳ
-                                                    </StatusBadge>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <p className="text-sm text-gray-500">
+                                                        {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
+                                                    </p>
+                                                    {item.isSubscription && (
+                                                        <StatusBadge variant="secondary" className="text-[10px] py-0">
+                                                            📦 Đăng ký định kỳ
+                                                        </StatusBadge>
+                                                    )}
+                                                </div>
+                                                {allowReview && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className={`mt-2 p-0 h-auto font-normal flex items-center gap-1 ${item.isReviewed
+                                                            ? 'text-gray-400 cursor-not-allowed opacity-70'
+                                                            : 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50'
+                                                            }`}
+                                                        onClick={() => {
+                                                            if (item.isReviewed) {
+                                                                toast.info('Bạn đã đánh giá sản phẩm này rồi');
+                                                                return;
+                                                            }
+                                                            setReviewState({
+                                                                open: true,
+                                                                productId: item.productId,
+                                                                productName: item.productName
+                                                            });
+                                                        }}
+                                                    >
+                                                        <Star className={`w-3.5 h-3.5 ${item.isReviewed ? 'fill-gray-300 text-gray-300' : 'fill-current'}`} />
+                                                        {item.isReviewed ? 'Đã đánh giá' : 'Viết đánh giá'}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-gray-900">
+                                                    {(item.quantity * item.unitPrice).toLocaleString('vi-VN')}đ
+                                                </p>
+                                                {item.isReviewed && (
+                                                    <p className="text-[10px] text-green-600 mt-1 italic">Đã feedback</p>
                                                 )}
                                             </div>
                                         </div>
-                                        <p className="font-bold text-gray-900">
-                                            {(item.quantity * item.unitPrice).toLocaleString('vi-VN')}đ
-                                        </p>
-                                    </div>
-                                ))
-                            )}
-                            <Separator className="my-2" />
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-sm text-gray-600">
-                                    <span>Tạm tính</span>
-                                    <span>{order.subtotal.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                <div className="flex justify-between text-sm text-gray-600">
-                                    <span>Phí vận chuyển</span>
-                                    <span>+{order.shippingFee.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                {order.discountAmount > 0 && (
-                                    <div className="flex justify-between text-sm text-red-600">
-                                        <span>Giảm giá</span>
-                                        <span>-{order.discountAmount.toLocaleString('vi-VN')}đ</span>
-                                    </div>
+                                    ))
                                 )}
-                                <div className="flex justify-between text-lg font-bold text-emerald-600 pt-2">
-                                    <span>Tổng cộng</span>
-                                    <span>{order.totalAmount.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Shipping Info */}
-                        <div className="space-y-3">
-                            <h4 className="flex items-center gap-2 font-semibold">
-                                <MapPin className="w-5 h-5 text-emerald-600" />
-                                Địa chỉ nhận hàng
-                            </h4>
-                            <div className="bg-white border rounded-lg p-4 h-full">
-                                {shippingAddress ? (
-                                    <div className="text-sm space-y-1">
-                                        <p className="font-bold text-gray-900">{(shippingAddress as any).recipientName || (shippingAddress as any).fullName || 'Người nhận'}</p>
-                                        <p className="text-gray-600">{(shippingAddress as any).phoneNumber || (shippingAddress as any).phone}</p>
-                                        <p className="text-gray-600">
-                                            {(shippingAddress as any).addressLine1 || (shippingAddress as any).address}
-                                            {(shippingAddress as any).district ? `, ${(shippingAddress as any).district}` : ''}
-                                            {(shippingAddress as any).city ? `, ${(shippingAddress as any).city}` : ''}
-                                        </p>
+                                <Separator className="my-2" />
+                                <div className="space-y-1.5">
+                                    <div className="flex justify-between text-sm text-gray-600">
+                                        <span>Tạm tính</span>
+                                        <span>{order.subtotal.toLocaleString('vi-VN')}đ</span>
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-gray-500 italic">Thông tin địa chỉ đã được lược bỏ</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Payment Info */}
-                        <div className="space-y-3">
-                            <h4 className="flex items-center gap-2 font-semibold">
-                                <CreditCard className="w-5 h-5 text-emerald-600" />
-                                Thanh toán
-                            </h4>
-                            <div className="bg-white border rounded-lg p-4 h-full space-y-3">
-                                <div className="text-sm">
-                                    <p className="text-gray-500 mb-1">Phương thức</p>
-                                    <p className="font-medium">{getPaymentMethodName(paymentMethod)}</p>
-                                </div>
-                                <div className="text-sm">
-                                    <p className="text-gray-500 mb-1">Trạng thái</p>
-                                    <StatusBadge className={getPaymentStatusColor(order.paymentStatus)}>
-                                        {getPaymentStatusText(order.paymentStatus)}
-                                    </StatusBadge>
+                                    <div className="flex justify-between text-sm text-gray-600">
+                                        <span>Phí vận chuyển</span>
+                                        <span>+{order.shippingFee.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                    {order.discountAmount > 0 && (
+                                        <div className="flex justify-between text-sm text-red-600">
+                                            <span>Giảm giá</span>
+                                            <span>-{order.discountAmount.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-lg font-bold text-emerald-600 pt-2">
+                                        <span>Tổng cộng</span>
+                                        <span>{order.totalAmount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Shipping Info */}
+                            <div className="space-y-3">
+                                <h4 className="flex items-center gap-2 font-semibold">
+                                    <MapPin className="w-5 h-5 text-emerald-600" />
+                                    Địa chỉ nhận hàng
+                                </h4>
+                                <div className="bg-white border rounded-lg p-4 h-full">
+                                    {shippingAddress ? (
+                                        <div className="text-sm space-y-1">
+                                            <p className="font-bold text-gray-900">{(shippingAddress as any).recipientName || (shippingAddress as any).fullName || 'Người nhận'}</p>
+                                            <p className="text-gray-600">{(shippingAddress as any).phoneNumber || (shippingAddress as any).phone}</p>
+                                            <p className="text-gray-600">
+                                                {(shippingAddress as any).addressLine1 || (shippingAddress as any).address}
+                                                {(shippingAddress as any).district ? `, ${(shippingAddress as any).district}` : ''}
+                                                {(shippingAddress as any).city ? `, ${(shippingAddress as any).city}` : ''}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500 italic">Thông tin địa chỉ đã được lược bỏ</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Payment Info */}
+                            <div className="space-y-3">
+                                <h4 className="flex items-center gap-2 font-semibold">
+                                    <CreditCard className="w-5 h-5 text-emerald-600" />
+                                    Thanh toán
+                                </h4>
+                                <div className="bg-white border rounded-lg p-4 h-full space-y-3">
+                                    <div className="text-sm">
+                                        <p className="text-gray-500 mb-1">Phương thức</p>
+                                        <p className="font-medium">{getPaymentMethodName(paymentMethod)}</p>
+                                    </div>
+                                    <div className="text-sm">
+                                        <p className="text-gray-500 mb-1">Trạng thái</p>
+                                        <StatusBadge className={getPaymentStatusColor(order.paymentStatus)}>
+                                            {getPaymentStatusText(order.paymentStatus)}
+                                        </StatusBadge>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Info */}
+                        <div className="text-xs text-gray-400 text-center pt-4 italic">
+                            Cảm ơn bạn đã tin tưởng Food & Care. Đơn hàng được đặt vào {new Date(order.createdAt).toLocaleString('vi-VN')}.
+                        </div>
                     </div>
 
-                    {/* Footer Info */}
-                    <div className="text-xs text-gray-400 text-center pt-4 italic">
-                        Cảm ơn bạn đã tin tưởng Food & Care. Đơn hàng được đặt vào {new Date(order.createdAt).toLocaleString('vi-VN')}.
-                    </div>
-                </div>
-
-                <DialogFooter className="sm:justify-end">
-                    <Button onClick={() => onOpenChange(false)} variant="secondary">
-                        Đóng
-                    </Button>
-                    <Button className="bg-emerald-600 hover:bg-emerald-700">
-                        Cần hỗ trợ?
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter className="sm:justify-end">
+                        <Button onClick={() => onOpenChange(false)} variant="secondary">
+                            Đóng
+                        </Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                            Cần hỗ trợ?
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

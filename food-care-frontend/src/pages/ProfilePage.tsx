@@ -72,14 +72,34 @@ export default function ProfilePage() {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-    // Orders pagination
+    // Orders filter & pagination
+    const [orderFilter, setOrderFilter] = useState<string>('all');
     const [ordersPage, setOrdersPage] = useState(1);
     const ordersPageSize = 5;
-    const ordersTotalPages = Math.ceil(orders.length / ordersPageSize);
+
+    const filteredOrders = useMemo(() => {
+        if (orderFilter === 'all') return orders;
+
+        return orders.filter(order => {
+            if (orderFilter === 'pending') return order.status === 'pending';
+            if (orderFilter === 'processing') return order.status === 'confirmed' || order.status === 'processing';
+            if (orderFilter === 'shipping') return order.status === 'shipping';
+            if (orderFilter === 'delivered') return order.status === 'delivered';
+            if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'returned';
+            return true;
+        });
+    }, [orders, orderFilter]);
+
+    const ordersTotalPages = Math.ceil(filteredOrders.length / ordersPageSize);
     const paginatedOrders = useMemo(() => {
         const start = (ordersPage - 1) * ordersPageSize;
-        return orders.slice(start, start + ordersPageSize);
-    }, [orders, ordersPage]);
+        return filteredOrders.slice(start, start + ordersPageSize);
+    }, [filteredOrders, ordersPage, ordersPageSize]);
+
+    // Reset page when filter changes
+    useEffect(() => {
+        setOrdersPage(1);
+    }, [orderFilter]);
 
     // Loading states
     const [loading, setLoading] = useState(false);
@@ -759,11 +779,34 @@ export default function ProfilePage() {
 
                     {/* Orders Tab */}
                     <TabsContent value="orders" className="space-y-6">
+                        {/* Status Filter Tabs */}
+                        <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-2 no-scrollbar">
+                            {[
+                                { id: 'all', label: 'Tất cả' },
+                                { id: 'pending', label: 'Chờ xác nhận' },
+                                { id: 'processing', label: 'Đang xử lý' },
+                                { id: 'shipping', label: 'Đang giao' },
+                                { id: 'delivered', label: 'Đã giao' },
+                                { id: 'cancelled', label: 'Đã hủy' },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setOrderFilter(tab.id)}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${orderFilter === tab.id
+                                            ? 'bg-emerald-600 text-white shadow-md'
+                                            : 'bg-white text-gray-600 border hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
                         <Card>
                             <CardHeader>
                                 <CardTitle>Lịch sử đơn hàng</CardTitle>
                                 <CardDescription>
-                                    {loadingOrders ? 'Đang tải danh sách đơn hàng...' : orders.length > 0 ? `Tất cả đơn hàng của bạn (${orders.length})` : 'Bạn chưa có đơn hàng nào'}
+                                    {loadingOrders ? 'Đang tải danh sách đơn hàng...' : filteredOrders.length > 0 ? `Tìm thấy ${filteredOrders.length} đơn hàng` : 'Không tìm thấy đơn hàng nào'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
