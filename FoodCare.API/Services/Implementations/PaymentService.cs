@@ -90,7 +90,7 @@ namespace FoodCare.API.Services.Implementations
             if (transaction.Status == TransactionStatus.Success)
                 return;
 
-            if (data.Status == "PAID")
+            if (webhook.Code == "00")
             {
                 transaction.Status = TransactionStatus.Success;
                 transaction.PaidAt = DateTime.UtcNow;
@@ -103,6 +103,7 @@ namespace FoodCare.API.Services.Implementations
             }
             else
             {
+                // Backup check or failure logging
                 transaction.Status = TransactionStatus.Failed;
                 transaction.ProviderResponse = JsonSerializer.Serialize(webhook);
             }

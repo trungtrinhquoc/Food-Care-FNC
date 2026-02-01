@@ -140,6 +140,7 @@ export interface OrderItem {
     totalPrice: number;
     isSubscription: boolean;
     subscriptionFrequency?: SubscriptionFrequency;
+    isReviewed?: boolean;
 }
 
 

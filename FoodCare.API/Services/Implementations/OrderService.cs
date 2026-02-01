@@ -215,7 +215,24 @@ namespace FoodCare.API.Services.Implementations
                     .ThenInclude(oi => oi.Product)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
-            return order == null ? null : _mapper.Map<OrdersDto>(order);
+            if (order == null) return null;
+
+            var result = _mapper.Map<OrdersDto>(order);
+
+            // Populate IsReviewed
+            var reviews = await _context.Reviews
+                .Where(r => r.OrderId == id)
+                .Select(r => r.ProductId)
+                .ToListAsync();
+            
+            var reviewedProductIds = new HashSet<Guid?>(reviews);
+
+            foreach (var item in result.Items)
+            {
+                item.IsReviewed = reviewedProductIds.Contains(item.ProductId);
+            }
+
+            return result;
         }
 
         public async Task<List<OrdersDto>> GetOrdersByUserIdAsync(Guid userId)
@@ -227,7 +244,33 @@ namespace FoodCare.API.Services.Implementations
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
 
-            return _mapper.Map<List<OrdersDto>>(orders);
+            var result = _mapper.Map<List<OrdersDto>>(orders);
+
+            // Populate IsReviewed efficiently
+            var orderIds = result.Select(o => o.Id).ToList();
+            
+            // Get all reviews for these orders
+            var reviews = await _context.Reviews
+                .Where(r => r.UserId == userId && r.OrderId != null && orderIds.Contains(r.OrderId.Value))
+                .Select(r => new { r.OrderId, r.ProductId })
+                .ToListAsync();
+
+            var reviewSet = new HashSet<(Guid OrderId, Guid ProductId)>();
+            foreach (var r in reviews)
+            {
+                if (r.OrderId.HasValue && r.ProductId.HasValue)
+                    reviewSet.Add((r.OrderId.Value, r.ProductId.Value));
+            }
+
+            foreach (var order in result)
+            {
+                foreach (var item in order.Items)
+                {
+                    item.IsReviewed = reviewSet.Contains((order.Id, item.ProductId));
+                }
+            }
+
+            return result;
         }
     }
 }

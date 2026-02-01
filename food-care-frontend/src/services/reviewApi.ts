@@ -37,6 +37,7 @@ export const reviewApi = {
         rating: number;
         comment: string;
         images?: string[];
+        orderId?: string;
     }) {
         return api.post("/reviews", payload);
     },

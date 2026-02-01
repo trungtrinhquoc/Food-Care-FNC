@@ -98,6 +98,18 @@ namespace FoodCare.API.Services.Implementations
 
             var computedSignature = Convert.ToHexString(hashBytes).ToLower();
 
+            if (computedSignature != receivedSignature) 
+            {
+                Console.WriteLine($"[PayOsService] Signature Mismatch!");
+                Console.WriteLine($"   Computed: {computedSignature}");
+                Console.WriteLine($"   Received: {receivedSignature}");
+                // NOTE: Do not log payload or key in production if sensitive
+            }
+            else
+            {
+                Console.WriteLine("[PayOsService] Signature Verified.");
+            }
+
             return computedSignature == receivedSignature;
         }
         // 👇 VIẾT Ở ĐÂY
