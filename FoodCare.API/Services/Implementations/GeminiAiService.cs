@@ -39,11 +39,36 @@ public class GeminiAiService
         _cache = cache;
         _logger = logger;
         
-        // Set credentials path if provided
-        var credentialsPath = configuration["VertexAI:CredentialsPath"];
-        if (!string.IsNullOrEmpty(credentialsPath) && File.Exists(credentialsPath))
+        // Priority 1: Check for JSON credentials in environment variable (Railway deployment)
+        var credentialsJson = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS_JSON");
+        if (!string.IsNullOrEmpty(credentialsJson))
         {
-            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath);
+            try
+            {
+                // Create a temporary file for the credentials
+                var tempPath = Path.Combine(Path.GetTempPath(), $"gcp-credentials-{Guid.NewGuid()}.json");
+                File.WriteAllText(tempPath, credentialsJson);
+                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", tempPath);
+                _logger.LogInformation("Google Cloud credentials loaded from GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to write credentials from GOOGLE_APPLICATION_CREDENTIALS_JSON to temp file");
+            }
+        }
+        // Priority 2: Check for credentials file path (local development)
+        else
+        {
+            var credentialsPath = configuration["VertexAI:CredentialsPath"];
+            if (!string.IsNullOrEmpty(credentialsPath) && File.Exists(credentialsPath))
+            {
+                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath);
+                _logger.LogInformation("Google Cloud credentials loaded from file: {Path}", credentialsPath);
+            }
+            else
+            {
+                _logger.LogWarning("No Google Cloud credentials found. Chatbot may not work properly.");
+            }
         }
     }
     
