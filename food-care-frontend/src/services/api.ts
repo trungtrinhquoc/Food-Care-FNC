@@ -11,6 +11,7 @@ import type {
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
+// const API_URL = 'http://localhost:5022/api';
 console.log('Configured API_URL:', API_URL);
 
 const api = axios.create({

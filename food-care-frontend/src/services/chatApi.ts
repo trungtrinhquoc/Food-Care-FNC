@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5022/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
+// const API_URL = 'http://localhost:5022/api';
 
 export interface AskQuestionRequest {
     question: string;
@@ -20,7 +21,8 @@ class ChatApi {
     // Ask a question (stateless)
     async askQuestion(question: string): Promise<ChatResponse> {
         const response = await axios.post<ChatResponse>(
-            `${API_BASE_URL}/chat/ask`,
+            //`${API_BASE_URL}/chat/ask`,
+            `${API_URL}/chat/ask`,
             { question },
             { headers: this.getAuthHeader() }
         );
