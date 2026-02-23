@@ -8,7 +8,8 @@ interface CartContextType {
         product: Product,
         quantity: number,
         isSubscription?: boolean,
-        frequency?: SubscriptionFrequency
+        frequency?: SubscriptionFrequency,
+        discount?: number
     ) => void
     removeFromCart: (productId: string) => void
     updateQuantity: (productId: string, quantity: number) => void
@@ -39,7 +40,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         product: Product,
         quantity: number,
         isSubscription = false,
-        frequency?: SubscriptionFrequency
+        frequency?: SubscriptionFrequency,
+        discount?: number
     ) => {
         setItems(prev => {
             const existing = prev.find(i => i.product.id === product.id)
@@ -55,9 +57,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                 {
                     product,
                     quantity,
-                    selected: true, // 👈 mặc định chọn
+                    selected: true,
                     isSubscription,
-                    subscriptionFrequency: frequency,
+                    subscription: isSubscription && frequency ? {
+                        frequency,
+                        discount: discount || 0
+                    } : undefined,
                 },
             ]
         })
@@ -101,15 +106,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const clearCart = () => setItems([])
 
     const getTotal = () =>
-        items.reduce(
-            (total, i) => total + i.product.basePrice * i.quantity,
-            0
-        )
+        items.reduce((total, i) => {
+            const price = i.subscription
+                ? i.product.basePrice * (1 - i.subscription.discount / 100)
+                : i.product.basePrice;
+            return total + price * i.quantity;
+        }, 0)
 
     const getSelectedTotal = () =>
         items.reduce((total, i) => {
-            if (!i.selected) return total
-            return total + i.product.basePrice * i.quantity
+            if (!i.selected) return total;
+            const price = i.subscription
+                ? i.product.basePrice * (1 - i.subscription.discount / 100)
+                : i.product.basePrice;
+            return total + price * i.quantity;
         }, 0)
 
     const getSelectedItems = () => items.filter(i => i.selected)

@@ -7,7 +7,7 @@ import type {
     Address,
     PaymentMethod,
     Supplier,
-
+    Order
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -199,6 +199,33 @@ export const profileApi = {
 
     setDefaultPaymentMethod: async (paymentMethodId: string): Promise<{ message: string; success: boolean }> => {
         const response = await api.patch(`/profile/payment-methods/${paymentMethodId}/set-default`);
+        return response.data;
+    },
+
+    // Order Management
+    getOrders: async (): Promise<Order[]> => {
+        const response = await api.get('/orders/my-orders');
+        return response.data;
+    },
+
+    // Subscription Management
+    getSubscriptions: async (): Promise<any[]> => {
+        const response = await api.get('/subscriptions/my');
+        return response.data;
+    },
+
+    pauseSubscription: async (subscriptionId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.put(`/subscriptions/${subscriptionId}/pause`);
+        return response.data;
+    },
+
+    resumeSubscription: async (subscriptionId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.put(`/subscriptions/${subscriptionId}/resume`);
+        return response.data;
+    },
+
+    cancelSubscription: async (subscriptionId: string): Promise<{ message: string; success: boolean }> => {
+        const response = await api.delete(`/subscriptions/${subscriptionId}`);
         return response.data;
     },
 };

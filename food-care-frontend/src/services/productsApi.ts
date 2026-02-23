@@ -6,7 +6,8 @@ import type {
     UpdateProductRequest,
 } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
+//const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
+const API_URL = 'https://food-care-fnc-production.up.railway.app/api';
 
 const api = axios.create({
     baseURL: API_URL,

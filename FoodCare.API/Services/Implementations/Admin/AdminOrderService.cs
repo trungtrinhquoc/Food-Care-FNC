@@ -188,7 +188,7 @@ public class AdminOrderService : IAdminOrderService
             PreviousStatus = previousStatus,
             NewStatus = newStatus,
             Note = dto.Note,
-            CreatedBy = dto.ChangedBy,
+            CreatedBy = null, // TODO: Get from authenticated admin user
             CreatedAt = DateTime.UtcNow
         };
 
@@ -214,7 +214,7 @@ public class AdminOrderService : IAdminOrderService
                     OrderId = order.Id,
                     BalanceBefore = currentBalance,
                     BalanceAfter = newBalance,
-                    CreatedBy = dto.ChangedBy,
+                    CreatedBy = null, // TODO: Get from authenticated admin user
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -232,7 +232,7 @@ public class AdminOrderService : IAdminOrderService
                     .FirstOrDefaultAsync(p => p.OrderId == id);
                 if (paymentLog != null)
                 {
-                    paymentLog.Status = "completed";
+                    paymentLog.Status = "paid";
                     paymentLog.PaidAt = DateTime.UtcNow;
                     paymentLog.UpdatedAt = DateTime.UtcNow;
                 }

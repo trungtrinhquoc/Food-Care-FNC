@@ -16,6 +16,8 @@ using FoodCare.API.Services.Implementations.StaffModule;
 using System.Text.Json.Serialization;
 using FoodCare.API.Models;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
@@ -24,6 +26,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -109,6 +112,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<ISubscriptionReminderService, SubscriptionReminderService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -123,8 +127,19 @@ builder.Services.AddScoped<IAdminZaloService, AdminZaloService>();
 builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
+// Register Chat Services (Simplified - Stateless)
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSingleton<MessageClassifier>(); // Singleton - no state
+builder.Services.AddScoped<FaqCacheService>();
+builder.Services.AddScoped<GeminiAiService>();
+
+
 
 // Register Supplier Services
 builder.Services.AddScoped<ISupplierService, SupplierService>();
@@ -145,11 +160,9 @@ builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Enable Swagger for all environments (including production for debugging)
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();

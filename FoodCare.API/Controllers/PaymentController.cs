@@ -48,29 +48,52 @@ namespace FoodCare.API.Controllers
         [HttpPost("payos/webhook")]
         public async Task<IActionResult> PayOsWebhook()
         {
-            // 1. Đọc raw body (BẮT BUỘC)
-            using var reader = new StreamReader(Request.Body);
-            var payload = await reader.ReadToEndAsync();
+            try
+            {
+                // 1. Đọc raw body (BẮT BUỘC)
+                using var reader = new StreamReader(Request.Body);
+                var payload = await reader.ReadToEndAsync();
 
-            // 2. Lấy signature từ header
-            var signature = Request.Headers["x-signature"].FirstOrDefault();
-            if (string.IsNullOrEmpty(signature))
-                return Unauthorized();
+                // 2. Lấy signature từ header
+                var signature = Request.Headers["x-signature"].FirstOrDefault();
 
-            // 3. Verify chữ ký
-            var isValid = _payOsService.VerifySignature(payload, signature);
-            if (!isValid)
-                return Unauthorized();
+                Console.WriteLine($"[Webhook] Received at {DateTime.Now}: Length={payload.Length}");
+                Console.WriteLine($"[Webhook] Signature: {signature}");
+                // Console.WriteLine($"[Webhook] RAW PAYLOAD: {payload}"); // Disabled for security
 
-            // 4. Parse JSON sau khi verify
-            var webhook = JsonSerializer.Deserialize<PayOsWebhookRequest>(payload);
-            if (webhook == null)
-                return BadRequest();
+                if (string.IsNullOrEmpty(signature))
+                {
+                    Console.WriteLine("[Webhook] Error: Missing signature header");
+                    return Unauthorized();
+                }
 
-            // 5. Xử lý nghiệp vụ
-            await _paymentService.HandlePayOsWebhookAsync(webhook);
+                // 3. Verify chữ ký
+                var isValid = _payOsService.VerifySignature(payload, signature);
+                if (!isValid)
+                {
+                    Console.WriteLine("[Webhook] Error: Invalid signature");
+                    return Unauthorized();
+                }
 
-            return Ok();
+                // 4. Parse JSON sau khi verify
+                var webhook = JsonSerializer.Deserialize<PayOsWebhookRequest>(payload);
+                if (webhook == null)
+                {
+                    Console.WriteLine("[Webhook] Error: Failed to deserialize JSON");
+                    return BadRequest();
+                }
+
+                // 5. Xử lý nghiệp vụ
+                Console.WriteLine($"[Webhook] Processing Order... PaymentLinkId: {webhook.Data?.PaymentLinkId}, Status: {webhook.Data?.Status}");
+                await _paymentService.HandlePayOsWebhookAsync(webhook);
+
+                return Ok(new { message = "Webhook processed successfully" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Webhook] CRITICAL EXCEPTION: {ex}");
+                return Ok(); 
+            }
         }
     }
 }

@@ -80,7 +80,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [trafficDateRange, setTrafficDateRange] = useState<TrafficDateRange>('7d');
   const [orderDateRange, setOrderDateRange] = useState<TrafficDateRange>('7d');
-  
+
   // Map traffic date range to days
   const trafficDaysMap: Record<TrafficDateRange, number> = {
     '1d': 1,
@@ -88,14 +88,14 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     '30d': 30,
     '1y': 365,
   };
-  
+
   const orderDaysMap: Record<TrafficDateRange, number> = {
     '1d': 1,
     '7d': 7,
     '30d': 30,
     '1y': 365,
   };
-  
+
   // Fetch overview data from API
   const {
     ordersChart,

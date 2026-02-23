@@ -56,7 +56,8 @@ namespace FoodCare.API.Services.Implementations
             _db.Transaction.Add(transaction);
             await _db.SaveChangesAsync();
 
-            var description = $"Thanh toan don hang {order.Id}";
+            var description = $"DH {orderCode}";
+            // PayOS limit 25 chars. "DH " (3) + orderCode (13) = 16 chars -> OK
 
             var payOsResponse = await _payOsService.CreatePaymentLinkAsync(
                 orderCode,
@@ -89,7 +90,7 @@ namespace FoodCare.API.Services.Implementations
             if (transaction.Status == TransactionStatus.Success)
                 return;
 
-            if (data.Status == "PAID")
+            if (webhook.Code == "00")
             {
                 transaction.Status = TransactionStatus.Success;
                 transaction.PaidAt = DateTime.UtcNow;
@@ -102,6 +103,7 @@ namespace FoodCare.API.Services.Implementations
             }
             else
             {
+                // Backup check or failure logging
                 transaction.Status = TransactionStatus.Failed;
                 transaction.ProviderResponse = JsonSerializer.Serialize(webhook);
             }

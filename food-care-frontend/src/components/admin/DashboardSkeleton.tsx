@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
 
 // Stats card skeleton
 export function StatsCardSkeleton() {

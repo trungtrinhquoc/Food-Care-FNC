@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { profileApi } from '../services/api';
@@ -13,12 +13,16 @@ import { StatusBadge } from '../components/ui/status-badge';
 import { Progress } from '../components/ui/progress';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { SimplePagination } from '../components/ui/pagination';
 import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
-    Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2
+    Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2,
+    Camera
 } from 'lucide-react';
+import { SimplePagination } from '../components/ui/pagination';
+import { AddressSelector } from '../components/AddressSelector';
+import { OrderDetailDialog } from '../components/OrderDetailDialog';
+import { uploadToCloudinary } from '../utils/cloudinary';
 
 type MemberTierName = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
@@ -62,23 +66,50 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState('overview');
 
     // State for data
-    const [orders] = useState<Order[]>([]); // TODO: Implement orders API
+    const [orders, setOrders] = useState<Order[]>([]);
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-    // Orders pagination
+    // Orders filter & pagination
+    const [orderFilter, setOrderFilter] = useState<string>('all');
     const [ordersPage, setOrdersPage] = useState(1);
     const ordersPageSize = 5;
-    const ordersTotalPages = Math.ceil(orders.length / ordersPageSize);
+
+    const filteredOrders = useMemo(() => {
+        if (orderFilter === 'all') return orders;
+
+        return orders.filter(order => {
+            if (orderFilter === 'pending') return order.status === 'pending';
+            if (orderFilter === 'processing') return order.status === 'confirmed' || order.status === 'processing';
+            if (orderFilter === 'shipping') return order.status === 'shipping';
+            if (orderFilter === 'delivered') return order.status === 'delivered';
+            if (orderFilter === 'cancelled') return order.status === 'cancelled' || order.status === 'returned';
+            return true;
+        });
+    }, [orders, orderFilter]);
+
+    const ordersTotalPages = Math.ceil(filteredOrders.length / ordersPageSize);
     const paginatedOrders = useMemo(() => {
         const start = (ordersPage - 1) * ordersPageSize;
-        return orders.slice(start, start + ordersPageSize);
-    }, [orders, ordersPage]);
+        return filteredOrders.slice(start, start + ordersPageSize);
+    }, [filteredOrders, ordersPage, ordersPageSize]);
+
+    // Reset page when filter changes
+    useEffect(() => {
+        setOrdersPage(1);
+    }, [orderFilter]);
 
     // Loading states
     const [loading, setLoading] = useState(false);
+    const [loadingOrders, setLoadingOrders] = useState(true);
     const [loadingAddresses, setLoadingAddresses] = useState(true);
     const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+    // Ref for file input
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Form states
     const [profileForm, setProfileForm] = useState({
@@ -117,6 +148,11 @@ export default function ProfilePage() {
     const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
 
+    // Load orders on mount
+    useEffect(() => {
+        loadOrders();
+    }, []);
+
     // Load addresses on mount
     useEffect(() => {
         loadAddresses();
@@ -138,6 +174,19 @@ export default function ProfilePage() {
             });
         }
     }, [user]);
+
+    const loadOrders = async () => {
+        try {
+            setLoadingOrders(true);
+            const data = await profileApi.getOrders();
+            setOrders(data);
+        } catch (error: any) {
+            console.error('Error loading orders:', error);
+            // toast.error('Không thể tải danh sách đơn hàng');
+        } finally {
+            setLoadingOrders(false);
+        }
+    };
 
     const loadAddresses = async () => {
         try {
@@ -228,6 +277,52 @@ export default function ProfilePage() {
             setLoading(false);
         }
     };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Vui lòng chọn file ảnh');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Kích thước ảnh không được vượt quá 5MB');
+            return;
+        }
+
+        setUploadingAvatar(true);
+
+        try {
+            // Upload to Cloudinary
+            const result = await uploadToCloudinary(file);
+
+            // Update profile with new avatar URL
+            await profileApi.updateProfile({
+                ...profileForm,
+                avatarUrl: result.url,
+            });
+
+            toast.success('Cập nhật ảnh đại diện thành công!');
+
+            // Reload user data
+            await refreshUser();
+        } catch (error: any) {
+            console.error('Error uploading avatar:', error);
+            const message = error.message || 'Có lỗi xảy ra khi tải ảnh lên';
+            toast.error(message);
+        } finally {
+            setUploadingAvatar(false);
+            // Reset file input
+            if (avatarInputRef.current) {
+                avatarInputRef.current.value = '';
+            }
+        }
+    };
+
 
     const handleSaveAddress = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -430,39 +525,46 @@ export default function ProfilePage() {
 
     const getStatusIcon = (status: OrderStatus) => {
         switch (status) {
-            case 'Pending':
+            case 'pending':
                 return <Clock className="w-5 h-5 text-yellow-600" />;
-            case 'Processing':
+            case 'confirmed':
+            case 'processing':
                 return <AlertCircle className="w-5 h-5 text-blue-600" />;
-            case 'Shipping':
+            case 'shipping':
                 return <Truck className="w-5 h-5 text-purple-600" />;
-            case 'Delivered':
+            case 'delivered':
                 return <CheckCircle className="w-5 h-5 text-green-600" />;
-            case 'Cancelled':
+            case 'cancelled':
                 return <XCircle className="w-5 h-5 text-red-600" />;
+            default:
+                return <Clock className="w-5 h-5 text-gray-600" />;
         }
     };
 
     const getStatusText = (status: OrderStatus) => {
         const statusMap: Record<OrderStatus, string> = {
-            Pending: 'Chờ xác nhận',
-            Processing: 'Đang xử lý',
-            Shipping: 'Đang giao',
-            Delivered: 'Đã giao',
-            Cancelled: 'Đã hủy',
+            pending: 'Chờ xác nhận',
+            confirmed: 'Đã xác nhận',
+            processing: 'Đang xử lý',
+            shipping: 'Đang giao',
+            delivered: 'Đã giao',
+            cancelled: 'Đã hủy',
+            returned: 'Đã trả hàng'
         };
-        return statusMap[status];
+        return statusMap[status] || status;
     };
 
     const getStatusColor = (status: OrderStatus) => {
         const colorMap: Record<OrderStatus, string> = {
-            Pending: 'bg-yellow-100 text-yellow-800',
-            Processing: 'bg-blue-100 text-blue-800',
-            Shipping: 'bg-purple-100 text-purple-800',
-            Delivered: 'bg-green-100 text-green-800',
-            Cancelled: 'bg-red-100 text-red-800',
+            pending: 'bg-yellow-100 text-yellow-800',
+            confirmed: 'bg-blue-100 text-blue-800',
+            processing: 'bg-blue-100 text-blue-800',
+            shipping: 'bg-purple-100 text-purple-800',
+            delivered: 'bg-green-100 text-green-800',
+            cancelled: 'bg-red-100 text-red-800',
+            returned: 'bg-gray-100 text-gray-800'
         };
-        return colorMap[status];
+        return colorMap[status] || 'bg-gray-100 text-gray-800';
     };
 
     // Mock total orders count
@@ -472,37 +574,54 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header Section */}
-            <section className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-12">
-                <div className="container mx-auto px-4">
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                        <Avatar className="w-24 h-24 border-4 border-white/30">
-                            <AvatarImage src={user.avatarUrl} />
-                            <AvatarFallback className="bg-white text-emerald-600 text-2xl">
-                                {user.fullName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 text-center md:text-left">
-                            <div className="flex items-center gap-3 justify-center md:justify-start mb-2">
-                                <h1 className="text-white text-3xl font-bold">{user.fullName}</h1>
-                                <StatusBadge className={`${currentTier.color} text-white border-0`}>
-                                    {currentTier.icon} {userTierName}
+            <section className="relative overflow-hidden text-white py-8 md:py-12">
+                {/* Background Image with Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=1600&h=400&fit=crop"
+                        alt="Header Background"
+                        className="w-full h-full object-cover opacity-60"
+                    />
+                    <div className="absolute inset-0 bg-emerald-700/70 mix-blend-multiply"></div>
+                </div>
+
+                <div className="container mx-auto px-4 relative z-10">
+                    <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                        <div className="relative">
+                            <Avatar className="w-20 h-20 md:w-28 md:h-28 border-4 border-white/20 shadow-2xl">
+                                <AvatarImage src={user.avatarUrl} />
+                                <AvatarFallback className="bg-white text-emerald-600 text-2xl md:text-3xl font-bold">
+                                    {user.fullName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2">
+                                <StatusBadge className={`${currentTier.color} text-white border-2 border-white shadow-lg text-[10px] md:text-xs h-6 md:h-8`}>
+                                    {currentTier.icon}
                                 </StatusBadge>
                             </div>
-                            <p className="text-emerald-100 mb-2">Khách hàng từ {joinDate}</p>
-                            <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
-                                <div className="flex items-center gap-2">
-                                    <Package className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex flex-col md:flex-row items-center gap-3 mb-2">
+                                <h1 className="text-white text-2xl md:text-3xl font-extrabold tracking-tight">{user.fullName}</h1>
+                                <StatusBadge className={`hidden md:flex ${currentTier.color} text-white border-0 px-3 py-1 shadow-sm text-xs font-bold`}>
+                                    {userTierName}
+                                </StatusBadge>
+                            </div>
+                            <p className="text-emerald-50/80 mb-4 text-sm font-medium">Khách hàng từ {joinDate}</p>
+                            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                                <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md text-xs border border-white/10 font-semibold shadow-sm">
+                                    <Package className="w-3.5 h-3.5 text-emerald-100" />
                                     <span>{totalOrders} đơn hàng</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4" />
+                                <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md text-xs border border-white/10 font-semibold shadow-sm">
+                                    <TrendingUp className="w-3.5 h-3.5 text-teal-100" />
                                     <span>{(userTotalSpent / 1000000).toFixed(1)}M đã mua</span>
                                 </div>
                             </div>
                         </div>
                         <Button
                             onClick={handleLogout}
-                            className="bg-white/10 backdrop-blur-sm text-white border border-white/30 hover:bg-white/20"
+                            className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold px-6 h-10 shadow-lg md:self-center text-sm rounded-xl transition-all"
                         >
                             Đăng xuất
                         </Button>
@@ -513,66 +632,78 @@ export default function ProfilePage() {
             {/* Main Content */}
             <section className="container mx-auto px-4 py-8">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-6 bg-white shadow-sm">
-                        <TabsTrigger value="overview">
-                            <User className="w-4 h-4" /> <span className="ml-2">Tổng quan</span>
+                    <TabsList className="mb-10 w-full justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide no-scrollbar bg-gray-100/80 p-1.5 rounded-2xl border-none h-auto">
+                        <TabsTrigger value="overview" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <User className="w-4 h-4" /> <span>Tổng quan</span>
                         </TabsTrigger>
-                        <TabsTrigger value="orders">
-                            <Package className="w-4 h-4" /> <span className="ml-2">Đơn hàng</span>
+                        <TabsTrigger value="orders" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <Package className="w-4 h-4" /> <span>Đơn hàng</span>
                         </TabsTrigger>
-                        <TabsTrigger value="membership">
-                            <Crown className="w-4 h-4" /> <span className="ml-2">Hạng thành viên</span>
+                        <TabsTrigger value="membership" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <Crown className="w-4 h-4" /> <span>Hạng thành viên</span>
                         </TabsTrigger>
-                        <TabsTrigger value="settings">
-                            <Settings className="w-4 h-4" /> <span className="ml-2">Cài đặt</span>
+                        <TabsTrigger value="settings" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
+                            <Settings className="w-4 h-4" /> <span>Cài đặt</span>
                         </TabsTrigger>
                     </TabsList>
 
                     {/* Overview Tab */}
                     <TabsContent value="overview" className="space-y-6">
                         {/* Quick Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Đơn hàng</p>
-                                            <p className="text-2xl font-bold mt-1">{totalOrders}</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-emerald-50 md:bg-transparent rounded-lg text-emerald-600 md:text-emerald-600">
+                                            <Package className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <Package className="w-8 h-8 text-emerald-600" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Đơn hàng</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{totalOrders}</p>
+                                        </div>
+                                        <Package className="hidden md:block w-8 h-8 text-emerald-600 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Tổng chi tiêu</p>
-                                            <p className="text-2xl font-bold mt-1">{(userTotalSpent / 1000000).toFixed(1)}M</p>
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-blue-50 md:bg-transparent rounded-lg text-blue-600 md:text-blue-600">
+                                            <TrendingUp className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <TrendingUp className="w-8 h-8 text-blue-600" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Chi tiêu</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{(userTotalSpent / 1000000).toFixed(1)}M</p>
+                                        </div>
+                                        <TrendingUp className="hidden md:block w-8 h-8 text-blue-600 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Điểm tích lũy</p>
-                                            <p className="text-2xl font-bold mt-1">{user.loyaltyPoints?.toLocaleString('vi-VN') || 0}</p>
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-amber-50 md:bg-transparent rounded-lg text-amber-600 md:text-amber-600">
+                                            <Star className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <Star className="w-8 h-8 text-amber-500" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Điểm tích lũy</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{user.loyaltyPoints || 0}</p>
+                                        </div>
+                                        <Star className="hidden md:block w-8 h-8 text-amber-500 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="hover:shadow-lg transition-shadow">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Địa chỉ</p>
-                                            <p className="text-2xl font-bold mt-1">{addresses.length}</p>
+                            <Card className="hover:shadow-lg transition-all duration-300 border-none shadow-sm">
+                                <CardContent className="p-4 md:p-6 text-center md:text-left">
+                                    <div className="flex flex-col md:flex-row items-center gap-2 md:justify-between">
+                                        <div className="p-2 md:p-0 bg-purple-50 md:bg-transparent rounded-lg text-purple-600 md:text-purple-600">
+                                            <MapPin className="w-6 h-6 md:hidden" />
                                         </div>
-                                        <MapPin className="w-8 h-8 text-purple-600" />
+                                        <div>
+                                            <p className="text-xs md:text-sm text-gray-500 font-medium">Địa chỉ</p>
+                                            <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1">{addresses.length}</p>
+                                        </div>
+                                        <MapPin className="hidden md:block w-8 h-8 text-purple-600 opacity-20" />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -602,8 +733,8 @@ export default function ProfilePage() {
                                         </div>
                                     )}
                                     <Separator />
-                                    <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
-                                        <Edit className="w-4 h-4 mr-2" />
+                                    <Button variant="outline" size="sm" className="w-full text-xs h-9 bg-gray-50/50 hover:bg-white transition-all shadow-none border-gray-200" onClick={() => setActiveTab('settings')}>
+                                        <Edit className="w-3.5 h-3.5 mr-2" />
                                         Chỉnh sửa thông tin
                                     </Button>
                                 </CardContent>
@@ -638,7 +769,7 @@ export default function ProfilePage() {
                                         <p className="text-sm text-gray-500 text-center py-4">Chưa có địa chỉ nào</p>
                                     )}
                                     <Separator />
-                                    <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
+                                    <Button variant="outline" size="sm" className="w-full text-xs h-9 bg-gray-50/50 hover:bg-white transition-all shadow-none border-gray-200" onClick={() => setActiveTab('settings')}>
                                         Quản lý địa chỉ
                                     </Button>
                                 </CardContent>
@@ -648,15 +779,43 @@ export default function ProfilePage() {
 
                     {/* Orders Tab */}
                     <TabsContent value="orders" className="space-y-6">
+                        {/* Status Filter Tabs */}
+                        <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-2 no-scrollbar">
+                            {[
+                                { id: 'all', label: 'Tất cả' },
+                                { id: 'pending', label: 'Chờ xác nhận' },
+                                { id: 'processing', label: 'Đang xử lý' },
+                                { id: 'shipping', label: 'Đang giao' },
+                                { id: 'delivered', label: 'Đã giao' },
+                                { id: 'cancelled', label: 'Đã hủy' },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setOrderFilter(tab.id)}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${orderFilter === tab.id
+                                            ? 'bg-emerald-600 text-white shadow-md'
+                                            : 'bg-white text-gray-600 border hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
                         <Card>
                             <CardHeader>
                                 <CardTitle>Lịch sử đơn hàng</CardTitle>
                                 <CardDescription>
-                                    {orders.length > 0 ? `Tất cả đơn hàng của bạn (${orders.length})` : 'Bạn chưa có đơn hàng nào'}
+                                    {loadingOrders ? 'Đang tải danh sách đơn hàng...' : filteredOrders.length > 0 ? `Tìm thấy ${filteredOrders.length} đơn hàng` : 'Không tìm thấy đơn hàng nào'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {orders.length === 0 ? (
+                                {loadingOrders ? (
+                                    <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                                        <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
+                                        <p className="text-gray-500">Đang tải đơn hàng...</p>
+                                    </div>
+                                ) : orders.length === 0 ? (
                                     <div className="text-center py-12">
                                         <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                                         <p className="text-gray-500">Chưa có đơn hàng nào</p>
@@ -664,7 +823,14 @@ export default function ProfilePage() {
                                 ) : (
                                     <div className="space-y-4">
                                         {paginatedOrders.map(order => (
-                                            <Card key={order.id} className="border-2">
+                                            <Card
+                                                key={order.id}
+                                                className="border-2 cursor-pointer hover:border-emerald-500 transition-all hover:shadow-md group"
+                                                onClick={() => {
+                                                    setSelectedOrder(order);
+                                                    setIsDetailOpen(true);
+                                                }}
+                                            >
                                                 <CardContent className="pt-6">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div>
@@ -824,6 +990,72 @@ export default function ProfilePage() {
                                 <CardTitle>Thông tin cá nhân</CardTitle>
                             </CardHeader>
                             <CardContent>
+                                {/* Avatar Upload Section */}
+                                <div className="mb-6">
+                                    <Label className="mb-3 block">Ảnh đại diện</Label>
+                                    <div className="flex items-center gap-6">
+                                        <div className="relative group">
+                                            <Avatar className="w-24 h-24 border-4 border-gray-100 shadow-lg">
+                                                <AvatarImage src={user.avatarUrl} />
+                                                <AvatarFallback className="bg-emerald-100 text-emerald-600 text-2xl font-bold">
+                                                    {user.fullName.charAt(0).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            {/* Upload overlay */}
+                                            <button
+                                                type="button"
+                                                onClick={() => avatarInputRef.current?.click()}
+                                                disabled={uploadingAvatar}
+                                                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                                            >
+                                                {uploadingAvatar ? (
+                                                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                                ) : (
+                                                    <Camera className="w-8 h-8 text-white" />
+                                                )}
+                                            </button>
+                                            {/* Hidden file input */}
+                                            <input
+                                                ref={avatarInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleAvatarUpload}
+                                                className="hidden"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-gray-700 mb-1">
+                                                Thay đổi ảnh đại diện
+                                            </p>
+                                            <p className="text-xs text-gray-500 mb-3">
+                                                Nhấp vào ảnh để tải lên ảnh mới. Kích thước tối đa 5MB.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => avatarInputRef.current?.click()}
+                                                disabled={uploadingAvatar}
+                                                className="text-xs"
+                                            >
+                                                {uploadingAvatar ? (
+                                                    <>
+                                                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                                        Đang tải lên...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Camera className="w-3 h-3 mr-2" />
+                                                        Chọn ảnh
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator className="my-6" />
+
                                 <form onSubmit={handleUpdateProfile} className="space-y-4">
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div>
@@ -852,15 +1084,6 @@ export default function ProfilePage() {
                                                 id="phoneNumber"
                                                 value={profileForm.phoneNumber}
                                                 onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
-                                                className="mt-1"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="avatarUrl">Avatar URL</Label>
-                                            <Input
-                                                id="avatarUrl"
-                                                value={profileForm.avatarUrl}
-                                                onChange={(e) => setProfileForm({ ...profileForm, avatarUrl: e.target.value })}
                                                 className="mt-1"
                                             />
                                         </div>
@@ -939,21 +1162,20 @@ export default function ProfilePage() {
                                                     required
                                                 />
                                             </div>
-                                            <div>
-                                                <Label htmlFor="addressCity">Thành phố *</Label>
-                                                <Input
-                                                    id="addressCity"
-                                                    value={addressForm.city}
-                                                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="addressDistrict">Quận/Huyện</Label>
-                                                <Input
-                                                    id="addressDistrict"
-                                                    value={addressForm.district}
-                                                    onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                                            <div className="md:col-span-2 space-y-2">
+                                                <Label>Tỉnh/Thành, Quận/Huyện, Phường/Xã *</Label>
+                                                <AddressSelector
+                                                    value={{
+                                                        province: addressForm.city,
+                                                        district: addressForm.district,
+                                                        ward: addressForm.ward
+                                                    }}
+                                                    onChange={(val) => setAddressForm({
+                                                        ...addressForm,
+                                                        city: val.province,
+                                                        district: val.district,
+                                                        ward: val.ward
+                                                    })}
                                                 />
                                             </div>
                                             <div className="md:col-span-2">
@@ -991,39 +1213,48 @@ export default function ProfilePage() {
                                         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
                                     </div>
                                 ) : addresses.length === 0 ? (
-                                    <p className="text-center text-gray-500 py-8">Chưa có địa chỉ nào</p>
+                                    <div className="text-center py-8">
+                                        <p className="text-gray-500 mb-2">Chưa có địa chỉ nào được lưu</p>
+                                        <p className="text-xs text-gray-400">Địa chỉ sẽ được tự động lưu lại khi bạn đặt hàng lần đầu</p>
+                                    </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {addresses.map(address => (
-                                            <div key={address.id} className="p-4 border rounded-lg">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
+                                        {addresses.map(addr => (
+                                            <div key={addr.id} className={`p-4 border-2 rounded-xl transition-all relative overflow-hidden ${addr.isDefault ? 'border-orange-200 bg-orange-50/10' : 'border-gray-100 bg-white'}`}>
+                                                <div className="flex items-start justify-between relative z-10">
+                                                    <div className="flex-1 space-y-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-medium">{address.recipientName}</p>
-                                                            {address.isDefault && (
-                                                                <StatusBadge variant="secondary">Mặc định</StatusBadge>
+                                                            <p className="font-bold text-gray-900">{addr.recipientName}</p>
+                                                            {addr.isDefault && (
+                                                                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm border border-orange-200 uppercase tracking-wider">
+                                                                    Mặc định
+                                                                </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-sm text-gray-600">{address.phoneNumber}</p>
-                                                        <p className="text-sm text-gray-600">
-                                                            {address.addressLine1}, {address.district}, {address.city}
+                                                        <p className="text-sm text-gray-600 font-medium flex items-center gap-1.5">
+                                                            <span className="opacity-70 text-xs">📞</span> {addr.phoneNumber}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500 leading-relaxed">
+                                                            {addr.addressLine1}
+                                                            <span className="text-gray-400 mx-1">•</span>
+                                                            {addr.ward}, {addr.district}, {addr.city}
                                                         </p>
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => handleEditAddress(address)}
+                                                            onClick={() => handleEditAddress(addr)}
                                                             disabled={loading}
                                                         >
                                                             Sửa
                                                         </Button>
-                                                        {!address.isDefault && (
+                                                        {!addr.isDefault && (
                                                             <>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={() => handleSetDefaultAddress(address.id)}
+                                                                    onClick={() => handleSetDefaultAddress(addr.id)}
                                                                     disabled={loading}
                                                                 >
                                                                     Đặt mặc định
@@ -1032,7 +1263,7 @@ export default function ProfilePage() {
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     className="text-red-600"
-                                                                    onClick={() => handleDeleteAddress(address.id)}
+                                                                    onClick={() => handleDeleteAddress(addr.id)}
                                                                     disabled={loading}
                                                                 >
                                                                     Xóa
@@ -1261,6 +1492,12 @@ export default function ProfilePage() {
                     </TabsContent>
                 </Tabs>
             </section>
-        </div>
+
+            <OrderDetailDialog
+                open={isDetailOpen}
+                onOpenChange={setIsDetailOpen}
+                order={selectedOrder}
+            />
+        </div >
     );
 }
