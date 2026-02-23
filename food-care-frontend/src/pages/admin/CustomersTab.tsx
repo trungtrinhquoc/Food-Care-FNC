@@ -5,6 +5,7 @@ import { Input } from "../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Search, Download, Eye, MessageSquare, Users, Crown, ShoppingBag, CreditCard, RefreshCw, Mail, Phone, Loader2, Edit, Clock } from "lucide-react";
+import { toast } from "sonner";
 import { TierBadge } from "../../components/ui/status-badge";
 import { SimplePagination } from "../../components/ui/pagination";
 import { CustomerDialog } from "../../components/admin/CustomerDialog";
@@ -49,6 +50,7 @@ export function CustomersTab() {
       setTotalItems(response.totalItems || 0);
     } catch (error) {
       console.error('Error fetching customers:', error);
+      toast.error('Không thể tải danh sách khách hàng');
     } finally {
       setLoading(false);
     }
@@ -61,6 +63,7 @@ export function CustomersTab() {
       setStats(data);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      toast.error('Không thể tải thống kê khách hàng');
     }
   }, []);
 

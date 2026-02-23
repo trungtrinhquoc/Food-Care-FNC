@@ -36,24 +36,25 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
             </div>
             <div>
               <Label className="text-gray-500">Ngày đặt</Label>
-              <p>{order.date || new Date(order.createdAt).toLocaleDateString("vi-VN")}</p>
+              <p>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
             </div>
           </div>
           <div>
             <Label className="text-gray-500">Khách hàng</Label>
             <p>{order.customerName}</p>
-            <p className="text-sm text-gray-500">{order.phone || "Không có số điện thoại"}</p>
+            <p className="text-sm text-gray-500">{order.customerEmail}</p>
           </div>
           <div>
             <Label className="text-gray-500">Địa chỉ giao hàng</Label>
-            <p>{order.address || order.shippingAddressSnapshot || "Không có địa chỉ"}</p>
+            <p>{order.shippingAddressSnapshot || 'Chưa có địa chỉ'}</p>
           </div>
           <div>
             <Label className="text-gray-500">Sản phẩm</Label>
             <div className="mt-2 space-y-2">
-              {order.products?.map((product: string, idx: number) => (
-                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <span>{product}</span>
+              {order.orderItems.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <span>{item.productName} x{item.quantity}</span>
+                  <span className="text-gray-600">{item.totalPrice.toLocaleString('vi-VN')}đ</span>
                 </div>
               ))}
             </div>
@@ -68,14 +69,14 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
             <div>
               <Label className="text-gray-500">Tổng tiền</Label>
               <p className="text-xl font-bold text-emerald-600">
-                {(order.total || order.totalAmount).toLocaleString('vi-VN')}đ
+                {order.totalAmount.toLocaleString('vi-VN')}đ
               </p>
             </div>
           </div>
-          {order.subscription && (
+          {order.note && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
-                🔄 Đơn hàng định kỳ - Tự động giao lại theo chu kỳ đã đặt
+                📝 Ghi chú: {order.note}
               </p>
             </div>
           )}

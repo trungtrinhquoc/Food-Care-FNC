@@ -4,5 +4,6 @@ public enum UserRole
 {
     customer,
     admin,
-    staff
+    staff,
+    supplier
 }

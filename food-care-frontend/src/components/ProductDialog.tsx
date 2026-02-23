@@ -22,7 +22,8 @@ import {
     SelectValue,
 } from './ui/select'
 
-import type { Product, Category } from '../types'
+import type { Product, Category, Supplier } from '../types'
+
 import type {
     CreateProductRequest,
     UpdateProductRequest,
@@ -34,6 +35,7 @@ interface ProductDialogProps {
     onOpenChange: (open: boolean) => void
     product?: Product // có → edit | không → create
     categories?: Category[]
+    suppliers?: Supplier[]
     onSuccess?: () => void
     // Optional: External form control for admin use
     externalForm?: CreateProductRequest
@@ -59,6 +61,7 @@ export function ProductDialog({
     onOpenChange,
     product,
     categories: externalCategories,
+    suppliers,
     onSuccess,
     externalForm,
     onFormChange,
@@ -66,11 +69,13 @@ export function ProductDialog({
 }: ProductDialogProps) {
     const isEdit = !!product
     const [internalCategories, setInternalCategories] = useState<Category[]>([])
+    const [internalSuppliers, setInternalSuppliers] = useState<Supplier[]>([])
     const [internalForm, setInternalForm] = useState<CreateProductRequest>(defaultForm)
     const [loading, setLoading] = useState(false)
 
     // Use external or internal form/categories
     const categories = externalCategories || internalCategories
+    const availableSuppliers = suppliers || internalSuppliers
     const form = externalForm || internalForm
 
     const handleChange = useCallback(<K extends keyof CreateProductRequest>(
@@ -90,11 +95,14 @@ export function ProductDialog({
         categoriesApi.getCategories().then(setInternalCategories)
     }, [open, externalCategories])
 
+    // Suppliers are provided by caller (admin dialog). No internal fetch here.
+
     // Load data when editing (only for internal form)
     useEffect(() => {
         if (!open) return
         
         if (product && !externalForm) {
+            const supplierIdRaw = (product as any).supplierId as number | string | null | undefined
             setInternalForm({
                 name: product.name,
                 description: product.description ?? '',
@@ -103,7 +111,7 @@ export function ProductDialog({
                 sku: product.sku ?? '',
                 stockQuantity: product.stockQuantity,
                 categoryId: product.categoryId ? Number(product.categoryId) : undefined,
-                supplierId: undefined,
+                supplierId: supplierIdRaw != null ? Number(supplierIdRaw) : undefined,
                 isSubscriptionAvailable: product.isSubscriptionAvailable,
                 images: product.images ?? [],
             })
@@ -182,7 +190,28 @@ export function ProductDialog({
                         </Select>
                     </div>
 
-
+                    {availableSuppliers && availableSuppliers.length > 0 && (
+                        <div>
+                            <Label>Nhà cung cấp</Label>
+                            <Select
+                                value={form.supplierId?.toString()}
+                                onValueChange={(v) =>
+                                    handleChange('supplierId', v ? Number(v) : undefined)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Chọn nhà cung cấp" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableSuppliers.map((s) => (
+                                        <SelectItem key={s.id.toString()} value={s.id.toString()}>
+                                            {s.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
 
                     {/* SKU */}
                     <div>

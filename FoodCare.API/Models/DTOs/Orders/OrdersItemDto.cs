@@ -9,6 +9,5 @@
         public decimal TotalPrice { get; set; }
         public bool IsSubscription { get; set; }
         public string? SubscriptionFrequency { get; set; }
-        public bool IsReviewed { get; set; }
     }
 }

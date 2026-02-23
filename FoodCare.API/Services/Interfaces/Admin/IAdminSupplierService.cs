@@ -7,4 +7,7 @@ public interface IAdminSupplierService
 {
     Task<PagedResult<AdminSupplierDto>> GetSuppliersAsync(AdminSupplierFilterDto filter);
     Task<AdminSupplierDetailDto?> GetSupplierDetailAsync(int id);
+    Task<AdminSupplierDetailDto> CreateSupplierAsync(AdminUpsertSupplierDto dto);
+    Task<AdminSupplierDetailDto?> UpdateSupplierAsync(int id, AdminUpsertSupplierDto dto);
+    Task<bool> DeleteSupplierAsync(int id);
 }

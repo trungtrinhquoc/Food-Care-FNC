@@ -48,13 +48,15 @@ export function CategoryRevenueChart({ data, isLoading = false }: CategoryRevenu
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={data as unknown as Record<string, unknown>[]}
             dataKey="revenue"
             nameKey="categoryName"
             cx="50%"
             cy="50%"
             outerRadius={80}
-            label={({ categoryName, percent }: any) => `${categoryName}: ${((percent || 0) * 100).toFixed(0)}%`}
+            label={({ name, percent }: { name?: string; percent?: number }) => 
+              `${name || ''}: ${((percent || 0) * 100).toFixed(0)}%`
+            }
             labelLine={true}
           >
             {data.map((entry, index) => (

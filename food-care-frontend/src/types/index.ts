@@ -1,9 +1,9 @@
 // Type definitions
 export type UserRole = 'Customer' | 'Admin';
 
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipping' | 'delivered' | 'cancelled' | 'returned';
+export type OrderStatus = 'Pending' | 'Processing' | 'Shipping' | 'Delivered' | 'Cancelled';
 
-export type PaymentStatus = 'unpaid' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'Unpaid' | 'Paid' | 'Failed' | 'Refunded';
 
 export type SubscriptionFrequency = 'Weekly' | 'BiWeekly' | 'Monthly' | 'Custom';
 
@@ -31,6 +31,7 @@ export interface UpdateProductRequest {
     sku?: string;
     stockQuantity?: number;
     categoryId?: number;
+    supplierId?: number;
     isSubscriptionAvailable?: boolean;
     isActive?: boolean;
     images: string[];
@@ -51,11 +52,15 @@ export interface User {
     fullName: string;
     phoneNumber?: string; // Changed from phone
     avatarUrl?: string;
-    role: 'customer' | 'admin';
+    role: 'customer' | 'admin' | 'supplier' | 'staff';
     memberTier?: MemberTier;
     totalSpent?: number; // Optional as not in DTO yet
     loyaltyPoints: number;
     createdAt?: string;
+    providerInfo?: {
+        storeName: string;
+        level: string;
+    };
 }
 
 export interface RegisterRequest {
@@ -82,7 +87,7 @@ export interface Product {
     sku: string;
     name: string;
     slug: string;
-    categoryId?: number | string;
+    categoryId?: string;
     categoryName?: string;
     description?: string;
     basePrice: number; // Changed from price
@@ -126,7 +131,6 @@ export interface CartItem {
     isSubscription: boolean;
     subscription?: {
         frequency: SubscriptionFrequency;
-        discount: number;
     };
 }
 
@@ -140,7 +144,6 @@ export interface OrderItem {
     totalPrice: number;
     isSubscription: boolean;
     subscriptionFrequency?: SubscriptionFrequency;
-    isReviewed?: boolean;
 }
 
 
@@ -157,8 +160,6 @@ export interface Order {
     totalAmount: number;
     paymentStatus: PaymentStatus;
     isSubscriptionOrder: boolean;
-    shippingAddressSnapshot?: string;
-    paymentMethodSnapshot?: string;
     items: OrderItem[];
     createdAt: string;
 }
@@ -182,8 +183,6 @@ export interface CreateOrderItemRequest {
 export interface CreateOrderRequest {
     userId: string;
     shippingAddress: string;
-    recipientName?: string;
-    phoneNumber?: string;
     paymentMethod: string;
     note?: string;
     items: CreateOrderItemRequest[];
@@ -309,47 +308,90 @@ export interface ZaloReminder {
     sentDate?: string;
 }
 
-export interface Review {
-    id: string;
-    userName: string;
-    userAvatar: string | null;
+// Provider/Supplier Types
+export interface ProviderStats {
+    todayOrders: number;
+    pendingOrders: number;
+    overdueOrders: number;
+    todayRevenue: number;
     rating: number;
-    comment: string;
-    images: string[];
-    createdAt: string;
-    helpfulCount: number;
-    isVerifiedPurchase: boolean;
-    isHelpfulByCurrentUser?: boolean;
+    cancelRate: number;
+    lateDeliveryRate: number;
+    lowStockProducts: number;
 }
 
-export interface RatingDistributionItem {
-    stars: number;
-    count: number;
-    percentage: number;
+export interface ProviderOrderItem {
+    product: {
+        id: string;
+        name: string;
+        category: string;
+        price: number;
+        image: string;
+        description: string;
+        unit: string;
+        stock: number;
+        rating: number;
+        reviews: number;
+    };
+    quantity: number;
+    price: number;
 }
 
-export interface ReviewResponse {
-    averageRating: number;
-    totalReviews: number;
-    ratingDistribution: {
-        stars: number;
-        count: number;
-        percentage: number;
-    }[];
-    reviews: Review[];
+export interface ProviderOrder {
+    id: string;
+    orderNumber: string;
+    date: string;
+    status: 'pending' | 'accepted' | 'preparing' | 'ready_to_ship' | 'shipping' | 'delivered' | 'cancelled';
+    customerName: string;
+    customerPhone: string;
+    items: ProviderOrderItem[];
+    subtotal: number;
+    discount: number;
+    shipping: number;
+    total: number;
+    shippingAddress: {
+        id: string;
+        name: string;
+        phone: string;
+        address: string;
+        city: string;
+        district: string;
+        isDefault: boolean;
+    };
+    paymentMethod: {
+        id: string;
+        type: string;
+        name: string;
+        isDefault: boolean;
+    };
+    customerNote?: string;
+    slaDeadline: string;
+    isOverdue: boolean;
 }
 
-export interface ReviewEligibility {
-    canReview: boolean;
-    reason?: string;
+export interface ProviderProduct {
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    originalPrice?: number;
+    image: string;
+    description: string;
+    unit: string;
+    stock: number;
+    rating: number;
+    reviews: number;
+    providerId: string;
+    costPrice: number;
+    profit: number;
+    status: 'active' | 'out_of_stock' | 'draft';
 }
 
-// Payment Request/Response Types
-export interface CreatePaymentRequest {
-    orderId: string;
-}
-
-export interface PayOsCreateLinkResponse {
-    checkoutUrl: string;
-    paymentLinkId: string;
+export interface ProviderRevenue {
+    date: string;
+    ordersCount: number;
+    revenue: number;
+    commission: number;
+    netRevenue: number;
+    status: 'pending' | 'paid';
 }

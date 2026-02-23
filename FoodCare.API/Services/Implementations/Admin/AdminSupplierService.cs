@@ -1,6 +1,7 @@
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Suppliers;
+using FoodCare.API.Models.Suppliers;
 using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,9 +25,9 @@ public class AdminSupplierService : IAdminSupplierService
         {
             var searchLower = filter.SearchTerm.ToLower();
             query = query.Where(s => 
-                s.Name.ToLower().Contains(searchLower) ||
+                s.ContactName.ToLower().Contains(searchLower) ||
                 (s.ContactEmail != null && s.ContactEmail.ToLower().Contains(searchLower)) ||
-                (s.Phone != null && s.Phone.Contains(searchLower)));
+                (s.ContactPhone != null && s.ContactPhone.Contains(searchLower)));
         }
 
         if (filter.IsActive.HasValue)
@@ -37,7 +38,7 @@ public class AdminSupplierService : IAdminSupplierService
         // Apply sorting
         query = filter.SortBy?.ToLower() switch
         {
-            "name" => filter.SortDescending ? query.OrderByDescending(s => s.Name) : query.OrderBy(s => s.Name),
+            "name" => filter.SortDescending ? query.OrderByDescending(s => s.ContactName) : query.OrderBy(s => s.ContactName),
             _ => query.OrderByDescending(s => s.CreatedAt)
         };
 
@@ -49,13 +50,13 @@ public class AdminSupplierService : IAdminSupplierService
             .Select(s => new AdminSupplierDto
             {
                 Id = s.Id,
-                Name = s.Name,
+                Name = s.StoreName,
                 ContactEmail = s.ContactEmail,
-                Phone = s.Phone,
+                Phone = s.ContactPhone,
                 Address = s.Address,
                 TotalProducts = s.Products.Count,
                 IsActive = s.IsActive ?? false,
-                CreatedAt = s.CreatedAt ?? DateTime.UtcNow
+                CreatedAt = s.CreatedAt ?? DateTime.UtcNow 
             })
             .ToListAsync();
 
@@ -73,7 +74,7 @@ public class AdminSupplierService : IAdminSupplierService
     {
         var supplier = await _context.Suppliers
             .Include(s => s.Products.Where(p => p.IsDeleted != true))
-            .FirstOrDefaultAsync(s => s.Id == id);
+            .FirstOrDefaultAsync(s => s.Id.Equals(id));
 
         if (supplier == null)
         {
@@ -92,14 +93,72 @@ public class AdminSupplierService : IAdminSupplierService
         return new AdminSupplierDetailDto
         {
             Id = supplier.Id,
-            Name = supplier.Name,
+            Name = supplier.StoreName,
             ContactEmail = supplier.ContactEmail,
-            Phone = supplier.Phone,
+            Phone = supplier.ContactPhone,
             Address = supplier.Address,
             TotalProducts = supplier.Products.Count,
             IsActive = supplier.IsActive ?? false,
             CreatedAt = supplier.CreatedAt ?? DateTime.UtcNow,
             Products = products
         };
+    }
+
+    public async Task<AdminSupplierDetailDto> CreateSupplierAsync(AdminUpsertSupplierDto dto)
+    {
+        var supplier = new Supplier {
+            StoreName = dto.Name,
+            ContactEmail = dto.ContactEmail,
+            ContactPhone = dto.Phone,
+            Address = dto.Address,
+            IsActive = dto.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Suppliers.Add(supplier);
+        await _context.SaveChangesAsync();
+
+        return (await GetSupplierDetailAsync(supplier.Id))!;
+    }
+
+    public async Task<AdminSupplierDetailDto?> UpdateSupplierAsync(int id, AdminUpsertSupplierDto dto)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id.Equals(id));
+        if (supplier == null)
+        {
+            return null;
+        }
+
+        supplier.StoreName = dto.Name;
+        supplier.ContactEmail = dto.ContactEmail;
+        supplier.ContactPhone = dto.Phone;
+        supplier.Address = dto.Address;
+        supplier.IsActive = dto.IsActive;
+
+        await _context.SaveChangesAsync();
+
+        return await GetSupplierDetailAsync(id);
+    }
+
+    public async Task<bool> DeleteSupplierAsync(int id)
+    {
+        var supplier = await _context.Suppliers
+            .Include(s => s.Products)
+            .FirstOrDefaultAsync(s => s.Id.Equals(id));
+
+        if (supplier == null)
+        {
+            return false;
+        }
+
+        // Detach supplier from products to avoid FK constraint issues
+        foreach (var product in supplier.Products)
+        {
+            product.SupplierId = null;
+        }
+
+        _context.Suppliers.Remove(supplier);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }
