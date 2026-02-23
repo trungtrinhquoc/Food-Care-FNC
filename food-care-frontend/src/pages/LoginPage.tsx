@@ -77,6 +77,10 @@ export default function LoginPage() {
             const userRole = response?.user?.role?.toLowerCase();
             if (userRole === 'admin') {
                 navigate('/admin');
+            } else if (userRole === 'supplier') {
+                navigate('/supplier');
+            } else if (userRole === 'staff') {
+                navigate('/staff');
             } else {
                 navigate('/');
             }
@@ -149,13 +153,10 @@ export default function LoginPage() {
     const handleGoogleLogin = useGoogleLogin({
         flow: 'implicit', // Use popup flow instead of redirect
         onSuccess: async (tokenResponse) => {
-            console.log('🔵 Google OAuth Success - Token received');
             setIsGoogleLoading(true);
             try {
-                console.log('🔵 Calling backend with access token...');
                 await loginWithGoogle(tokenResponse.access_token);
 
-                console.log('🔵 Backend login successful, navigating to home...');
                 toast.success('Đăng nhập bằng Google thành công!');
                 navigate('/', { replace: true }); // Use replace to avoid back navigation
             } catch (error: any) {

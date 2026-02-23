@@ -10,9 +10,7 @@ import type {
     Order
 } from '../types';
 
-const API_URL = 'https://food-care-fnc-production.up.railway.app/api';
-// const API_URL = 'http://localhost:5022/api';
-console.log('Configured API_URL:', API_URL);
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -24,7 +22,6 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
     (config) => {
-        console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -39,11 +36,9 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
     (response) => {
-        console.log(`Response from ${response.config.url}:`, response.status);
         return response;
     },
     (error) => {
-        console.error('API Error:', error.response?.data || error.message);
 
         // Don't auto-redirect on 401 if it's from login/register endpoints
         // Let the component handle the error and show appropriate messages

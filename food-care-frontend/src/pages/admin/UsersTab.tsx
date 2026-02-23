@@ -16,6 +16,7 @@ import {
   Plus, Search, Edit, Trash2, UserCheck, UserX, 
   Users, UserPlus, Shield, Key, BarChart3 
 } from "lucide-react";
+import { toast } from "sonner";
 import { usersService } from "../../services/admin";
 import type { AdminUser, UserStats, PagedResult } from "../../types/admin";
 import { UserDialog } from "../../components/admin/UserDialog";
@@ -56,6 +57,7 @@ export function UsersTab() {
       setTotalItems(result.totalItems);
     } catch (error) {
       console.error('Failed to load users:', error);
+      toast.error('Không thể tải danh sách người dùng');
     } finally {
       setLoading(false);
     }
@@ -67,6 +69,7 @@ export function UsersTab() {
       setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
+      toast.error('Không thể tải thống kê người dùng');
     }
   }, []);
 
@@ -97,6 +100,7 @@ export function UsersTab() {
       loadStats();
     } catch (error) {
       console.error('Failed to toggle user status:', error);
+      toast.error('Không thể thay đổi trạng thái người dùng');
     }
   };
 
@@ -109,6 +113,7 @@ export function UsersTab() {
       loadStats();
     } catch (error) {
       console.error('Failed to delete user:', error);
+      toast.error('Không thể xóa người dùng');
     }
   };
 

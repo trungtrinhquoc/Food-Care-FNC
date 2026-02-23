@@ -34,8 +34,8 @@ export interface AdminStats {
   totalProducts: number;
   monthlyGrowth: number;
   activeSubscriptions: number;
-  lowStockProducts?: number;
-  pendingOrders?: number;
+  pendingOrders: number;
+  lowStockProducts: number;
 }
 
 export interface RevenueData {
@@ -128,6 +128,13 @@ export interface MemberTierInfo {
   discountPercent: number | null;
 }
 
+export interface RoleOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+
 // Legacy type alias for backward compatibility
 export interface AdminCustomer {
   id: string;
@@ -160,13 +167,6 @@ export interface AdminOrder {
   createdAt: string;
   updatedAt: string | null;
   orderItems: AdminOrderItem[];
-  // Additional fields used in UI
-  date?: string;
-  phone?: string;
-  address?: string;
-  products?: string[];
-  total?: number;
-  subscription?: boolean;
 }
 
 export interface AdminOrderItem {

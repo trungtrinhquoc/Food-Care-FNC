@@ -24,6 +24,7 @@ import type {
   CreateUserDto,
   UpdateUserDto,
   MemberTierInfo,
+  RoleOption,
 } from '../../types/admin';
 
 interface UserDialogProps {
@@ -66,6 +67,8 @@ export function UserDialog({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [tiers, setTiers] = useState<MemberTierInfo[]>([]);
   const [tiersLoading, setTiersLoading] = useState(false);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadTiers = useCallback(async () => {
@@ -80,9 +83,28 @@ export function UserDialog({
     }
   }, []);
 
+  const loadRoles = useCallback(async () => {
+    setRolesLoading(true);
+    try {
+      const data = await usersService.getUserRoles();
+      setRoles(data);
+    } catch (error) {
+      console.error('Failed to load roles:', error);
+      // Fallback to default roles if API fails
+      setRoles([
+        { value: 'customer', label: 'Khách hàng', description: 'Người dùng thông thường' },
+        { value: 'staff', label: 'Nhân viên', description: 'Nhân viên quản lý' },
+        { value: 'admin', label: 'Admin', description: 'Quản trị viên' }
+      ]);
+    } finally {
+      setRolesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
       loadTiers();
+      loadRoles();
       if (user) {
         setFormData({
           email: user.email,
@@ -99,7 +121,7 @@ export function UserDialog({
         setFormData(initialFormData);
       }
     }
-  }, [open, user, loadTiers]);
+  }, [open, user, loadTiers, loadRoles]);
 
   const handleSubmit = async () => {
     if (!formData.email.trim()) {
@@ -141,8 +163,8 @@ export function UserDialog({
       onSuccess();
     } catch (error: unknown) {
       console.error('Failed to save user:', error);
-      const errMsg = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
+      const errMsg = error instanceof Error && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
         : undefined;
       alert(errMsg || 'Không thể lưu người dùng. Vui lòng thử lại.');
     } finally {
@@ -205,14 +227,17 @@ export function UserDialog({
               <Select
                 value={formData.role}
                 onValueChange={(value) => updateForm('role', value)}
+                disabled={rolesLoading}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="customer">Khách hàng</SelectItem>
-                  <SelectItem value="staff">Nhân viên</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

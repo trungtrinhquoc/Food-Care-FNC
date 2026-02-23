@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Eye, EyeOff, MessageSquare, Trash2, Star, BarChart3 } from "lucide-react";
+import { toast } from "sonner";
 import { reviewsService } from "../../services/admin";
 import type { AdminReview, ReviewStats, PagedResult } from "../../types/admin";
 import { ReviewReplyDialog } from "../../components/admin/ReviewReplyDialog";
@@ -52,6 +53,7 @@ export function ReviewsTab() {
       setTotalItems(result.totalItems);
     } catch (error) {
       console.error('Failed to load reviews:', error);
+      toast.error('Không thể tải danh sách đánh giá');
     } finally {
       setLoading(false);
     }
@@ -63,6 +65,7 @@ export function ReviewsTab() {
       setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
+      toast.error('Không thể tải thống kê đánh giá');
     }
   }, []);
 
@@ -77,6 +80,7 @@ export function ReviewsTab() {
       loadReviews();
     } catch (error) {
       console.error('Failed to toggle hide:', error);
+      toast.error('Đổi trạng thái ẩn/hiện thất bại');
     }
   };
 
@@ -89,6 +93,7 @@ export function ReviewsTab() {
       loadStats();
     } catch (error) {
       console.error('Failed to delete review:', error);
+      toast.error('Không thể xóa đánh giá');
     }
   };
 

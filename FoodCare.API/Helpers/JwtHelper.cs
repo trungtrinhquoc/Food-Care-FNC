@@ -17,18 +17,33 @@ public class JwtHelper
 
     public string GenerateToken(Guid userId, string email, string role)
     {
+        return GenerateToken(userId, email, role, null);
+    }
+
+    /// <summary>
+    /// Generate JWT token with optional warehouseIds for staff role.
+    /// </summary>
+    public string GenerateToken(Guid userId, string email, string role, List<Guid>? warehouseIds)
+    {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
             _configuration["JwtSettings:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured")));
         
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, email),
             new Claim(ClaimTypes.Role, role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        // Add warehouseIds claim for staff role
+        if (warehouseIds != null && warehouseIds.Any())
+        {
+            var warehouseIdsJson = System.Text.Json.JsonSerializer.Serialize(warehouseIds);
+            claims.Add(new Claim("warehouse_ids", warehouseIdsJson));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _configuration["JwtSettings:Issuer"],

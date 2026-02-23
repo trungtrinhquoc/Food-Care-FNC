@@ -1,20 +1,18 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using FoodCare.API.Models.Enums; 
-using FoodCare.API.Models;
+using FoodCare.API.Models.Enums;
+using FoodCare.API.Models.Suppliers;
+using FoodCare.API.Models.Staff;
 
 namespace FoodCare.API.Models;
 
-public partial class FoodCareDbContext : DbContext
-{
-    public FoodCareDbContext()
-    {
+public partial class FoodCareDbContext : DbContext {
+    public FoodCareDbContext() {
     }
 
     public FoodCareDbContext(DbContextOptions<FoodCareDbContext> options)
-        : base(options)
-    {
+        : base(options) {
     }
 
     public virtual DbSet<Address> Addresses { get; set; }
@@ -34,8 +32,11 @@ public partial class FoodCareDbContext : DbContext
     public virtual DbSet<ReviewHelpful> ReviewHelpfuls { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SubscriptionSchedule> SubscriptionSchedules { get; set; }
-    public virtual DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
-    public virtual DbSet<Supplier> Suppliers { get; set; }
+    public DbSet<Supplier> Suppliers { get; set; }
+    public DbSet<SupplierProduct> SupplierProducts { get; set; }
+    public DbSet<SupplierOrder> SupplierOrders { get; set; }
+    public DbSet<SupplierStats> SupplierStats { get; set; }
+    public DbSet<SupplierAlert> SupplierAlerts { get; set; }
     public virtual DbSet<User> Users { get; set; }
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
     public virtual DbSet<ZaloTemplate> ZaloTemplates { get; set; }
@@ -46,25 +47,45 @@ public partial class FoodCareDbContext : DbContext
     public DbSet<PointsHistory> PointsHistories { get; set; }
     public DbSet<PaymentLog> PaymentLogs { get; set; }
 
-    // Chat-related DbSets
-    public DbSet<ChatConversation> ChatConversations { get; set; }
-    public DbSet<ChatMessage> ChatMessages { get; set; }
-    public DbSet<ChatFaq> ChatFaqs { get; set; }
+    // Staff Module DbSets
+    public DbSet<Warehouse> Warehouses { get; set; }
+    public DbSet<StaffMember> StaffMembers { get; set; }
+    public DbSet<StaffWarehouse> StaffWarehouses { get; set; }
+    public DbSet<SupplierShipment> SupplierShipments { get; set; }
+    public DbSet<ShipmentItem> ShipmentItems { get; set; }
+    public DbSet<ShipmentDocument> ShipmentDocuments { get; set; }
+    public DbSet<ShipmentStatusHistory> ShipmentStatusHistories { get; set; }
+    public DbSet<Receipt> Receipts { get; set; }
+    public DbSet<ReceiptItem> ReceiptItems { get; set; }
+    public DbSet<WarehouseInventory> WarehouseInventories { get; set; }
+    public DbSet<StockMovement> StockMovements { get; set; }
+    public DbSet<StockReservation> StockReservations { get; set; }
+    public DbSet<DiscrepancyReport> DiscrepancyReports { get; set; }
+    public DbSet<DiscrepancyItem> DiscrepancyItems { get; set; }
+    public DbSet<ReturnShipment> ReturnShipments { get; set; }
+    public DbSet<ReturnItem> ReturnItems { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
+    protected override void OnModelCreating(ModelBuilder modelBuilder) {
         // =========================================================
         // 1. CẤU HÌNH ENUM CỦA DỰ ÁN (SỬA LẠI CHUẨN)
         // =========================================================
         // Sử dụng Generic <T> để EF Core hiểu map với Enum C#
         modelBuilder.HasPostgresEnum<UserRole>("public", "user_role");
-modelBuilder.HasPostgresEnum<OrderStatus>("public", "order_status");
-modelBuilder.HasPostgresEnum<PaymentStatus>("public", "payment_status");
-modelBuilder.HasPostgresEnum<SubFrequency>("public", "sub_frequency");
-modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
+        modelBuilder.HasPostgresEnum<OrderStatus>("public", "order_status");
+        modelBuilder.HasPostgresEnum<PaymentStatus>("public", "payment_status");
+        modelBuilder.HasPostgresEnum<SubFrequency>("public", "sub_frequency");
+        modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
+
+        // Staff Module Enums
+        modelBuilder.HasPostgresEnum<ShipmentStatus>("public", "shipment_status");
+        modelBuilder.HasPostgresEnum<ReceiptStatus>("public", "receipt_status");
+        modelBuilder.HasPostgresEnum<MovementType>("public", "movement_type");
+        modelBuilder.HasPostgresEnum<DiscrepancyType>("public", "discrepancy_type");
+        modelBuilder.HasPostgresEnum<InventoryType>("public", "inventory_type");
+
         // =========================================================
         // 2. ENUM HỆ THỐNG SUPABASE (GIỮ NGUYÊN)
         // =========================================================
@@ -92,8 +113,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
         // 3. CẤU HÌNH BẢNG (ENTITY CONFIGURATION)
         // =========================================================
 
-        modelBuilder.Entity<Address>(entity =>
-        {
+        modelBuilder.Entity<Address>(entity => {
             entity.HasKey(e => e.Id).HasName("addresses_pkey");
             entity.ToTable("addresses");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -112,8 +132,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
                 .HasForeignKey(d => d.UserId).HasConstraintName("addresses_user_id_fkey");
         });
 
-        modelBuilder.Entity<Category>(entity =>
-        {
+        modelBuilder.Entity<Category>(entity => {
             entity.HasKey(e => e.Id).HasName("categories_pkey");
             entity.ToTable("categories");
             entity.HasIndex(e => e.Slug, "categories_slug_key").IsUnique();
@@ -130,8 +149,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
                 .HasForeignKey(d => d.ParentId).HasConstraintName("categories_parent_id_fkey");
         });
 
-        modelBuilder.Entity<Coupon>(entity =>
-        {
+        modelBuilder.Entity<Coupon>(entity => {
             entity.HasKey(e => e.Id).HasName("coupons_pkey");
             entity.ToTable("coupons");
             entity.HasIndex(e => e.Code, "coupons_code_key").IsUnique();
@@ -149,8 +167,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.UsageLimit).HasColumnName("usage_limit");
         });
 
-        modelBuilder.Entity<CouponUsage>(entity =>
-        {
+        modelBuilder.Entity<CouponUsage>(entity => {
             entity.HasKey(e => e.Id).HasName("coupon_usage_pkey");
             entity.ToTable("coupon_usage");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -164,8 +181,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.CouponUsages).HasForeignKey(d => d.UserId).HasConstraintName("coupon_usage_user_id_fkey");
         });
 
-        modelBuilder.Entity<InventoryLog>(entity =>
-        {
+        modelBuilder.Entity<InventoryLog>(entity => {
             entity.HasKey(e => e.Id).HasName("inventory_logs_pkey");
             entity.ToTable("inventory_logs");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -180,8 +196,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.Product).WithMany(p => p.InventoryLogs).HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("inventory_logs_product_id_fkey");
         });
 
-        modelBuilder.Entity<MemberTier>(entity =>
-        {
+        modelBuilder.Entity<MemberTier>(entity => {
             entity.HasKey(e => e.Id).HasName("member_tiers_pkey");
             entity.ToTable("member_tiers");
             entity.HasIndex(e => e.Name, "member_tiers_name_key").IsUnique();
@@ -192,8 +207,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.Name).HasMaxLength(50).HasColumnName("name");
         });
 
-        modelBuilder.Entity<Notification>(entity =>
-        {
+        modelBuilder.Entity<Notification>(entity => {
             entity.HasKey(e => e.Id).HasName("notifications_pkey");
             entity.ToTable("notifications");
             entity.HasIndex(e => e.UserId, "idx_notif_user_unread").HasFilter("(is_read = false)");
@@ -209,8 +223,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.Notifications).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("notifications_user_id_fkey");
         });
 
-        modelBuilder.Entity<Order>(entity =>
-        {
+        modelBuilder.Entity<Order>(entity => {
             entity.HasKey(e => e.Id).HasName("orders_pkey");
             entity.ToTable("orders");
             entity.HasIndex(e => e.CreatedAt, "idx_orders_created_at").IsDescending();
@@ -231,7 +244,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.TrackingNumber).HasMaxLength(100).HasColumnName("tracking_number");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            
+
             // --- FIX 2: Cấu hình ColumnType cho Enum Order ---
             entity.Property(e => e.Status)
                   .HasDefaultValue(OrderStatus.pending)
@@ -247,8 +260,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.Orders).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_user_id_fkey");
         });
 
-        modelBuilder.Entity<OrderItem>(entity =>
-        {
+        modelBuilder.Entity<OrderItem>(entity => {
             entity.HasKey(e => e.Id).HasName("order_items_pkey");
             entity.ToTable("order_items");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -265,8 +277,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.Product).WithMany(p => p.OrderItems).HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("order_items_product_id_fkey");
         });
 
-        modelBuilder.Entity<OrderStatusHistory>(entity =>
-        {
+        modelBuilder.Entity<OrderStatusHistory>(entity => {
             entity.HasKey(e => e.Id).HasName("order_status_history_pkey");
             entity.ToTable("order_status_history");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -274,12 +285,12 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.OrderId).HasColumnName("order_id");
-            
+
             // --- FIX 3: Cấu hình ColumnType cho Enum History ---
             entity.Property(e => e.PreviousStatus)
                   .HasColumnName("previous_status")
                   .HasColumnType("order_status");
-            
+
             entity.Property(e => e.NewStatus)
                   .HasColumnName("new_status")
                   .HasColumnType("order_status");
@@ -288,8 +299,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.Order).WithMany(p => p.OrderStatusHistories).HasForeignKey(d => d.OrderId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("order_status_history_order_id_fkey");
         });
 
-        modelBuilder.Entity<PaymentMethod>(entity =>
-        {
+        modelBuilder.Entity<PaymentMethod>(entity => {
             entity.HasKey(e => e.Id).HasName("payment_methods_pkey");
             entity.ToTable("payment_methods");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -304,55 +314,32 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.PaymentMethods).HasForeignKey(d => d.UserId).HasConstraintName("payment_methods_user_id_fkey");
         });
 
-        modelBuilder.Entity<Transaction>(entity =>
-        {
-            entity.ToTable("transactions", t =>
-            {
+        modelBuilder.Entity<Transaction>(entity => {
+            entity.ToTable("transactions", t => {
                 t.HasCheckConstraint(
                     "check_attempt_number",
-                    "\"attempt_number\" >= 1"
+                    "\"AttemptNumber\" >= 1"
                 );
             });
 
-            entity.HasKey(e => e.Id).HasName("transactions_pkey");
-            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
-            entity.Property(e => e.OrderId).HasColumnName("order_id");
-            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Provider).HasMaxLength(50).HasColumnName("provider");
-            entity.Property(e => e.TransactionType).HasConversion<string>().HasColumnName("transaction_type");
-            entity.Property(e => e.Amount).HasPrecision(15, 2).HasColumnName("amount");
-            entity.Property(e => e.Currency).HasMaxLength(10).HasColumnName("currency");
-            entity.Property(e => e.Status).HasConversion<string>().HasColumnName("status");
-            entity.Property(e => e.AttemptNumber).HasDefaultValue(1).HasColumnName("attempt_number");
-            entity.Property(e => e.ProviderTransactionId).HasMaxLength(100).HasColumnName("provider_transaction_id");
-            entity.Property(e => e.ProviderResponse).HasColumnType("jsonb").HasColumnName("provider_response");
-            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.TransactionType)
+                  .HasConversion<string>();
+
+            entity.Property(e => e.Status)
+                  .HasConversion<string>();
 
             entity.HasIndex(e => e.OrderId);
             entity.HasIndex(e => e.SubscriptionId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
 
-            entity.HasOne(e => e.Order)
-                  .WithMany()
-                  .HasForeignKey(e => e.OrderId)
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.User)
-                  .WithMany()
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.Subscription)
-                  .WithMany()
-                  .HasForeignKey(e => e.SubscriptionId)
-                  .OnDelete(DeleteBehavior.SetNull);
+            //entity.HasCheckConstraint(
+            //    "check_attempt_number",
+            //    "\"AttemptNumber\" >= 1"
+            //);
         });
 
-        modelBuilder.Entity<Product>(entity =>
-        {
+        modelBuilder.Entity<Product>(entity => {
             entity.HasKey(e => e.Id).HasName("products_pkey");
             entity.ToTable("products");
             entity.HasIndex(e => e.CategoryId, "idx_products_category");
@@ -387,12 +374,19 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.Tags).HasColumnName("tags");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
 
+            // Approval workflow fields
+            entity.Property(e => e.ApprovalStatus).HasMaxLength(20).HasDefaultValue("pending").HasColumnName("approval_status");
+            entity.Property(e => e.ApprovalNotes).HasColumnName("approval_notes");
+            entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(e => e.RejectedAt).HasColumnName("rejected_at");
+
             entity.HasOne(d => d.Category).WithMany(p => p.Products).HasForeignKey(d => d.CategoryId).HasConstraintName("products_category_id_fkey");
             entity.HasOne(d => d.Supplier).WithMany(p => p.Products).HasForeignKey(d => d.SupplierId).HasConstraintName("products_supplier_id_fkey");
         });
 
-        modelBuilder.Entity<Review>(entity =>
-        {
+        modelBuilder.Entity<Review>(entity => {
             entity.HasKey(e => e.Id).HasName("reviews_pkey");
             entity.ToTable("reviews");
             entity.HasIndex(e => new { e.UserId, e.OrderId, e.ProductId }, "reviews_user_id_order_id_product_id_key").IsUnique();
@@ -414,8 +408,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.Reviews).HasForeignKey(d => d.UserId).HasConstraintName("reviews_user_id_fkey");
         });
 
-        modelBuilder.Entity<ReviewHelpful>(entity =>
-        {
+        modelBuilder.Entity<ReviewHelpful>(entity => {
             entity.HasKey(e => e.Id).HasName("review_helpful_pkey");
             entity.ToTable("review_helpful");
             entity.HasIndex(e => new { e.ReviewId, e.UserId }, "review_helpful_review_id_user_id_key").IsUnique();
@@ -428,8 +421,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.ReviewHelpfuls).HasForeignKey(d => d.UserId).HasConstraintName("review_helpful_user_id_fkey");
         });
 
-        modelBuilder.Entity<Subscription>(entity =>
-        {
+        modelBuilder.Entity<Subscription>(entity => {
             entity.HasKey(e => e.Id).HasName("subscriptions_pkey");
             entity.ToTable("subscriptions");
             entity.HasIndex(e => e.NextDeliveryDate, "idx_subs_next_delivery").HasFilter("(status = 'active'::sub_status)");
@@ -445,7 +437,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.StartDate).HasDefaultValueSql("CURRENT_DATE").HasColumnName("start_date");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            
+
             // --- FIX 4: Cấu hình ColumnType cho Enum Subscription ---
             entity.Property(e => e.Frequency)
                   .HasColumnName("frequency")
@@ -462,8 +454,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.Subscriptions).HasForeignKey(d => d.UserId).HasConstraintName("subscriptions_user_id_fkey");
         });
 
-        modelBuilder.Entity<SubscriptionSchedule>(entity =>
-        {
+        modelBuilder.Entity<SubscriptionSchedule>(entity => {
             entity.HasKey(e => e.Id).HasName("subscription_schedules_pkey");
             entity.ToTable("subscription_schedules");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -472,74 +463,187 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.ScheduledDate).HasColumnName("scheduled_date");
             entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
-
             entity.HasOne(d => d.Order).WithMany(p => p.SubscriptionSchedules).HasForeignKey(d => d.OrderId).HasConstraintName("subscription_schedules_order_id_fkey");
             entity.HasOne(d => d.Subscription).WithMany(p => p.SubscriptionSchedules).HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("subscription_schedules_subscription_id_fkey");
         });
 
-        modelBuilder.Entity<SubscriptionConfirmation>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("subscription_confirmations_pkey");
-            entity.ToTable("subscription_confirmations");
-            entity.HasIndex(e => e.Token, "idx_subscription_confirmations_token");
-            entity.HasIndex(e => e.SubscriptionId, "idx_subscription_confirmations_subscription_id");
-            entity.HasIndex(e => e.ExpiresAt, "idx_subscription_confirmations_expires_at").HasFilter("(is_confirmed = false)");
-            
-            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
-            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
-            entity.Property(e => e.Token).HasMaxLength(255).HasColumnName("token");
-            entity.Property(e => e.ScheduledDeliveryDate).HasColumnName("scheduled_delivery_date");
-            entity.Property(e => e.IsConfirmed).HasDefaultValue(false).HasColumnName("is_confirmed");
-            entity.Property(e => e.CustomerResponse).HasMaxLength(50).HasColumnName("customer_response");
-            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
-
-            entity.HasOne(d => d.Subscription).WithMany().HasForeignKey(d => d.SubscriptionId)
-                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("subscription_confirmations_subscription_id_fkey");
-        });
-
-        modelBuilder.Entity<Supplier>(entity =>
-        {
+        modelBuilder.Entity<Supplier>(entity => {
             entity.HasKey(e => e.Id).HasName("suppliers_pkey");
             entity.ToTable("suppliers");
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.StoreName).HasMaxLength(150).HasColumnName("store_name");
+            entity.Property(e => e.ContactEmail).HasMaxLength(255).HasColumnName("contact_email");
+            entity.Property(e => e.ContactPhone).HasMaxLength(20).HasColumnName("contact_phone");
             entity.Property(e => e.Address).HasColumnName("address");
-            entity.Property(e => e.ContactEmail).HasMaxLength(100).HasColumnName("contact_email");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
-            entity.Property(e => e.Name).HasMaxLength(150).HasColumnName("name");
-            entity.Property(e => e.Phone).HasMaxLength(20).HasColumnName("phone");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.SupplierUuid).HasDefaultValueSql("extensions.uuid_generate_v4()").HasColumnName("supplier_uuid");
+            entity.Property(e => e.SupplierCode).HasMaxLength(50).HasColumnName("supplier_code");
+            entity.Property(e => e.BusinessName).HasMaxLength(255).HasColumnName("business_name");
+            entity.Property(e => e.BusinessLicense).HasMaxLength(100).HasColumnName("business_license");
+            entity.Property(e => e.ContactName).HasMaxLength(255).HasColumnName("contact_name");
+            entity.Property(e => e.AddressStreet).HasMaxLength(500).HasColumnName("address_street");
+            entity.Property(e => e.AddressWard).HasMaxLength(100).HasColumnName("address_ward");
+            entity.Property(e => e.AddressDistrict).HasMaxLength(100).HasColumnName("address_district");
+            entity.Property(e => e.AddressCity).HasMaxLength(100).HasColumnName("address_city");
+            entity.Property(e => e.TaxCode).HasMaxLength(50).HasColumnName("tax_code");
+            entity.Property(e => e.BankAccount).HasMaxLength(50).HasColumnName("bank_account");
+            entity.Property(e => e.BankName).HasMaxLength(255).HasColumnName("bank_name");
+            entity.Property(e => e.Rating).HasPrecision(3, 2).HasDefaultValue(5.00m).HasColumnName("rating");
+            entity.Property(e => e.TotalOrders).HasDefaultValue(0).HasColumnName("total_orders");
+            entity.Property(e => e.CompletedOrders).HasDefaultValue(0).HasColumnName("completed_orders");
+            entity.Property(e => e.CancelledOrders).HasDefaultValue(0).HasColumnName("cancelled_orders");
+            entity.Property(e => e.AvgProcessingTime).HasColumnName("avg_processing_time");
+            entity.Property(e => e.SlaComplianceRate).HasPrecision(5, 2).HasDefaultValue(100.00m).HasColumnName("sla_compliance_rate");
+            entity.Property(e => e.LateDeliveryCount).HasDefaultValue(0).HasColumnName("late_delivery_count");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.SuspendedAt).HasColumnName("suspended_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.StoreLogoUrl).HasColumnName("store_logo_url");
+            entity.Property(e => e.StoreBannerUrl).HasColumnName("store_banner_url");
+            entity.Property(e => e.WebsiteUrl).HasMaxLength(500).HasColumnName("website_url");
+            entity.Property(e => e.Latitude).HasPrecision(10, 8).HasColumnName("latitude");
+            entity.Property(e => e.Longitude).HasPrecision(11, 8).HasColumnName("longitude");
+            entity.Property(e => e.BankBranch).HasMaxLength(255).HasColumnName("bank_branch");
+            entity.Property(e => e.ReturnedOrders).HasDefaultValue(0).HasColumnName("returned_orders");
+            entity.Property(e => e.TotalRevenue).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("total_revenue");
+            entity.Property(e => e.TotalCommission).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("total_commission");
+            entity.Property(e => e.PendingPayout).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("pending_payout");
+            entity.Property(e => e.CommissionRate).HasPrecision(5, 2).HasDefaultValue(15.00m).HasColumnName("commission_rate");
+            entity.Property(e => e.LateConfirmationCount).HasDefaultValue(0).HasColumnName("late_confirmation_count");
+            entity.Property(e => e.LatePackingCount).HasDefaultValue(0).HasColumnName("late_packing_count");
+            entity.Property(e => e.LateShippingCount).HasDefaultValue(0).HasColumnName("late_shipping_count");
+            entity.Property(e => e.QualityScore).HasPrecision(5, 2).HasDefaultValue(100.00m).HasColumnName("quality_score");
+            entity.Property(e => e.IssueCount).HasDefaultValue(0).HasColumnName("issue_count");
+            entity.Property(e => e.ReturnRate).HasPrecision(5, 2).HasDefaultValue(0m).HasColumnName("return_rate");
+            entity.Property(e => e.Features).HasColumnType("jsonb").HasColumnName("features");
+            entity.Property(e => e.Certifications).HasColumnType("jsonb").HasColumnName("certifications");
+            entity.Property(e => e.OperatingHours).HasColumnType("jsonb").HasColumnName("operating_hours");
+            entity.Property(e => e.ServiceAreas).HasColumnType("jsonb").HasColumnName("service_areas");
+            entity.Property(e => e.MinOrderValue).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("min_order_value");
+            entity.Property(e => e.AutoConfirmOrders).HasDefaultValue(false).HasColumnName("auto_confirm_orders");
+            entity.Property(e => e.IsVerified).HasDefaultValue(false).HasColumnName("is_verified");
+            entity.Property(e => e.IsFeatured).HasDefaultValue(false).HasColumnName("is_featured");
+            entity.Property(e => e.SuspensionReason).HasColumnName("suspension_reason");
+            entity.Property(e => e.LastActivityAt).HasColumnName("last_activity_at");
+            entity.Property(e => e.UserId).HasColumnName("UserId");
+            entity.Property(e => e.DeletedAt).HasColumnName("DeletedAt");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false).HasColumnName("IsDeleted");
+
+            // Business registration fields
+            entity.Property(e => e.RegistrationStatus).HasMaxLength(20).HasDefaultValue("pending").HasColumnName("registration_status");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.BusinessLicenseUrl).HasColumnName("business_license_url");
+            entity.Property(e => e.OperatingRegion).HasMaxLength(50).HasColumnName("operating_region");
+            entity.Property(e => e.RegistrationNotes).HasColumnName("registration_notes");
+            entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at");
+
+            entity.HasOne(d => d.User)
+                .WithMany(p => p.Suppliers)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_suppliers_users")
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("users_pkey");
-            entity.ToTable("users");
-            entity.HasIndex(e => e.Email, "idx_users_email");
-            entity.HasIndex(e => e.Email, "users_email_key").IsUnique();
-            entity.Property(e => e.Id).ValueGeneratedNever().HasColumnName("id");
-            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
-            entity.Property(e => e.Email).HasMaxLength(255).HasColumnName("email");
-            entity.Property(e => e.FullName).HasMaxLength(100).HasColumnName("full_name");
-            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
-            entity.Property(e => e.LoyaltyPoints).HasDefaultValue(0).HasColumnName("loyalty_points");
-            entity.Property(e => e.PhoneNumber).HasMaxLength(20).HasColumnName("phone_number");
-            
-            // --- FIX 1: Cấu hình ColumnType cho Enum User (NGUYÊN NHÂN LỖI CHÍNH) ---
-            entity.Property(e => e.Role)
-                .HasColumnName("role")
-                .HasColumnType("user_role");
+        modelBuilder.Entity<SupplierProduct>(entity => {
+            entity.HasKey(e => e.Id).HasName("supplier_products_pkey");
+            entity.ToTable("supplier_products");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("Id");
+            entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("Name");
+            entity.Property(e => e.Description).HasColumnName("Description");
+            entity.Property(e => e.BasePrice).HasPrecision(15, 2).HasColumnName("BasePrice");
+            entity.Property(e => e.CostPrice).HasPrecision(15, 2).HasColumnName("CostPrice");
+            entity.Property(e => e.StockQuantity).HasDefaultValue(0).HasColumnName("StockQuantity");
+            entity.Property(e => e.LowStockThreshold).HasDefaultValue(10).HasColumnName("LowStockThreshold");
+            entity.Property(e => e.Sku).HasMaxLength(50).HasColumnName("Sku");
+            entity.Property(e => e.ImageUrl).HasMaxLength(255).HasColumnName("ImageUrl");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("IsActive");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("CreatedAt");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAt");
+            entity.Property(e => e.SupplierId).HasColumnName("SupplierId");
 
-            entity.Property(e => e.TierId).HasDefaultValue(1).HasColumnName("tier_id");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
-
-            entity.HasOne(d => d.Tier).WithMany(p => p.Users).HasForeignKey(d => d.TierId).HasConstraintName("users_tier_id_fkey");
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierProducts)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("fk_supplier_products_suppliers")
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<ZaloMessagesLog>(entity =>
-        {
+        modelBuilder.Entity<SupplierOrder>(entity => {
+            entity.HasKey(e => e.Id).HasName("supplier_orders_pkey");
+            entity.ToTable("supplier_orders");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("Id");
+            entity.Property(e => e.CustomerName).HasMaxLength(255).HasColumnName("CustomerName");
+            entity.Property(e => e.CustomerEmail).HasMaxLength(255).HasColumnName("CustomerEmail");
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20).HasColumnName("CustomerPhone");
+            entity.Property(e => e.TotalAmount).HasPrecision(15, 2).HasColumnName("TotalAmount");
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("pending").HasColumnName("Status");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("CreatedAt");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAt");
+            entity.Property(e => e.SupplierId).HasColumnName("SupplierId");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierOrders)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("fk_supplier_orders_suppliers")
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SupplierStats>(entity => {
+            entity.HasKey(e => e.Id).HasName("supplier_stats_pkey");
+            entity.ToTable("supplier_stats");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("Id");
+            entity.Property(e => e.SupplierId).HasColumnName("SupplierId");
+            entity.Property(e => e.Date).HasDefaultValueSql("now()").HasColumnName("Date");
+            entity.Property(e => e.TotalProducts).HasDefaultValue(0).HasColumnName("TotalProducts");
+            entity.Property(e => e.ActiveProducts).HasDefaultValue(0).HasColumnName("ActiveProducts");
+            entity.Property(e => e.LowStockProducts).HasDefaultValue(0).HasColumnName("LowStockProducts");
+            entity.Property(e => e.TotalOrders).HasDefaultValue(0).HasColumnName("TotalOrders");
+            entity.Property(e => e.PendingOrders).HasDefaultValue(0).HasColumnName("PendingOrders");
+            entity.Property(e => e.CompletedOrders).HasDefaultValue(0).HasColumnName("CompletedOrders");
+            entity.Property(e => e.CancelledOrders).HasDefaultValue(0).HasColumnName("CancelledOrders");
+            entity.Property(e => e.TotalRevenue).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("TotalRevenue");
+            entity.Property(e => e.ThisMonthRevenue).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("ThisMonthRevenue");
+            entity.Property(e => e.LastMonthRevenue).HasPrecision(15, 2).HasDefaultValue(0m).HasColumnName("LastMonthRevenue");
+            entity.Property(e => e.AverageOrderValue).HasDefaultValue(0).HasColumnName("AverageOrderValue");
+            entity.Property(e => e.FulfillmentRate).HasDefaultValue(0).HasColumnName("FulfillmentRate");
+            entity.Property(e => e.OnTimeDeliveryRate).HasDefaultValue(0).HasColumnName("OnTimeDeliveryRate");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("CreatedAt");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAt");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierStats)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("fk_supplier_stats_suppliers")
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SupplierAlert>(entity => {
+            entity.HasKey(e => e.Id).HasName("supplier_alerts_pkey");
+            entity.ToTable("supplier_alert");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("Id");
+            entity.Property(e => e.Type).HasMaxLength(50).HasDefaultValue("system").HasColumnName("Type");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("Title");
+            entity.Property(e => e.Message).HasColumnName("Message");
+            entity.Property(e => e.Severity).HasMaxLength(20).HasDefaultValue("medium").HasColumnName("Severity");
+            entity.Property(e => e.IsRead).HasDefaultValue(false).HasColumnName("IsRead");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("CreatedAt");
+            entity.Property(e => e.ReadAt).HasColumnName("ReadAt");
+            entity.Property(e => e.ProductId).HasColumnName("ProductId");
+            entity.Property(e => e.OrderId).HasColumnName("OrderId");
+            entity.Property(e => e.SupplierId).HasColumnName("SupplierId");
+            entity.Property(e => e.Data).HasColumnType("jsonb").HasColumnName("Data");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierAlerts)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("fk_supplier_alerts_suppliers")
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ZaloMessagesLog>(entity => {
             entity.HasKey(e => e.Id).HasName("zalo_messages_log_pkey");
             entity.ToTable("zalo_messages_log");
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
@@ -557,8 +661,7 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.HasOne(d => d.User).WithMany(p => p.ZaloMessagesLogs).HasForeignKey(d => d.UserId).HasConstraintName("zalo_messages_log_user_id_fkey");
         });
 
-        modelBuilder.Entity<ZaloTemplate>(entity =>
-        {
+        modelBuilder.Entity<ZaloTemplate>(entity => {
             entity.HasKey(e => e.Id).HasName("zalo_templates_pkey");
             entity.ToTable("zalo_templates");
             entity.HasIndex(e => e.TemplateId, "zalo_templates_template_id_key").IsUnique();
@@ -570,30 +673,44 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
             entity.Property(e => e.TemplateName).HasMaxLength(100).HasColumnName("template_name");
         });
 
-        // User Entity Configuration (Email Verification Columns)
-        modelBuilder.Entity<User>(entity =>
-        {
+        // User Entity Configuration
+        modelBuilder.Entity<User>(entity => {
             entity.ToTable("users");
-            entity.HasKey(e => e.Id);
+            entity.HasKey(e => e.Id).HasName("users_pkey");
             
-            // Email Verification Columns Mapping
+            // Primary columns
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Email).HasMaxLength(255).HasColumnName("email");
+            entity.Property(e => e.FullName).HasMaxLength(100).HasColumnName("full_name");
+            entity.Property(e => e.Role).HasColumnName("role").HasColumnType("user_role");
+            entity.Property(e => e.PhoneNumber).HasMaxLength(20).HasColumnName("phone_number");
+            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
+            entity.Property(e => e.TierId).HasColumnName("tier_id");
+            entity.Property(e => e.LoyaltyPoints).HasDefaultValue(0).HasColumnName("loyalty_points");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            // Email Verification Columns
             entity.Property(e => e.EmailVerified)
                 .HasColumnName("email_verified")
                 .HasDefaultValue(false);
-            
             entity.Property(e => e.EmailVerificationToken)
                 .HasColumnName("email_verification_token")
                 .HasMaxLength(255);
-            
             entity.Property(e => e.EmailVerificationExpiry)
                 .HasColumnName("email_verification_expiry");
-                            // Password Reset Columns Mapping
+
+            // Password Reset Columns
             entity.Property(e => e.PasswordResetToken)
                 .HasColumnName("password_reset_token")
                 .HasMaxLength(255);
-            
             entity.Property(e => e.PasswordResetExpiry)
                 .HasColumnName("password_reset_expiry");
+
+            // Relationship with MemberTier
+            entity.HasOne(d => d.Tier).WithMany(p => p.Users)
+                .HasForeignKey(d => d.TierId).HasConstraintName("users_tier_id_fkey");
         });
         modelBuilder.Entity<LoginLog>(entity => {
             entity.ToTable("login_logs");
@@ -676,109 +793,416 @@ modelBuilder.HasPostgresEnum<SubStatus>("public", "sub_status");
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Chat entities configuration
-        modelBuilder.Entity<ChatConversation>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("chat_conversations_pkey");
-            entity.ToTable("chat_conversations");
-            
-            entity.HasIndex(e => e.UserId, "idx_chat_conversations_user");
-            entity.HasIndex(e => e.CreatedAt, "idx_chat_conversations_created").IsDescending();
-            
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("uuid_generate_v4()")
-                .HasColumnName("id");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Title)
-                .HasMaxLength(200)
-                .HasColumnName("title");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasDefaultValue("active")
-                .HasColumnName("status");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-            
-            entity.HasOne(d => d.User)
-                .WithMany(p => p.ChatConversations)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("chat_conversations_user_id_fkey");
+        // =========================================================
+        // STAFF MODULE ENTITY CONFIGURATIONS
+        // =========================================================
+
+        // Warehouse
+        modelBuilder.Entity<Warehouse>(entity => {
+            entity.ToTable("warehouses");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.Code).HasColumnName("code").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.AddressStreet).HasColumnName("address_street").HasMaxLength(500);
+            entity.Property(e => e.AddressWard).HasColumnName("address_ward").HasMaxLength(100);
+            entity.Property(e => e.AddressDistrict).HasColumnName("address_district").HasMaxLength(100);
+            entity.Property(e => e.AddressCity).HasColumnName("address_city").HasMaxLength(100);
+            entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(20);
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(255);
+            entity.Property(e => e.Latitude).HasColumnName("latitude").HasPrecision(10, 8);
+            entity.Property(e => e.Longitude).HasColumnName("longitude").HasPrecision(11, 8);
+            entity.Property(e => e.Capacity).HasColumnName("capacity");
+            entity.Property(e => e.Region).HasColumnName("region").HasMaxLength(50);
+            entity.Property(e => e.IsDefault).HasColumnName("is_default").HasDefaultValue(false);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.Region);
         });
 
-        modelBuilder.Entity<ChatMessage>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("chat_messages_pkey");
-            entity.ToTable("chat_messages");
-            
-            entity.HasIndex(e => e.ConversationId, "idx_chat_messages_conversation");
-            entity.HasIndex(e => e.CreatedAt, "idx_chat_messages_created").IsDescending();
-            
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("uuid_generate_v4()")
-                .HasColumnName("id");
-            entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
-            entity.Property(e => e.Role)
-                .HasMaxLength(20)
-                .HasColumnName("role");
-            entity.Property(e => e.Content)
-                .HasColumnType("text");
-            entity.Property(e => e.Intent)
-                .HasMaxLength(50)
-                .HasColumnName("intent");
-            entity.Property(e => e.Metadata)
-                .HasColumnName("metadata")
-                .HasColumnType("jsonb");
-            entity.Property(e => e.TokensUsed).HasColumnName("tokens_used");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            
-            entity.HasOne(d => d.Conversation)
-                .WithMany(p => p.Messages)
-                .HasForeignKey(d => d.ConversationId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("chat_messages_conversation_id_fkey");
+        // StaffWarehouse (many-to-many join table)
+        modelBuilder.Entity<StaffWarehouse>(entity => {
+            entity.ToTable("staff_warehouses");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.StaffId).HasColumnName("staff_id").IsRequired();
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
+            entity.Property(e => e.IsPrimary).HasColumnName("is_primary").HasDefaultValue(false);
+            entity.Property(e => e.AssignedAt).HasColumnName("assigned_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
+            entity.HasOne(e => e.Staff).WithMany(s => s.StaffWarehouses).HasForeignKey(e => e.StaffId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Warehouse).WithMany(w => w.StaffWarehouses).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.StaffId, e.WarehouseId }).IsUnique();
         });
 
-        modelBuilder.Entity<ChatFaq>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("chat_faqs_pkey");
-            entity.ToTable("chat_faqs");
-            
-            entity.HasIndex(e => e.Category, "idx_chat_faqs_category");
-            entity.HasIndex(e => e.HitCount, "idx_chat_faqs_hit").IsDescending();
-            
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("uuid_generate_v4()")
-                .HasColumnName("id");
-            entity.Property(e => e.QuestionPattern)
-                .HasColumnName("question_pattern")
-                .HasColumnType("text");
-            entity.Property(e => e.Answer)
-                .HasColumnName("answer")
-                .HasColumnType("text");
-            entity.Property(e => e.Category)
-                .HasMaxLength(100)
-                .HasColumnName("category");
-            entity.Property(e => e.HitCount)
-                .HasDefaultValue(0)
-                .HasColumnName("hit_count");
-            entity.Property(e => e.IsActive)
-                .HasDefaultValue(true)
-                .HasColumnName("is_active");
-            entity.Property(e => e.Keywords)
-                .HasColumnName("keywords");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
+        // StaffMember
+        modelBuilder.Entity<StaffMember>(entity => {
+            entity.ToTable("staff_members");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.EmployeeCode).HasColumnName("employee_code").HasMaxLength(20);
+            entity.Property(e => e.Department).HasColumnName("department").HasMaxLength(100);
+            entity.Property(e => e.Position).HasColumnName("position").HasMaxLength(100);
+            entity.Property(e => e.CanApproveReceipts).HasColumnName("can_approve_receipts").HasDefaultValue(false);
+            entity.Property(e => e.CanAdjustInventory).HasColumnName("can_adjust_inventory").HasDefaultValue(false);
+            entity.Property(e => e.CanOverrideFifo).HasColumnName("can_override_fifo").HasDefaultValue(false);
+            entity.Property(e => e.HireDate).HasColumnName("hire_date");
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Warehouse).WithMany(w => w.StaffMembers).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.EmployeeCode).IsUnique();
+        });
+
+        // SupplierShipment
+        modelBuilder.Entity<SupplierShipment>(entity => {
+            entity.ToTable("supplier_shipments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ExternalReference).HasColumnName("external_reference").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id").IsRequired();
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(ShipmentStatus.Draft);
+            entity.Property(e => e.ExpectedDeliveryDate).HasColumnName("expected_delivery_date").IsRequired();
+            entity.Property(e => e.ActualDispatchDate).HasColumnName("actual_dispatch_date");
+            entity.Property(e => e.ActualArrivalDate).HasColumnName("actual_arrival_date");
+            entity.Property(e => e.TrackingNumber).HasColumnName("tracking_number").HasMaxLength(100);
+            entity.Property(e => e.Carrier).HasColumnName("carrier").HasMaxLength(100);
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.TotalValue).HasColumnName("total_value").HasColumnType("decimal(15,2)");
+            entity.Property(e => e.TotalItems).HasColumnName("total_items").HasDefaultValue(0);
+            entity.Property(e => e.TotalQuantity).HasColumnName("total_quantity").HasDefaultValue(0);
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany(w => w.Shipments).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Creator).WithMany().HasForeignKey(e => e.CreatedBy).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.ExternalReference);
+            entity.HasIndex(e => e.Status);
+        });
+
+        // ShipmentItem
+        modelBuilder.Entity<ShipmentItem>(entity => {
+            entity.ToTable("shipment_items");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ShipmentId).HasColumnName("shipment_id").IsRequired();
+            entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
+            entity.Property(e => e.ExpectedQuantity).HasColumnName("expected_quantity").IsRequired();
+            entity.Property(e => e.Uom).HasColumnName("uom").HasMaxLength(20).HasDefaultValue("pcs");
+            entity.Property(e => e.BatchNumber).HasColumnName("batch_number").HasMaxLength(100);
+            entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
+            entity.Property(e => e.ManufactureDate).HasColumnName("manufacture_date");
+            entity.Property(e => e.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.LineTotal).HasColumnName("line_total").HasColumnType("decimal(15,2)");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.ReceivedQuantity).HasColumnName("received_quantity");
+            entity.Property(e => e.DamagedQuantity).HasColumnName("damaged_quantity");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne(e => e.Shipment).WithMany(s => s.Items).HasForeignKey(e => e.ShipmentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ShipmentDocument
+        modelBuilder.Entity<ShipmentDocument>(entity => {
+            entity.ToTable("shipment_documents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ShipmentId).HasColumnName("shipment_id").IsRequired();
+            entity.Property(e => e.DocumentType).HasColumnName("document_type").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.FileName).HasColumnName("file_name").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.FileUrl).HasColumnName("file_url").IsRequired();
+            entity.Property(e => e.MimeType).HasColumnName("mime_type").HasMaxLength(100);
+            entity.Property(e => e.FileSize).HasColumnName("file_size");
+            entity.Property(e => e.UploadedBy).HasColumnName("uploaded_by");
+            entity.Property(e => e.UploadedAt).HasColumnName("uploaded_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Shipment).WithMany(s => s.Documents).HasForeignKey(e => e.ShipmentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Uploader).WithMany().HasForeignKey(e => e.UploadedBy).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ShipmentStatusHistory
+        modelBuilder.Entity<ShipmentStatusHistory>(entity => {
+            entity.ToTable("shipment_status_history");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ShipmentId).HasColumnName("shipment_id").IsRequired();
+            entity.Property(e => e.PreviousStatus).HasColumnName("previous_status");
+            entity.Property(e => e.NewStatus).HasColumnName("new_status").IsRequired();
+            entity.Property(e => e.PreviousEta).HasColumnName("previous_eta");
+            entity.Property(e => e.NewEta).HasColumnName("new_eta");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.Location).HasColumnName("location").HasMaxLength(255);
+            entity.Property(e => e.ChangedBy).HasColumnName("changed_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Shipment).WithMany(s => s.StatusHistory).HasForeignKey(e => e.ShipmentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ChangedByUser).WithMany().HasForeignKey(e => e.ChangedBy).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Receipt
+        modelBuilder.Entity<Receipt>(entity => {
+            entity.ToTable("receipts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ReceiptNumber).HasColumnName("receipt_number").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ShipmentId).HasColumnName("shipment_id").IsRequired();
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
+            entity.Property(e => e.ReceivedBy).HasColumnName("received_by").IsRequired();
+            entity.Property(e => e.InspectedBy).HasColumnName("inspected_by");
+            entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(ReceiptStatus.Pending);
+            entity.Property(e => e.ArrivalDate).HasColumnName("arrival_date").IsRequired();
+            entity.Property(e => e.InspectionStart).HasColumnName("inspection_start");
+            entity.Property(e => e.InspectionEnd).HasColumnName("inspection_end");
+            entity.Property(e => e.StoreDate).HasColumnName("store_date");
+            entity.Property(e => e.TotalExpected).HasColumnName("total_expected");
+            entity.Property(e => e.TotalAccepted).HasColumnName("total_accepted");
+            entity.Property(e => e.TotalDamaged).HasColumnName("total_damaged");
+            entity.Property(e => e.TotalMissing).HasColumnName("total_missing");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.InspectionNotes).HasColumnName("inspection_notes");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Shipment).WithMany().HasForeignKey(e => e.ShipmentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany(w => w.Receipts).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReceivedByStaff).WithMany().HasForeignKey(e => e.ReceivedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InspectedByStaff).WithMany().HasForeignKey(e => e.InspectedBy).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.ReceiptNumber).IsUnique();
+        });
+
+        // ReceiptItem
+        modelBuilder.Entity<ReceiptItem>(entity => {
+            entity.ToTable("receipt_items");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ReceiptId).HasColumnName("receipt_id").IsRequired();
+            entity.Property(e => e.ShipmentItemId).HasColumnName("shipment_item_id").IsRequired();
+            entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
+            entity.Property(e => e.ExpectedQuantity).HasColumnName("expected_quantity");
+            entity.Property(e => e.ReceivedQuantity).HasColumnName("received_quantity");
+            entity.Property(e => e.AcceptedQuantity).HasColumnName("accepted_quantity");
+            entity.Property(e => e.DamagedQuantity).HasColumnName("damaged_quantity");
+            entity.Property(e => e.MissingQuantity).HasColumnName("missing_quantity");
+            entity.Property(e => e.QuarantineQuantity).HasColumnName("quarantine_quantity");
+            entity.Property(e => e.BatchNumber).HasColumnName("batch_number").HasMaxLength(100);
+            entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
+            entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(ReceiptStatus.Pending);
+            entity.Property(e => e.QcRequired).HasColumnName("qc_required").HasDefaultValue(false);
+            entity.Property(e => e.QcPassed).HasColumnName("qc_passed");
+            entity.Property(e => e.QcSampleSize).HasColumnName("qc_sample_size");
+            entity.Property(e => e.QcPassedCount).HasColumnName("qc_passed_count");
+            entity.Property(e => e.QcNotes).HasColumnName("qc_notes");
+            entity.Property(e => e.InspectionNotes).HasColumnName("inspection_notes");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Receipt).WithMany(r => r.Items).HasForeignKey(e => e.ReceiptId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ShipmentItem).WithMany().HasForeignKey(e => e.ShipmentItemId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // WarehouseInventory
+        modelBuilder.Entity<WarehouseInventory>(entity => {
+            entity.ToTable("warehouse_inventory");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
+            entity.Property(e => e.Quantity).HasColumnName("quantity").HasDefaultValue(0);
+            entity.Property(e => e.ReservedQuantity).HasColumnName("reserved_quantity").HasDefaultValue(0);
+            entity.Property(e => e.BatchNumber).HasColumnName("batch_number").HasMaxLength(100);
+            entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
+            entity.Property(e => e.ManufactureDate).HasColumnName("manufacture_date");
+            entity.Property(e => e.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Location).HasColumnName("location").HasMaxLength(100);
+            entity.Property(e => e.InventoryType).HasColumnName("inventory_type").HasDefaultValue(InventoryType.Available);
+            entity.Property(e => e.MinStockLevel).HasColumnName("min_stock_level");
+            entity.Property(e => e.MaxStockLevel).HasColumnName("max_stock_level");
+            entity.Property(e => e.AvailableQuantity).HasColumnName("available_quantity");
+            entity.Property(e => e.LocationCode).HasColumnName("location_code").HasMaxLength(100);
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.ReceiptId).HasColumnName("receipt_id");
+            entity.Property(e => e.ReorderPoint).HasColumnName("reorder_point");
+            entity.Property(e => e.ReorderQuantity).HasColumnName("reorder_quantity");
+            entity.Property(e => e.LastCountedAt).HasColumnName("last_counted_at");
+            entity.Property(e => e.ReceivedAt).HasColumnName("received_at");
+            entity.Property(e => e.SourceShipmentId).HasColumnName("source_shipment_id");
+            entity.Property(e => e.Version).HasColumnName("version").HasDefaultValue(1).IsConcurrencyToken();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany(w => w.Inventories).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Receipt).WithMany().HasForeignKey(e => e.ReceiptId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => new { e.ProductId, e.WarehouseId, e.BatchNumber, e.ExpiryDate, e.InventoryType }).IsUnique();
+        });
+
+        // StockMovement
+        modelBuilder.Entity<StockMovement>(entity => {
+            entity.ToTable("stock_movements");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.InventoryId).HasColumnName("inventory_id").IsRequired();
+            entity.Property(e => e.MovementType).HasColumnName("movement_type").IsRequired();
+            entity.Property(e => e.QuantityChange).HasColumnName("quantity_change").IsRequired();
+            entity.Property(e => e.QuantityBefore).HasColumnName("quantity_before");
+            entity.Property(e => e.QuantityAfter).HasColumnName("quantity_after");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
+            entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
+            entity.Property(e => e.BatchNumber).HasColumnName("batch_number").HasMaxLength(100);
+            entity.Property(e => e.ReferenceType).HasColumnName("reference_type").HasMaxLength(50);
+            entity.Property(e => e.ReferenceId).HasColumnName("reference_id");
+            entity.Property(e => e.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(15,2)");
+            entity.Property(e => e.TotalCost).HasColumnName("total_cost").HasColumnType("decimal(15,2)");
+            entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(255);
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.IsFifoOverride).HasColumnName("is_fifo_override").HasDefaultValue(false);
+            entity.Property(e => e.OverrideReason).HasColumnName("override_reason");
+            entity.Property(e => e.PerformedBy).HasColumnName("performed_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Inventory).WithMany().HasForeignKey(e => e.InventoryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.PerformedByStaff).WithMany().HasForeignKey(e => e.PerformedBy).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.ApprovedByStaff).WithMany().HasForeignKey(e => e.ApprovedBy).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // StockReservation
+        modelBuilder.Entity<StockReservation>(entity => {
+            entity.ToTable("stock_reservations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.InventoryId).HasColumnName("inventory_id").IsRequired();
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.OrderItemId).HasColumnName("order_item_id");
+            entity.Property(e => e.Quantity).HasColumnName("quantity").IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("active");
+            entity.Property(e => e.ReservedAt).HasColumnName("reserved_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.FulfilledAt).HasColumnName("fulfilled_at");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.ReservedBy).HasColumnName("reserved_by");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.HasOne(e => e.Inventory).WithMany().HasForeignKey(e => e.InventoryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Order).WithMany().HasForeignKey(e => e.OrderId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.ReservedByUser).WithMany().HasForeignKey(e => e.ReservedBy).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // DiscrepancyReport
+        modelBuilder.Entity<DiscrepancyReport>(entity => {
+            entity.ToTable("discrepancy_reports");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ReportNumber).HasColumnName("report_number").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ShipmentId).HasColumnName("shipment_id").IsRequired();
+            entity.Property(e => e.ReceiptId).HasColumnName("receipt_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id").IsRequired();
+            entity.Property(e => e.DiscrepancyType).HasColumnName("discrepancy_type").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(50).HasDefaultValue("draft");
+            entity.Property(e => e.Description).HasColumnName("description").IsRequired();
+            entity.Property(e => e.AffectedQuantity).HasColumnName("affected_quantity");
+            entity.Property(e => e.AffectedValue).HasColumnName("affected_value").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.SupplierNotifiedAt).HasColumnName("supplier_notified_at");
+            entity.Property(e => e.SupplierResponse).HasColumnName("supplier_response");
+            entity.Property(e => e.SupplierResponseAt).HasColumnName("supplier_response_at");
+            entity.Property(e => e.ResolutionType).HasColumnName("resolution_type").HasMaxLength(50);
+            entity.Property(e => e.ResolutionNotes).HasColumnName("resolution_notes");
+            entity.Property(e => e.ResolvedBy).HasColumnName("resolved_by");
+            entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at");
+            entity.Property(e => e.ReportedBy).HasColumnName("reported_by").IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Shipment).WithMany().HasForeignKey(e => e.ShipmentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Receipt).WithMany().HasForeignKey(e => e.ReceiptId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReportedByStaff).WithMany().HasForeignKey(e => e.ReportedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ResolvedByUser).WithMany().HasForeignKey(e => e.ResolvedBy).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.ReportNumber).IsUnique();
+        });
+
+        // DiscrepancyItem
+        modelBuilder.Entity<DiscrepancyItem>(entity => {
+            entity.ToTable("discrepancy_items");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.DiscrepancyReportId).HasColumnName("discrepancy_report_id").IsRequired();
+            entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
+            entity.Property(e => e.ShipmentItemId).HasColumnName("shipment_item_id");
+            entity.Property(e => e.DiscrepancyType).HasColumnName("discrepancy_type").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ExpectedQuantity).HasColumnName("expected_quantity");
+            entity.Property(e => e.ActualQuantity).HasColumnName("actual_quantity");
+            entity.Property(e => e.DiscrepancyQuantity).HasColumnName("discrepancy_quantity");
+            entity.Property(e => e.BatchNumber).HasColumnName("batch_number").HasMaxLength(100);
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.EvidenceUrls).HasColumnName("evidence_urls").HasColumnType("jsonb");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.DiscrepancyReport).WithMany(d => d.Items).HasForeignKey(e => e.DiscrepancyReportId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ShipmentItem).WithMany().HasForeignKey(e => e.ShipmentItemId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ReturnShipment
+        modelBuilder.Entity<ReturnShipment>(entity => {
+            entity.ToTable("return_shipments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ReturnNumber).HasColumnName("return_number").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.OriginalShipmentId).HasColumnName("original_shipment_id").IsRequired();
+            entity.Property(e => e.DiscrepancyReportId).HasColumnName("discrepancy_report_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id").IsRequired();
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(50).HasDefaultValue("draft");
+            entity.Property(e => e.ReturnReason).HasColumnName("return_reason").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.TotalItems).HasColumnName("total_items");
+            entity.Property(e => e.TotalQuantity).HasColumnName("total_quantity");
+            entity.Property(e => e.TotalValue).HasColumnName("total_value").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TrackingNumber).HasColumnName("tracking_number").HasMaxLength(100);
+            entity.Property(e => e.Carrier).HasColumnName("carrier").HasMaxLength(100);
+            entity.Property(e => e.ShippedAt).HasColumnName("shipped_at");
+            entity.Property(e => e.SupplierReceivedAt).HasColumnName("supplier_received_at");
+            entity.Property(e => e.CreditStatus).HasColumnName("credit_status").HasMaxLength(50);
+            entity.Property(e => e.CreditAmount).HasColumnName("credit_amount").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CreditIssuedAt).HasColumnName("credit_issued_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by").IsRequired();
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.OriginalShipment).WithMany().HasForeignKey(e => e.OriginalShipmentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.DiscrepancyReport).WithMany().HasForeignKey(e => e.DiscrepancyReportId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Creator).WithMany().HasForeignKey(e => e.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Approver).WithMany().HasForeignKey(e => e.ApprovedBy).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.ReturnNumber).IsUnique();
+        });
+
+        // ReturnItem
+        modelBuilder.Entity<ReturnItem>(entity => {
+            entity.ToTable("return_items");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.ReturnShipmentId).HasColumnName("return_shipment_id").IsRequired();
+            entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
+            entity.Property(e => e.ShipmentItemId).HasColumnName("shipment_item_id");
+            entity.Property(e => e.Quantity).HasColumnName("quantity").IsRequired();
+            entity.Property(e => e.BatchNumber).HasColumnName("batch_number").HasMaxLength(100);
+            entity.Property(e => e.ReturnReason).HasColumnName("return_reason").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.LineTotal).HasColumnName("line_total").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.ReturnShipment).WithMany(r => r.Items).HasForeignKey(e => e.ReturnShipmentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ShipmentItem).WithMany().HasForeignKey(e => e.ShipmentItemId).OnDelete(DeleteBehavior.SetNull);
         });
 
     }

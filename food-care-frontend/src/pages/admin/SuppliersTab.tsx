@@ -5,10 +5,11 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { SimplePagination } from "../../components/ui/pagination";
 import { Plus, Edit, Trash2, Search, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { SupplierStatusBadge } from "../../components/ui/status-badge";
 import { SupplierDialog } from "../../components/admin/SupplierDialog";
-import type { Supplier } from "../../types/admin";
-import { mockSuppliers } from "../../services/adminService";
+import type { Supplier, SupplierFormData } from "../../types/admin";
+import { suppliersService } from "../../services/admin";
 
 export function SuppliersTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -17,23 +18,37 @@ export function SuppliersTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<{ id: string; name: string; products: { id: string; name: string }[] } | null>(null);
+  const [supplierForm, setSupplierForm] = useState<SupplierFormData>({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    contact: "",
+    products: "",
+  });
   const pageSize = 5;
 
-  // Fetch suppliers - will be replaced with API call
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await suppliersService.getSuppliers({
+        page: 1,
+        pageSize: 100,
+        searchTerm: searchTerm || undefined,
+      });
+      setSuppliers(res.items);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      toast.error('Không thể tải danh sách nhà cung cấp');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchTerm]);
+
   useEffect(() => {
-    const fetchSuppliers = async () => {
-      try {
-        setIsLoading(true);
-        // TODO: Replace with actual API call
-        setSuppliers(mockSuppliers);
-      } catch (error) {
-        console.error("Error fetching suppliers:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchSuppliers();
-  }, []);
+  }, [fetchSuppliers]);
 
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter(
@@ -51,23 +66,92 @@ export function SuppliersTab() {
 
   const handleAdd = useCallback(() => {
     setEditingSupplier(null);
+    setSupplierForm({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      contact: "",
+      products: "",
+    });
     setIsDialogOpen(true);
   }, []);
 
   const handleEdit = useCallback((supplier: Supplier) => {
     setEditingSupplier(supplier);
+    setSupplierForm({
+      name: supplier.name,
+      email: supplier.email,
+      phone: supplier.phone,
+      address: supplier.address,
+      contact: supplier.contact,
+      products: supplier.products.join(", "),
+    });
     setIsDialogOpen(true);
   }, []);
 
-  const handleDelete = useCallback((supplierId: string) => {
+  const handleDelete = useCallback(async (supplierId: string) => {
     if (!confirm("Bạn có chắc muốn xóa nhà cung cấp này?")) return;
-    setSuppliers(prev => prev.filter(s => s.id !== supplierId));
+    try {
+      await suppliersService.deleteSupplier(supplierId);
+      setSuppliers(prev => prev.filter(s => s.id !== supplierId));
+      if (selectedSupplier?.id === supplierId) setSelectedSupplier(null);
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      toast.error('Không thể xóa nhà cung cấp');
+    }
+  }, [selectedSupplier]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      if (!supplierForm.name || !supplierForm.phone) {
+        return;
+      }
+
+      if (editingSupplier) {
+        await suppliersService.updateSupplier(editingSupplier.id, {
+          name: supplierForm.name,
+          email: supplierForm.email,
+          phone: supplierForm.phone,
+          address: supplierForm.address,
+          contact: supplierForm.contact,
+          status: "active",
+        });
+      } else {
+        await suppliersService.createSupplier({
+          name: supplierForm.name,
+          email: supplierForm.email,
+          phone: supplierForm.phone,
+          address: supplierForm.address,
+          contact: supplierForm.contact,
+        });
+      }
+
+      setIsDialogOpen(false);
+      setEditingSupplier(null);
+      await fetchSuppliers();
+    } catch (error) {
+      console.error("Error saving supplier:", error);
+      toast.error('Không thể lưu nhà cung cấp');
+    }
+  }, [editingSupplier, fetchSuppliers, supplierForm]);
+
+  const updateSupplierForm = useCallback((field: keyof SupplierFormData, value: string) => {
+    setSupplierForm(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleSave = useCallback(() => {
-    setIsDialogOpen(false);
-    setEditingSupplier(null);
-    // Refresh data
+  const handleViewSupplier = useCallback(async (supplier: Supplier) => {
+    try {
+      const detail = await suppliersService.getSupplierDetail(supplier.id);
+      setSelectedSupplier({
+        id: String(detail.id),
+        name: detail.name,
+        products: detail.products.map(p => ({ id: p.id, name: p.name })),
+      });
+    } catch (error) {
+      console.error('Error fetching supplier detail:', error);
+      toast.error('Không thể tải chi tiết nhà cung cấp');
+    }
   }, []);
 
   if (isLoading) {
@@ -107,6 +191,31 @@ export function SuppliersTab() {
         </div>
       </CardHeader>
       <CardContent>
+        {selectedSupplier && (
+          <Card className="mb-4">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm text-gray-500">Nhà cung cấp</div>
+                  <div className="text-lg font-semibold">{selectedSupplier.name}</div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setSelectedSupplier(null)}>
+                  Đóng
+                </Button>
+              </div>
+              <div className="text-sm text-gray-600 mb-2">Sản phẩm cung cấp</div>
+              <div className="flex flex-wrap gap-2">
+                {selectedSupplier.products.length === 0 ? (
+                  <span className="text-sm text-gray-500">Chưa có sản phẩm</span>
+                ) : (
+                  selectedSupplier.products.map(p => (
+                    <Badge key={p.id} variant="outline">{p.name}</Badge>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <div className="space-y-4">
           {paginatedSuppliers.map((supplier) => (
             <Card key={supplier.id}>
@@ -114,7 +223,13 @@ export function SuppliersTab() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold">{supplier.name}</h3>
+                      <button
+                        type="button"
+                        onClick={() => handleViewSupplier(supplier)}
+                        className="text-lg font-semibold text-left hover:underline"
+                      >
+                        {supplier.name}
+                      </button>
                       <SupplierStatusBadge status={supplier.status} />
                     </div>
                     <div className="text-sm text-gray-600 mb-3 space-y-1">
@@ -166,6 +281,8 @@ export function SuppliersTab() {
       onOpenChange={setIsDialogOpen}
       editingSupplier={editingSupplier}
       onSave={handleSave}
+      supplierForm={supplierForm}
+      onUpdateForm={updateSupplierForm}
     />
   </>
   );

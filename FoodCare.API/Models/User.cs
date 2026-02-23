@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using FoodCare.API.Models.Enums;
 using System.Text.Json.Serialization;
+using FoodCare.API.Models.Suppliers;
 
 namespace FoodCare.API.Models;
 
@@ -66,6 +67,9 @@ public partial class User
     public virtual MemberTier? Tier { get; set; }
 
     public virtual ICollection<ZaloMessagesLog> ZaloMessagesLogs { get; set; } = new List<ZaloMessagesLog>();
+
+    public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Suppliers.Supplier>();
+
 
     public virtual ICollection<ChatConversation> ChatConversations { get; set; } = new List<ChatConversation>();
 }
