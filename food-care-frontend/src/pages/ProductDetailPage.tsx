@@ -41,8 +41,6 @@ export default function ProductDetailPage() {
     queryFn: () => productsApi.getProduct(id!),
     enabled: !!id,
   });
-  console.log('PRODUCT FROM QUERY:', product)
-  console.log('PRODUCT IMAGES:', product?.images)
 
 
   if (isLoading) {

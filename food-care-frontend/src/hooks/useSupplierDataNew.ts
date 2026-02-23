@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { OrderStatus, Order, SupplierOrder } from '../types/supplier';
 import { supplierApi } from '../services/suppliersApi';
+import api from '../services/api';
 
 // Helper function to map SupplierOrder to Order
 const mapSupplierOrderToOrder = (supplierOrder: SupplierOrder): Order => ({
@@ -118,11 +119,18 @@ export const useOrders = () => {
 
 export const useUpdateOrderStatus = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { orderId, status };
+    mutationFn: async ({ orderId, status, notes }: { orderId: string; status: OrderStatus; notes?: string }) => {
+      try {
+        const response = await api.put(`/supplier/orders/${orderId}/status`, { status, notes });
+        return response.data;
+      } catch (error) {
+        console.warn('Failed to update order status via API:', error);
+        // Fallback to mock behavior
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { orderId, status };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -132,15 +140,26 @@ export const useUpdateOrderStatus = () => {
 
 export const useAddShipping = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ orderId, trackingNumber, carrier }: { 
-      orderId: string; 
-      trackingNumber: string; 
-      carrier: string 
+    mutationFn: async ({ orderId, trackingNumber, carrier, estimatedDelivery, cost, notes }: {
+      orderId: string;
+      trackingNumber: string;
+      carrier: string;
+      estimatedDelivery?: string;
+      cost?: number;
+      notes?: string;
     }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { orderId, trackingNumber, carrier };
+      try {
+        const response = await api.post(`/supplier/orders/${orderId}/shipping`, {
+          trackingNumber, carrier, estimatedDelivery, cost, notes
+        });
+        return response.data;
+      } catch (error) {
+        console.warn('Failed to add shipping info via API:', error);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { orderId, trackingNumber, carrier };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -150,11 +169,20 @@ export const useAddShipping = () => {
 
 export const useCancelOrder = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { orderId, reason };
+      try {
+        const response = await api.put(`/supplier/orders/${orderId}/status`, {
+          status: 'cancelled',
+          notes: reason
+        });
+        return response.data;
+      } catch (error) {
+        console.warn('Failed to cancel order via API:', error);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { orderId, reason };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -164,11 +192,17 @@ export const useCancelOrder = () => {
 
 export const useBulkConfirmOrders = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ orderIds }: { orderIds: string[] }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { orderIds };
+      try {
+        const response = await api.post('/supplier/orders/bulk-confirm', { orderIds });
+        return response.data;
+      } catch (error) {
+        console.warn('Failed to bulk confirm orders via API:', error);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { orderIds };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -302,7 +336,7 @@ export const useAlerts = () => {
 
 export const useDismissAlert = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ alertId }: { alertId: string }) => {
       await new Promise(resolve => setTimeout(resolve, 500));

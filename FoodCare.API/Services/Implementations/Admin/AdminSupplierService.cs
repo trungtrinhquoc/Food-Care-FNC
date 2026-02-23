@@ -1,7 +1,7 @@
 using FoodCare.API.Models;
-using FoodCare.API.Models.Suppliers;
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Suppliers;
+using FoodCare.API.Models.Suppliers;
 using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,9 +25,9 @@ public class AdminSupplierService : IAdminSupplierService
         {
             var searchLower = filter.SearchTerm.ToLower();
             query = query.Where(s => 
-                s.Name.ToLower().Contains(searchLower) ||
+                s.ContactName.ToLower().Contains(searchLower) ||
                 (s.ContactEmail != null && s.ContactEmail.ToLower().Contains(searchLower)) ||
-                (s.Phone != null && s.Phone.Contains(searchLower)));
+                (s.ContactPhone != null && s.ContactPhone.Contains(searchLower)));
         }
 
         if (filter.IsActive.HasValue)
@@ -38,7 +38,7 @@ public class AdminSupplierService : IAdminSupplierService
         // Apply sorting
         query = filter.SortBy?.ToLower() switch
         {
-            "name" => filter.SortDescending ? query.OrderByDescending(s => s.Name) : query.OrderBy(s => s.Name),
+            "name" => filter.SortDescending ? query.OrderByDescending(s => s.ContactName) : query.OrderBy(s => s.ContactName),
             _ => query.OrderByDescending(s => s.CreatedAt)
         };
 
@@ -50,13 +50,13 @@ public class AdminSupplierService : IAdminSupplierService
             .Select(s => new AdminSupplierDto
             {
                 Id = s.Id,
-                Name = s.Name,
+                Name = s.StoreName,
                 ContactEmail = s.ContactEmail,
-                Phone = s.Phone,
+                Phone = s.ContactPhone,
                 Address = s.Address,
                 TotalProducts = s.Products.Count,
-                IsActive = s.IsActive,
-                CreatedAt = s.CreatedAt 
+                IsActive = s.IsActive ?? false,
+                CreatedAt = s.CreatedAt ?? DateTime.UtcNow 
             })
             .ToListAsync();
 
@@ -93,25 +93,25 @@ public class AdminSupplierService : IAdminSupplierService
         return new AdminSupplierDetailDto
         {
             Id = supplier.Id,
-            Name = supplier.Name,
+            Name = supplier.StoreName,
             ContactEmail = supplier.ContactEmail,
-            Phone = supplier.Phone,
+            Phone = supplier.ContactPhone,
             Address = supplier.Address,
             TotalProducts = supplier.Products.Count,
-            IsActive = supplier.IsActive,
-            CreatedAt = supplier.CreatedAt,
+            IsActive = supplier.IsActive ?? false,
+            CreatedAt = supplier.CreatedAt ?? DateTime.UtcNow,
             Products = products
         };
     }
 
     public async Task<AdminSupplierDetailDto> CreateSupplierAsync(AdminUpsertSupplierDto dto)
     {
-        var supplier = new Models.Suppliers.Supplier {
-            Name = dto.Name,
+        var supplier = new Supplier {
+            StoreName = dto.Name,
             ContactEmail = dto.ContactEmail,
-            Phone = dto.Phone,
+            ContactPhone = dto.Phone,
             Address = dto.Address,
-            IsActive = dto.IsActive ?? true,
+            IsActive = dto.IsActive,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -129,11 +129,11 @@ public class AdminSupplierService : IAdminSupplierService
             return null;
         }
 
-        supplier.Name = dto.Name;
+        supplier.StoreName = dto.Name;
         supplier.ContactEmail = dto.ContactEmail;
-        supplier.Phone = dto.Phone;
+        supplier.ContactPhone = dto.Phone;
         supplier.Address = dto.Address;
-        supplier.IsActive = dto.IsActive ?? supplier.IsActive;
+        supplier.IsActive = dto.IsActive;
 
         await _context.SaveChangesAsync();
 

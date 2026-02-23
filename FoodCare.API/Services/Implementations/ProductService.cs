@@ -27,7 +27,7 @@ public class ProductService : IProductService
         var query = _context.Products
             .Include(p => p.Category)
             .Include(p => p.Supplier)
-            .Where(p => p.IsActive == true);
+            .Where(p => p.IsActive == true && p.ApprovalStatus == "approved");
 
         if (filter.CategoryId.HasValue)
         {

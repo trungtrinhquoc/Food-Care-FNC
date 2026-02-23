@@ -50,5 +50,9 @@ public class AdminUpsertSupplierDto
     public string? ContactEmail { get; set; }
     public string? Phone { get; set; }
     public string? Address { get; set; }
-    public bool? IsActive { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? TaxCode { get; set; }
+    public bool IsActive { get; set; } = true;
+    public Guid? UserId { get; set; }
 }
+

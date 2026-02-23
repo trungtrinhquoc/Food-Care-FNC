@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  CheckCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -27,6 +28,7 @@ const ZaloTab = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.Zal
 const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
 const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
+const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
 
 // Tab configuration
 const TABS = [
@@ -37,6 +39,7 @@ const TABS = [
   { value: "users", label: "Người dùng", icon: UserCog },
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
+  { value: "approvals", label: "Phê duyệt", icon: CheckCircle },
   { value: "zalo", label: "Zalo", icon: MessageSquare },
 ] as const;
 
@@ -231,6 +234,13 @@ export default function AdminDashboardPage() {
                 {selectedTab === "suppliers" && (
                   <div>
                     <SuppliersTab />
+                  </div>
+                )}
+
+                {/* Approvals Tab */}
+                {selectedTab === "approvals" && (
+                  <div>
+                    <ApprovalsTab />
                   </div>
                 )}
 

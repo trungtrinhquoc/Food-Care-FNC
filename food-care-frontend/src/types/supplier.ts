@@ -55,7 +55,26 @@ export interface PagedSupplierResult {
 
 // ===== ORDER TYPES =====
 
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+export type OrderStatus = 'pending' | 'new' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+
+export interface ShippingTimeline {
+  date: string;
+  timestamp?: string;
+  status: string;
+  location: string;
+  description: string;
+  notes?: string;
+}
+
+export interface OrderShipping {
+  carrier?: string;
+  trackingNumber?: string;
+  expectedDelivery?: string;
+  status?: ShippingStatus;
+  timeline: ShippingTimeline[];
+}
+
+export type ShippingStatus = 'pending' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'exception' | 'returned';
 
 export interface Order {
   id: string;
@@ -70,22 +89,22 @@ export interface Order {
     email: string;
   };
   items: OrderItem[];
+  orderStatus?: OrderStatus;
+  products?: Array<{
+    id?: string;
+    name: string;
+    quantity: number;
+    price: number;
+    image?: string;
+    imageUrl?: string;
+  }>;
   totalAmount: number;
   status: OrderStatus;
   shippingAddress: Address;
   createdAt: string;
   updatedAt?: string;
   notes?: string;
-  shipping?: {
-    timeline: Array<{
-      date: string;
-      timestamp?: string;
-      status: string;
-      location: string;
-      description: string;
-      notes?: string;
-    }>;
-  };
+  shipping?: OrderShipping;
 }
 
 export interface OrderItem {
@@ -117,7 +136,9 @@ export interface Alert {
   severity: 'low' | 'medium' | 'high' | 'critical';
   isRead: boolean;
   createdAt: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
+  orderNumber?: string;
+  orderId?: string;
 }
 
 // ===== SUPPLIER ROLE TYPES =====
@@ -194,6 +215,7 @@ export interface KPIMetrics {
     processing: number;
     completed: number;
     cancelled: number;
+    shipping?: number;
   };
   products: {
     total: number;
@@ -206,6 +228,13 @@ export interface KPIMetrics {
     returning: number;
     total: number;
   };
+  onTimeRate?: number;
+}
+
+export interface ShippingSuccessItem {
+  category: string;
+  value: number;
+  percentage: number;
 }
 
 export interface FulfillmentMetrics {
@@ -215,6 +244,7 @@ export interface FulfillmentMetrics {
   }>;
   fulfillmentRate: number;
   averageFulfillmentTime: number; // in hours
+  avgFulfillmentTime?: Array<{ date: string; time: number }>; // For chart
   onTimeDeliveryRate: number;
   dailyProcessing: Array<{
     date: string;
@@ -222,6 +252,7 @@ export interface FulfillmentMetrics {
     shipped: number;
     delivered: number;
   }>;
+  shippingSuccess?: ShippingSuccessItem[];
 }
 
 export interface ShippingInfo {
@@ -237,4 +268,68 @@ export interface OrderStatusUpdate {
   status: OrderStatus;
   notes?: string;
   shippingInfo?: ShippingInfo;
+}
+
+// ===== SHIPMENT TYPES =====
+
+export type ShipmentStatus = 'Draft' | 'Dispatched' | 'InTransit' | 'Arrived' | 'Received' | 'Cancelled';
+
+export interface SupplierShipment {
+  id: string;
+  shipmentNumber: string;
+  supplierId: string;
+  supplierName?: string;
+  warehouseId: string;
+  warehouseName?: string;
+  status: ShipmentStatus;
+  trackingNumber?: string;
+  estimatedArrival?: string;
+  actualArrival?: string;
+  dispatchedAt?: string;
+  notes?: string;
+  itemCount?: number;
+  totalValue?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShipmentItem {
+  id?: string;
+  productId: string;
+  productName?: string;
+  productSku?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice?: number;
+  expiryDate?: string;
+  batchNumber?: string;
+}
+
+export interface CreateShipmentRequest {
+  warehouseId: string;
+  estimatedArrival: string;
+  trackingNumber?: string;
+  notes?: string;
+  items: {
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    expiryDate?: string;
+    batchNumber?: string;
+  }[];
+}
+
+export interface UpdateShipmentRequest {
+  estimatedArrival?: string;
+  trackingNumber?: string;
+  notes?: string;
+}
+
+export interface ShipmentFilter {
+  status?: ShipmentStatus;
+  warehouseId?: string;
+  fromDate?: string;
+  toDate?: string;
+  page?: number;
+  pageSize?: number;
 }

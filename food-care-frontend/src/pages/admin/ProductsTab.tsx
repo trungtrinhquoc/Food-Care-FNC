@@ -7,6 +7,7 @@ import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { SimplePagination } from "../../components/ui/pagination";
 import { Plus, Search, Edit, Trash2, Box, FolderOpen, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { StockBadge } from "../../components/ui/status-badge";
 import type { Product } from "../../types";
 import { CategoriesSection } from "../../components/admin/CategoriesSection";
@@ -39,6 +40,7 @@ export function ProductsTab() {
       setTotalItems(response.totalItems);
     } catch (error) {
       console.error("Error fetching products:", error);
+      toast.error("Không thể tải danh sách sản phẩm");
     } finally {
       setIsLoading(false);
     }
@@ -74,6 +76,7 @@ export function ProductsTab() {
       setProducts(prev => prev.filter(p => p.id !== productId));
     } catch (error) {
       console.error("Error deleting product:", error);
+      toast.error("Không thể xóa sản phẩm");
     }
   }, []);
 

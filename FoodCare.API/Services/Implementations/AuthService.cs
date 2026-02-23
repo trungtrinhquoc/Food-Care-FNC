@@ -258,7 +258,19 @@ public class AuthService : IAuthService
         // Create successful login log
         await CreateLoginLogAsync(user.Id, ipAddress, userAgent, true, null);
 
-        var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString());
+        // For staff role: include warehouseIds in JWT (single warehouse per staff)
+        List<Guid>? warehouseIds = null;
+        if (user.Role.ToString().ToLower() == "staff")
+        {
+            var staffMember = await _context.StaffMembers
+                .FirstOrDefaultAsync(s => s.UserId == user.Id && s.IsActive);
+            if (staffMember?.WarehouseId != null)
+            {
+                warehouseIds = new List<Guid> { staffMember.WarehouseId.Value };
+            }
+        }
+
+        var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.Role.ToString(), warehouseIds);
         var refreshToken = _jwtHelper.GenerateRefreshToken();
 
         _logger.LogInformation("User logged in successfully: {Email}", user.Email);

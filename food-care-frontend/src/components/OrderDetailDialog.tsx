@@ -22,7 +22,7 @@ import {
   Truck,
   AlertTriangle,
 } from 'lucide-react';
-import { ProviderOrder } from '../types';
+import type { ProviderOrder } from '../types';
 
 interface OrderDetailDialogProps {
   order: ProviderOrder | null;
@@ -81,8 +81,8 @@ export function OrderDetailDialog({
             </Button>
             <Button
               onClick={() => onStatusChange(order.id, 'cancelled')}
-              variant="destructive"
-              className="flex-1"
+              variant="outline"
+              className="flex-1 text-red-600 hover:bg-red-50"
             >
               <XCircle className="size-4 mr-2" />
               Từ chối
@@ -158,23 +158,21 @@ export function OrderDetailDialog({
           {/* SLA Warning */}
           {!['delivered', 'cancelled'].includes(order.status) && (
             <div
-              className={`p-4 rounded-lg border ${
-                order.isOverdue
-                  ? 'bg-red-50 border-red-200'
-                  : timeRemaining < 2 * 60 * 60 * 1000
+              className={`p-4 rounded-lg border ${order.isOverdue
+                ? 'bg-red-50 border-red-200'
+                : timeRemaining < 2 * 60 * 60 * 1000
                   ? 'bg-orange-50 border-orange-200'
                   : 'bg-blue-50 border-blue-200'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2">
                 <Clock
-                  className={`size-5 ${
-                    order.isOverdue
-                      ? 'text-red-600'
-                      : timeRemaining < 2 * 60 * 60 * 1000
+                  className={`size-5 ${order.isOverdue
+                    ? 'text-red-600'
+                    : timeRemaining < 2 * 60 * 60 * 1000
                       ? 'text-orange-600'
                       : 'text-blue-600'
-                  }`}
+                    }`}
                 />
                 <div>
                   <div className="font-medium">
@@ -316,7 +314,7 @@ export function OrderDetailDialog({
                 {
                   status: 'preparing',
                   label: 'Đang chuẩn bị',
-                  time: order.preparedAt || null,
+                  time: null,
                 },
                 {
                   status: 'ready_to_ship',
@@ -326,7 +324,7 @@ export function OrderDetailDialog({
                 {
                   status: 'shipping',
                   label: 'Đang giao hàng',
-                  time: order.shippedAt || null,
+                  time: null,
                 },
                 {
                   status: 'delivered',
@@ -351,13 +349,12 @@ export function OrderDetailDialog({
                 return (
                   <div key={index} className="relative pb-4">
                     <div
-                      className={`absolute left-[-1.625rem] size-5 rounded-full border-2 ${
-                        isActive
-                          ? 'bg-teal-500 border-teal-500'
-                          : isCompleted || isCancelled
+                      className={`absolute left-[-1.625rem] size-5 rounded-full border-2 ${isActive
+                        ? 'bg-teal-500 border-teal-500'
+                        : isCompleted || isCancelled
                           ? 'bg-green-500 border-green-500'
                           : 'bg-white border-gray-300'
-                      }`}
+                        }`}
                     >
                       {(isCompleted || isCancelled) && (
                         <CheckCircle className="size-4 text-white" />

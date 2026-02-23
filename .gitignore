@@ -161,3 +161,6 @@ ASALocalRun/
 ADMIN_BACKEND_ARCHITECTURE.md
 ADMIN_FEATURES_SUMMARY.md
 food-care-frontend/.env.example
+*.md
+.skillsrc
+*.sql

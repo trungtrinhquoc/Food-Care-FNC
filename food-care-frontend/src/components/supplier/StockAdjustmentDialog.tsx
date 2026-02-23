@@ -151,3 +151,4 @@ export function StockAdjustmentDialog({ product, onClose, onSave }: StockAdjustm
     </div>
   );
 }
+

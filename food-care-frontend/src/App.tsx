@@ -16,7 +16,17 @@ import ProfilePage from './pages/ProfilePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
+import SupplierDashboardPage from './pages/supplier/supplierDashboardPage';
+import StaffDashboardPage from './pages/staff/StaffDashboardPage';
 
+// Warehouse Receiving Components
+import ReceivingDashboard from './components/staff/ReceivingDashboard';
+import ReceiptInspectionPage from './components/staff/ReceiptInspectionPage';
+import ShipmentDetailPage from './components/staff/ShipmentDetailPage';
+import InventoryManagement from './components/staff/InventoryManagement';
+import DiscrepancyManagement from './components/staff/DiscrepancyManagement';
+import ReturnManagement from './components/staff/ReturnManagement';
+import SupplierShipmentManagement from './components/supplier/SupplierShipmentManagement';
 
 // Components
 import Header from './components/Header';
@@ -64,6 +74,46 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Supplier Route Component - requires supplier role
+const SupplierRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const isSupplier = user?.role?.toLowerCase() === 'supplier';
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isSupplier) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Staff Route Component - requires staff or admin role
+const StaffRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const isStaff = user?.role?.toLowerCase() === 'staff' || user?.role?.toLowerCase() === 'admin';
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isStaff) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 function AppRoutes() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,7 +127,11 @@ function AppRoutes() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/checkout" element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          } />
 
 
           <Route
@@ -104,6 +158,83 @@ function AppRoutes() {
               </AdminRoute>
             }
           />
+          <Route
+            path="/supplier"
+            element={
+              <SupplierRoute>
+                <SupplierDashboardPage />
+              </SupplierRoute>
+            }
+          />
+          {/* Supplier Shipment Routes */}
+          <Route
+            path="/supplier/shipments"
+            element={
+              <SupplierRoute>
+                <SupplierShipmentManagement />
+              </SupplierRoute>
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              <StaffRoute>
+                <StaffDashboardPage />
+              </StaffRoute>
+            }
+          />
+          {/* Staff Warehouse Routes */}
+          <Route
+            path="/staff/receiving"
+            element={
+              <StaffRoute>
+                <ReceivingDashboard />
+              </StaffRoute>
+            }
+          />
+          <Route
+            path="/staff/receipts/:receiptId"
+            element={
+              <StaffRoute>
+                <ReceiptInspectionPage />
+              </StaffRoute>
+            }
+          />
+          <Route
+            path="/staff/shipments/:shipmentId"
+            element={
+              <StaffRoute>
+                <ShipmentDetailPage />
+              </StaffRoute>
+            }
+          />
+          <Route
+            path="/staff/inventory"
+            element={
+              <StaffRoute>
+                <InventoryManagement />
+              </StaffRoute>
+            }
+          />
+          <Route
+            path="/staff/discrepancies"
+            element={
+              <StaffRoute>
+                <DiscrepancyManagement />
+              </StaffRoute>
+            }
+          />
+          <Route
+            path="/staff/returns"
+            element={
+              <StaffRoute>
+                <ReturnManagement />
+              </StaffRoute>
+            }
+          />
+
+          {/* 404 catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
       </main>

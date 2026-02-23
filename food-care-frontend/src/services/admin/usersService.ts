@@ -10,6 +10,7 @@ import type {
   CreateUserDto,
   UpdateUserDto,
   UserStats,
+  RoleOption,
 } from '../../types/admin';
 
 // ==================== API FUNCTIONS ====================
@@ -21,7 +22,7 @@ export const getUsers = async (
   filter: AdminUserFilter = {}
 ): Promise<PagedResult<AdminUser>> => {
   const params = new URLSearchParams();
-  
+
   if (filter.page) params.append('page', filter.page.toString());
   if (filter.pageSize) params.append('pageSize', filter.pageSize.toString());
   if (filter.search) params.append('search', filter.search);
@@ -30,7 +31,7 @@ export const getUsers = async (
   if (filter.tierId) params.append('tierId', filter.tierId.toString());
   if (filter.sortBy) params.append('sortBy', filter.sortBy);
   if (filter.sortDesc !== undefined) params.append('sortDesc', filter.sortDesc.toString());
-  
+
   const response = await api.get<PagedResult<AdminUser>>(`/admin/users?${params}`);
   return response.data;
 };
@@ -50,6 +51,15 @@ export const getUserStats = async (): Promise<UserStats> => {
   const response = await api.get<UserStats>('/admin/users/stats');
   return response.data;
 };
+
+/**
+ * Get available user roles
+ */
+export const getUserRoles = async (): Promise<RoleOption[]> => {
+  const response = await api.get<RoleOption[]>('/admin/users/roles');
+  return response.data;
+};
+
 
 /**
  * Create new user
@@ -99,9 +109,11 @@ export const usersService = {
   getUsers,
   getUserById,
   getUserStats,
+  getUserRoles,
   createUser,
   updateUser,
   toggleUserActive,
   deleteUser,
   changeUserPassword,
 };
+

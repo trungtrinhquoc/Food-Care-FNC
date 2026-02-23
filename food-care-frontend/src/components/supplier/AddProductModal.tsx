@@ -396,3 +396,4 @@ export function AddProductModal({ isOpen, onClose, onSubmit }: AddProductModalPr
     </div>
   );
 }
+

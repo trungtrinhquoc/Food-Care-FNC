@@ -52,11 +52,15 @@ export interface User {
     fullName: string;
     phoneNumber?: string; // Changed from phone
     avatarUrl?: string;
-    role: 'customer' | 'admin';
+    role: 'customer' | 'admin' | 'supplier' | 'staff';
     memberTier?: MemberTier;
     totalSpent?: number; // Optional as not in DTO yet
     loyaltyPoints: number;
     createdAt?: string;
+    providerInfo?: {
+        storeName: string;
+        level: string;
+    };
 }
 
 export interface RegisterRequest {
@@ -302,4 +306,92 @@ export interface ZaloReminder {
     lastPurchase: string;
     status: 'pending' | 'sent';
     sentDate?: string;
+}
+
+// Provider/Supplier Types
+export interface ProviderStats {
+    todayOrders: number;
+    pendingOrders: number;
+    overdueOrders: number;
+    todayRevenue: number;
+    rating: number;
+    cancelRate: number;
+    lateDeliveryRate: number;
+    lowStockProducts: number;
+}
+
+export interface ProviderOrderItem {
+    product: {
+        id: string;
+        name: string;
+        category: string;
+        price: number;
+        image: string;
+        description: string;
+        unit: string;
+        stock: number;
+        rating: number;
+        reviews: number;
+    };
+    quantity: number;
+    price: number;
+}
+
+export interface ProviderOrder {
+    id: string;
+    orderNumber: string;
+    date: string;
+    status: 'pending' | 'accepted' | 'preparing' | 'ready_to_ship' | 'shipping' | 'delivered' | 'cancelled';
+    customerName: string;
+    customerPhone: string;
+    items: ProviderOrderItem[];
+    subtotal: number;
+    discount: number;
+    shipping: number;
+    total: number;
+    shippingAddress: {
+        id: string;
+        name: string;
+        phone: string;
+        address: string;
+        city: string;
+        district: string;
+        isDefault: boolean;
+    };
+    paymentMethod: {
+        id: string;
+        type: string;
+        name: string;
+        isDefault: boolean;
+    };
+    customerNote?: string;
+    slaDeadline: string;
+    isOverdue: boolean;
+}
+
+export interface ProviderProduct {
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    originalPrice?: number;
+    image: string;
+    description: string;
+    unit: string;
+    stock: number;
+    rating: number;
+    reviews: number;
+    providerId: string;
+    costPrice: number;
+    profit: number;
+    status: 'active' | 'out_of_stock' | 'draft';
+}
+
+export interface ProviderRevenue {
+    date: string;
+    ordersCount: number;
+    revenue: number;
+    commission: number;
+    netRevenue: number;
+    status: 'pending' | 'paid';
 }

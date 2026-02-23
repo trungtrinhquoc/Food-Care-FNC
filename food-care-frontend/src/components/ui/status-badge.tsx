@@ -42,7 +42,15 @@ interface OrderStatusBadgeProps {
 }
 
 function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
-    const config = ORDER_STATUS_CONFIG[status] || { label: status, className: 'bg-gray-500' };
+    // Handle extended status types
+    const extendedConfig: Record<string, { label: string; className: string }> = {
+        sent: { label: 'Đã gửi', className: 'bg-blue-500' },
+        active: { label: 'Đang hoạt động', className: 'bg-green-500' },
+    };
+    
+    const config = (status in ORDER_STATUS_CONFIG 
+        ? ORDER_STATUS_CONFIG[status as OrderStatus] 
+        : extendedConfig[status]) || { label: status, className: 'bg-gray-500' };
     return <StatusBadge className={config.className}>{config.label}</StatusBadge>;
 }
 
@@ -55,8 +63,8 @@ interface TierBadgeProps {
 }
 
 function TierBadge({ tier }: TierBadgeProps) {
-    const className = MEMBER_TIER_CONFIG[tier];
-    return <StatusBadge className={className}>{tier}</StatusBadge>;
+    const config = MEMBER_TIER_CONFIG[tier];
+    return <StatusBadge className={config.className}>{config.label}</StatusBadge>;
 }
 
 // ============ Stock Badge ============

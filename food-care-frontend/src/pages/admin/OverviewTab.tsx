@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/admin/Button';
@@ -18,9 +18,9 @@ import { StatsCard } from '../../components/admin/StatsCard';
 import { DateRangeFilter, type DateRange } from '../../components/admin/DateRangeFilter';
 import { TrafficDateRangeFilter, type TrafficDateRange } from '../../components/admin/TrafficDateRangeFilter';
 import { RevenueChart } from '../../components/admin/RevenueChart';
-import { OrdersChart, type OrderChartData } from '../../components/admin/OrdersChart';
-import { CategoryRevenueChart, type CategoryRevenue } from '../../components/admin/CategoryRevenueChart';
-import { UserTrafficChart, type UserTrafficData } from '../../components/admin/UserTrafficChart';
+import { OrdersChart } from '../../components/admin/OrdersChart';
+import { CategoryRevenueChart } from '../../components/admin/CategoryRevenueChart';
+import { UserTrafficChart } from '../../components/admin/UserTrafficChart';
 import { LatestOrdersTable, type LatestOrder } from '../../components/admin/LatestOrdersTable';
 import { TopProductsPanel, type TopProduct } from '../../components/admin/TopProductsPanel';
 import { AlertsPanel, type SystemAlert } from '../../components/admin/AlertsPanel';
@@ -71,17 +71,6 @@ const generateMockAlerts = (stats: AdminStats): SystemAlert[] => {
       actionLabel: 'Xem đơn hàng',
     });
   }
-
-  alerts.push({
-    id: 'alert-review',
-    type: 'new_review',
-    severity: 'info',
-    title: '5 đánh giá mới',
-    message: 'Khách hàng đã để lại đánh giá cho sản phẩm.',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    actionUrl: '/admin?tab=reviews',
-    actionLabel: 'Xem đánh giá',
-  });
 
   return alerts;
 };
@@ -169,12 +158,11 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
 
   // Handle quick actions
   const handleExportReport = async () => {
-    console.log('Exporting report for range:', dateRange);
-    alert('Xuất báo cáo thành công! (Demo)');
+    // TODO: Implement real export functionality
   };
 
   const handleSendNotification = () => {
-    console.log('Opening notification dialog');
+    navigate('/admin?tab=zalo');
   };
 
   const handleReminderSettings = () => {
@@ -185,14 +173,14 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     return <DashboardSkeleton />;
   }
 
-  // Generate mock alerts based on stats
+  // Generate alerts based on real stats
   const alerts = generateMockAlerts(stats);
 
-  // Calculate order status breakdown
+  // Calculate order status breakdown from stats
+  const completedOrders = stats.totalOrders - (stats.pendingOrders || 0);
   const orderBreakdown = [
     { label: 'Đang chờ', value: stats.pendingOrders || 0, color: '#fbbf24' },
-    { label: 'Đã xác nhận', value: Math.floor(stats.totalOrders * 0.3), color: '#3b82f6' },
-    { label: 'Đã giao', value: Math.floor(stats.totalOrders * 0.6), color: '#10b981' },
+    { label: 'Đã xử lý', value: completedOrders > 0 ? completedOrders : 0, color: '#10b981' },
   ];
 
   return (

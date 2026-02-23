@@ -29,7 +29,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.Images != null ? src.Images : null)) // Simplified image mapping
             .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
             .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId))
-            .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier.Name : null))
+            .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier.StoreName : null))
             .ForMember(dest => dest.StockQuantity, opt => opt.MapFrom(src => src.StockQuantity ?? 0))
             .ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src => src.RatingAverage ?? 0))
             .ForMember(dest => dest.RatingCount, opt => opt.MapFrom(src => src.RatingCount ?? 0))
@@ -85,6 +85,7 @@ public class MappingProfile : Profile
             
         CreateMap<Product, SupplierProductDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id.ToString()))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.ApprovalStatus ?? "pending"))
             .ForMember(dest => dest.OrderCount, opt => opt.MapFrom(src => 0)) // TODO: Calculate from orders
             .ForMember(dest => dest.TotalRevenue, opt => opt.MapFrom(src => 0)); // TODO: Calculate from orders
     }

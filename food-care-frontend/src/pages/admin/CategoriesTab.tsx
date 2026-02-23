@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../components/ui/badge";
 import { SimplePagination } from "../../components/ui/pagination";
 import { Plus, Search, Edit, Trash2, FolderOpen } from "lucide-react";
+import { toast } from "sonner";
 import {
   getCategories,
   deleteCategory,
@@ -30,14 +31,13 @@ export function CategoriesTab() {
   const loadCategories = useCallback(async () => {
     setLoading(true);
     try {
-      console.log('Loading categories from API...');
       const result: PagedResult<AdminCategory> = await getCategories(currentPage, pageSize, searchTerm || undefined);
-      console.log('Categories result:', result);
       setCategories(result.items);
       setTotalPages(result.totalPages);
       setTotalItems(result.totalItems);
     } catch (error) {
       console.error('Failed to load categories:', error);
+      toast.error('Không thể tải danh mục');
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export function CategoriesTab() {
       loadCategories();
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Không thể xóa danh mục. Vui lòng thử lại.');
+      toast.error('Không thể xóa danh mục. Vui lòng thử lại.');
     }
   };
 

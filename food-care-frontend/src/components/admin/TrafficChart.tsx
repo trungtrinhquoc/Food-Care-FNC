@@ -48,13 +48,15 @@ export function TrafficChart({ data, isLoading = false }: TrafficChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={data as unknown as Record<string, unknown>[]}
             dataKey="sessions"
             nameKey="source"
             cx="50%"
             cy="50%"
             outerRadius={80}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }: { name?: string; percent?: number }) => 
+              `${name || ''}: ${((percent || 0) * 100).toFixed(0)}%`
+            }
             labelLine={true}
           >
             {data.map((entry, index) => (

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-    ShoppingBag, User, ShoppingCart, Settings, Menu, 
-    X, ChevronDown, LogOut, Home, LayoutDashboard, Package 
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+    ShoppingBag, User, ShoppingCart, Settings, Menu,
+    X, ChevronDown, LogOut, Home, LayoutDashboard, Package,
+    Truck, Store, BarChart3, FileText, Bell
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -12,13 +13,19 @@ export default function Header() {
     const { getItemCount } = useCart();
     const location = useLocation();
     const navigate = useNavigate();
-    
+    const [searchParams] = useSearchParams();
+
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const isAdminPage = location.pathname.startsWith('/admin');
+    const isSupplierPage = location.pathname.startsWith('/supplier');
+    const isStaffPage = location.pathname.startsWith('/staff');
+    const isSupplier = user?.role === 'supplier';
+    const isStaff = user?.role === 'staff';
+    const currentTab = searchParams.get('tab') || 'overview';
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -46,6 +53,12 @@ export default function Header() {
         setIsUserMenuOpen(false);
     }, [location.pathname]);
 
+    // Staff pages use their own layout with integrated header - must be after all hooks
+    if (isStaffPage && (isStaff || isAdmin)) {
+        return null;
+    }
+
+
     const handleLogout = () => {
         logout();
         setIsUserMenuOpen(false);
@@ -67,10 +80,9 @@ export default function Header() {
     };
 
     const navLinkClass = (path: string) =>
-        `relative px-1 py-2 text-sm font-medium transition-colors ${
-            isActiveLink(path)
-                ? 'text-emerald-600'
-                : 'text-gray-600 hover:text-emerald-600'
+        `relative px-1 py-2 text-sm font-medium transition-colors ${isActiveLink(path)
+            ? 'text-emerald-600'
+            : 'text-gray-600 hover:text-emerald-600'
         }`;
 
     const navLinkUnderline = (path: string) =>
@@ -127,6 +139,147 @@ export default function Header() {
                         </div>
                     </div>
                 </div>
+            </header>
+        );
+    }
+
+    // Supplier header variant
+    if (isSupplierPage && isSupplier) {
+        const supplierNavLinks = [
+            { path: '/supplier', tab: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+            { path: '/supplier?tab=orders', tab: 'orders', label: 'Đơn hàng', icon: Package },
+            { path: '/supplier?tab=products', tab: 'products', label: 'Sản phẩm', icon: Store },
+            { path: '/supplier?tab=delivery', tab: 'delivery', label: 'Vận chuyển', icon: Truck },
+        ];
+
+        // Check if a nav link is active
+        const isNavActive = (linkTab: string) => currentTab === linkTab;
+
+        return (
+            <header className={`bg-white sticky top-0 z-50 transition-shadow duration-300 ${isScrolled ? 'shadow-md' : 'shadow-sm'}`}>
+                <div className="container mx-auto px-4 lg:px-8">
+                    <div className="flex items-center justify-between h-16">
+                        {/* Logo */}
+                        <Link to="/supplier" className="flex items-center space-x-3 group">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/30 transition-shadow">
+                                <Store className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="hidden sm:block">
+                                <h1 className="text-lg font-bold text-gray-900 tracking-tight">Food & Care</h1>
+                                <p className="text-xs text-gray-500 -mt-0.5">Supplier Portal</p>
+                            </div>
+                        </Link>
+
+                        {/* Navigation - Desktop */}
+                        <nav className="hidden lg:flex items-center space-x-1">
+                            {supplierNavLinks.map((link) => (
+                                <Link
+                                    key={link.path}
+                                    to={link.path}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isNavActive(link.tab)
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                        }`}
+                                >
+                                    <link.icon className="h-4 w-4" />
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </nav>
+
+                        {/* Right Side */}
+                        <div className="flex items-center space-x-3">
+                            {/* Notifications */}
+                            <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
+                                <Bell className="h-5 w-5 text-gray-600" />
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            </button>
+
+                            {/* User Menu */}
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                    className="flex items-center space-x-2 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
+                                >
+                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                                        <span className="text-white text-sm font-semibold">
+                                            {user?.fullName?.charAt(0)?.toUpperCase() || 'S'}
+                                        </span>
+                                    </div>
+                                    <span className="hidden md:inline text-sm font-medium text-gray-700 max-w-[120px] truncate">
+                                        {user?.fullName || 'Nhà cung cấp'}
+                                    </span>
+                                    <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isUserMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg ring-1 ring-black/5 z-20 py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Nhà cung cấp</span>
+                                            <p className="text-sm font-semibold text-gray-900 truncate mt-1">{user?.fullName}</p>
+                                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                                        </div>
+                                        <Link
+                                            to="/supplier?tab=settings"
+                                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <Settings className="h-4 w-4 text-gray-400" /> Cài đặt tài khoản
+                                        </Link>
+                                        <Link
+                                            to="/supplier?tab=reports"
+                                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <BarChart3 className="h-4 w-4 text-gray-400" /> Báo cáo
+                                        </Link>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
+                                        >
+                                            <LogOut className="h-4 w-4" /> Đăng xuất
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Mobile Menu Button */}
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="lg:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
+                            >
+                                {isMobileMenuOpen ? <X className="h-5 w-5 text-gray-600" /> : <Menu className="h-5 w-5 text-gray-600" />}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile Menu */}
+                {isMobileMenuOpen && (
+                    <div className="lg:hidden bg-white border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
+                        <div className="container mx-auto px-4 py-4 space-y-1">
+                            {supplierNavLinks.map((link) => (
+                                <Link
+                                    key={link.path}
+                                    to={link.path}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${isNavActive(link.tab)
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                        }`}
+                                >
+                                    <link.icon className="h-5 w-5" />
+                                    {link.label}
+                                </Link>
+                            ))}
+                            <Link
+                                to="/supplier?tab=settings"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${currentTab === 'settings' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                            >
+                                <Settings className="h-5 w-5" /> Cài đặt
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </header>
         );
     }

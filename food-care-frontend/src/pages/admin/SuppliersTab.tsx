@@ -5,6 +5,7 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { SimplePagination } from "../../components/ui/pagination";
 import { Plus, Edit, Trash2, Search, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { SupplierStatusBadge } from "../../components/ui/status-badge";
 import { SupplierDialog } from "../../components/admin/SupplierDialog";
 import type { Supplier, SupplierFormData } from "../../types/admin";
@@ -39,6 +40,7 @@ export function SuppliersTab() {
       setSuppliers(res.items);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
+      toast.error('Không thể tải danh sách nhà cung cấp');
     } finally {
       setIsLoading(false);
     }
@@ -96,6 +98,7 @@ export function SuppliersTab() {
       if (selectedSupplier?.id === supplierId) setSelectedSupplier(null);
     } catch (error) {
       console.error("Error deleting supplier:", error);
+      toast.error('Không thể xóa nhà cung cấp');
     }
   }, [selectedSupplier]);
 
@@ -129,6 +132,7 @@ export function SuppliersTab() {
       await fetchSuppliers();
     } catch (error) {
       console.error("Error saving supplier:", error);
+      toast.error('Không thể lưu nhà cung cấp');
     }
   }, [editingSupplier, fetchSuppliers, supplierForm]);
 
@@ -146,6 +150,7 @@ export function SuppliersTab() {
       });
     } catch (error) {
       console.error('Error fetching supplier detail:', error);
+      toast.error('Không thể tải chi tiết nhà cung cấp');
     }
   }, []);
 

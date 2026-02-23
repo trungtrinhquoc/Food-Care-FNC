@@ -26,7 +26,7 @@ import {
   RotateCcw,
   Send,
 } from 'lucide-react';
-import { Order, OrderStatus } from '../../types/supplier';
+import type { Order, OrderStatus } from '../../types/supplier';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ShippingTrackingDialog } from './ShippingTrackingDialog';
 import { Badge } from '../ui/badge';
@@ -96,9 +96,9 @@ export function AdvancedOrderManagement({
     // - Bàn giao vận chuyển: 6 giờ từ khi đóng gói
     
     let slaHours = 0;
-    if (order.orderStatus === 'new') slaHours = 2;
-    else if (order.orderStatus === 'confirmed') slaHours = 4;
-    else if (order.orderStatus === 'packed') slaHours = 6;
+    if (order.status === 'new') slaHours = 2;
+    else if (order.status === 'confirmed') slaHours = 4;
+    else if (order.status === 'packed') slaHours = 6;
     
     const remainingHours = slaHours - hoursPassed;
     const isOverdue = remainingHours < 0;
@@ -115,7 +115,7 @@ export function AdvancedOrderManagement({
   // Lọc và sắp xếp đơn hàng
   const filteredOrders = orders
     .filter((order) => {
-      if (filterStatus !== 'all' && order.orderStatus !== filterStatus) return false;
+      if (filterStatus !== 'all' && order.status !== filterStatus) return false;
       if (filterUrgency !== 'all') {
         const sla = calculateSLA(order);
         if (sla.urgencyLevel !== filterUrgency) return false;
@@ -123,9 +123,11 @@ export function AdvancedOrderManagement({
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
-          order.orderNumber.toLowerCase().includes(query) ||
-          order.customer.name.toLowerCase().includes(query) ||
-          order.customer.phone.includes(query)
+          (order.orderNumber?.toLowerCase().includes(query) || false) ||
+          (order.customer?.name?.toLowerCase().includes(query) || false) ||
+          (order.customer?.phone?.includes(query) || false) ||
+          (order.customerName?.toLowerCase().includes(query) || false) ||
+          (order.customerPhone?.includes(query) || false)
         );
       }
       return true;
@@ -227,7 +229,7 @@ export function AdvancedOrderManagement({
       case 'confirm':
         selectedOrders.forEach(orderId => {
           const order = orders.find(o => o.id === orderId);
-          if (order?.orderStatus === 'new') {
+          if (order?.status === 'new') {
             onUpdateStatus(orderId, 'confirmed');
           }
         });
@@ -237,7 +239,7 @@ export function AdvancedOrderManagement({
       case 'pack':
         selectedOrders.forEach(orderId => {
           const order = orders.find(o => o.id === orderId);
-          if (order?.orderStatus === 'confirmed') {
+          if (order?.status === 'confirmed') {
             onUpdateStatus(orderId, 'packed');
           }
         });
@@ -279,15 +281,18 @@ export function AdvancedOrderManagement({
 
   // Get status badge
   const getStatusBadge = (status: OrderStatus) => {
-    const configs = {
-      new: { label: 'Mới', variant: 'destructive' as const },
-      confirmed: { label: 'Đã xác nhận', variant: 'default' as const },
-      packed: { label: 'Đã đóng gói', variant: 'secondary' as const },
-      shipped: { label: 'Đang giao', variant: 'default' as const },
-      delivered: { label: 'Đã giao', variant: 'default' as const },
-      cancelled: { label: 'Đã hủy', variant: 'outline' as const },
+    const configs: Record<OrderStatus, { label: string; variant: 'destructive' | 'default' | 'secondary' | 'outline' }> = {
+      pending: { label: 'Chờ xử lý', variant: 'secondary' },
+      new: { label: 'Mới', variant: 'destructive' },
+      confirmed: { label: 'Đã xác nhận', variant: 'default' },
+      processing: { label: 'Đang xử lý', variant: 'secondary' },
+      packed: { label: 'Đã đóng gói', variant: 'secondary' },
+      shipped: { label: 'Đang giao', variant: 'default' },
+      delivered: { label: 'Đã giao', variant: 'default' },
+      cancelled: { label: 'Đã hủy', variant: 'outline' },
+      refunded: { label: 'Hoàn tiền', variant: 'outline' },
     };
-    const config = configs[status];
+    const config = configs[status] || { label: status, variant: 'default' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -513,7 +518,7 @@ export function AdvancedOrderManagement({
                             >
                               {order.orderNumber}
                             </button>
-                            {getStatusBadge(order.orderStatus)}
+                            {getStatusBadge(order.status)}
                             {sla.isOverdue && (
                               <Badge variant="destructive" className="gap-1">
                                 <AlertTriangle className="w-3 h-3" />
@@ -531,9 +536,9 @@ export function AdvancedOrderManagement({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             <div className="flex items-center gap-2 text-gray-700">
                               <Phone className="w-4 h-4 text-gray-400" />
-                              <span className="font-medium">{order.customer.name}</span>
+                              <span className="font-medium">{order.customer?.name || order.customerName || 'N/A'}</span>
                               <span>•</span>
-                              <span>{order.customer.phone}</span>
+                              <span>{order.customer?.phone || order.customerPhone || 'N/A'}</span>
                             </div>
                             <div className="flex items-center gap-2 text-gray-700">
                               <Clock className="w-4 h-4 text-gray-400" />
@@ -556,7 +561,7 @@ export function AdvancedOrderManagement({
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2">
-                          {order.orderStatus === 'new' && (
+                          {order.status === 'new' && (
                             <>
                               <Button
                                 size="sm"
@@ -577,7 +582,7 @@ export function AdvancedOrderManagement({
                             </>
                           )}
 
-                          {order.orderStatus === 'confirmed' && (
+                          {order.status === 'confirmed' && (
                             <Button
                               size="sm"
                               onClick={() => handleStartPacking(order.id)}
@@ -588,7 +593,7 @@ export function AdvancedOrderManagement({
                             </Button>
                           )}
 
-                          {order.orderStatus === 'packed' && (
+                          {order.status === 'packed' && (
                             <Button
                               size="sm"
                               onClick={() => handleAddShippingInfo(order)}
@@ -599,7 +604,7 @@ export function AdvancedOrderManagement({
                             </Button>
                           )}
 
-                          {order.orderStatus === 'shipped' && (
+                          {order.status === 'shipped' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -630,13 +635,13 @@ export function AdvancedOrderManagement({
                                 <AlertCircle className="w-4 h-4 mr-2" />
                                 Báo cáo sự cố
                               </DropdownMenuItem>
-                              {order.orderStatus === 'delivered' && (
+                              {order.status === 'delivered' && (
                                 <DropdownMenuItem onClick={() => handleInitiateReturn(order.id)}>
                                   <RotateCcw className="w-4 h-4 mr-2" />
                                   Tạo yêu cầu hoàn hàng
                                 </DropdownMenuItem>
                               )}
-                              {order.orderStatus !== 'cancelled' && order.orderStatus !== 'delivered' && (
+                              {order.status !== 'cancelled' && order.status !== 'delivered' && (
                                 <DropdownMenuItem
                                   onClick={() => handleRejectOrder(order.id)}
                                   className="text-red-600"
@@ -664,22 +669,27 @@ export function AdvancedOrderManagement({
                       {isExpanded && (
                         <div className="mt-4 pt-4 border-t space-y-3">
                           <div>
-                            <h4 className="font-semibold mb-2">Sản phẩm ({order.products.length})</h4>
+                            <h4 className="font-semibold mb-2">Sản phẩm ({(order.products || order.items || []).length})</h4>
                             <div className="space-y-2">
-                              {order.products.map((product) => (
-                                <div key={product.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                                  {product.image && (
-                                    <img src={product.image} alt="" className="w-12 h-12 rounded object-cover" />
-                                  )}
-                                  <div className="flex-1">
-                                    <p className="font-medium">{product.name}</p>
-                                    <p className="text-sm text-gray-600">Số lượng: {product.quantity}</p>
+                              {(order.products || order.items || []).map((product, idx) => {
+                                const p = product as any;
+                                const imgSrc = p.image || p.imageUrl;
+                                const productName = p.name || p.productName;
+                                return (
+                                  <div key={p.id || idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                                    {imgSrc && (
+                                      <img src={imgSrc} alt="" className="w-12 h-12 rounded object-cover" />
+                                    )}
+                                    <div className="flex-1">
+                                      <p className="font-medium">{productName}</p>
+                                      <p className="text-sm text-gray-600">Số lượng: {p.quantity}</p>
+                                    </div>
+                                    <p className="font-semibold">
+                                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price * p.quantity)}
+                                    </p>
                                   </div>
-                                  <p className="font-semibold">
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price * product.quantity)}
-                                  </p>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
 
@@ -843,11 +853,13 @@ export function AdvancedOrderManagement({
         <OrderDetailsModal
           order={{
             ...selectedOrderForDetails,
-            customerName: selectedOrderForDetails.customer.name,
-            customerPhone: selectedOrderForDetails.customer.phone,
-            deliveryAddress: `${selectedOrderForDetails.shippingAddress.street}, ${selectedOrderForDetails.shippingAddress.ward}, ${selectedOrderForDetails.shippingAddress.district}, ${selectedOrderForDetails.shippingAddress.city}`,
-            items: selectedOrderForDetails.products.map(p => ({
-              productName: p.name,
+            customerName: selectedOrderForDetails.customer?.name || selectedOrderForDetails.customerName,
+            customerPhone: selectedOrderForDetails.customer?.phone || selectedOrderForDetails.customerPhone,
+            deliveryAddress: selectedOrderForDetails.shippingAddress 
+              ? `${selectedOrderForDetails.shippingAddress.street || ''}, ${selectedOrderForDetails.shippingAddress.ward || ''}, ${selectedOrderForDetails.shippingAddress.district || ''}, ${selectedOrderForDetails.shippingAddress.city || ''}`
+              : '',
+            items: (selectedOrderForDetails.products || selectedOrderForDetails.items || []).map((p: any) => ({
+              productName: p.name || p.productName,
               quantity: p.quantity,
               price: p.price,
               variant: undefined
@@ -858,7 +870,7 @@ export function AdvancedOrderManagement({
             deliveryTime: selectedOrderForDetails.shipping?.expectedDelivery,
             shippingInfo: selectedOrderForDetails.shipping,
             notes: selectedOrderForDetails.notes,
-          } as any}
+          }}
           isOpen={true}
           onClose={() => setSelectedOrderForDetails(null)}
           onUpdateStatus={onUpdateStatus}
@@ -870,7 +882,7 @@ export function AdvancedOrderManagement({
           order={selectedOrderForShipping}
           onClose={() => setSelectedOrderForShipping(null)}
           onSave={(shippingInfo) => {
-            onAddShipping(selectedOrderForShipping.id, shippingInfo);
+            onAddShipping(selectedOrderForShipping.id, shippingInfo.trackingNumber, shippingInfo.carrier);
             setSelectedOrderForShipping(null);
           }}
         />
@@ -878,3 +890,4 @@ export function AdvancedOrderManagement({
     </div>
   );
 }
+

@@ -86,7 +86,7 @@ public class AdminProductService : IAdminProductService
                 CategoryId = p.CategoryId,
                 CategoryName = p.Category != null ? p.Category.Name : null,
                 SupplierId = p.SupplierId,
-                SupplierName = p.Supplier != null ? p.Supplier.Name : null,
+                SupplierName = p.Supplier != null ? p.Supplier.ContactName : null,
                 IsSubscriptionAvailable = p.IsSubscriptionAvailable ?? false,
                 IsActive = p.IsActive ?? false,
                 CreatedAt = p.CreatedAt ?? DateTime.UtcNow,
@@ -126,7 +126,7 @@ public class AdminProductService : IAdminProductService
                 CategoryId = p.CategoryId,
                 CategoryName = p.Category != null ? p.Category.Name : null,
                 SupplierId = p.SupplierId,
-                SupplierName = p.Supplier != null ? p.Supplier.Name : null,
+                SupplierName = p.Supplier != null ? p.Supplier.ContactName : null,
                 IsSubscriptionAvailable = p.IsSubscriptionAvailable ?? false,
                 IsActive = p.IsActive ?? false,
                 CreatedAt = p.CreatedAt ?? DateTime.UtcNow,
@@ -227,7 +227,7 @@ public class AdminProductService : IAdminProductService
                 StockQuantity = p.StockQuantity ?? 0,
                 LowStockThreshold = p.LowStockThreshold ?? 0,
                 CategoryName = p.Category != null ? p.Category.Name : null,
-                SupplierName = p.Supplier != null ? p.Supplier.Name : null
+                SupplierName = p.Supplier != null ? p.Supplier.ContactName : null
             })
             .ToListAsync();
 

@@ -61,6 +61,22 @@ public class AdminUsersController : ControllerBase
     }
 
     /// <summary>
+    /// Get available user roles for dropdown
+    /// </summary>
+    [HttpGet("roles")]
+    public IActionResult GetUserRoles()
+    {
+        var roles = new List<RoleDto>
+        {
+            new RoleDto { Value = "customer", Label = "Khách hàng", Description = "Người dùng thông thường có thể mua hàng" },
+            new RoleDto { Value = "staff", Label = "Nhân viên", Description = "Nhân viên quản lý đơn hàng và sản phẩm" },
+            new RoleDto { Value = "admin", Label = "Admin", Description = "Quản trị viên hệ thống" }
+        };
+        return Ok(roles);
+    }
+
+
+    /// <summary>
     /// Create a new user
     /// </summary>
     [HttpPost]

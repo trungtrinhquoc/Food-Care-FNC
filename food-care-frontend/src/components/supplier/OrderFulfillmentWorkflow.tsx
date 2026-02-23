@@ -1,5 +1,5 @@
 import { ArrowRight, CheckCircle, Package, Truck, X } from 'lucide-react';
-import { OrderStatus } from '../../types/supplier';
+import type { OrderStatus } from '../../types/supplier';
 
 interface OrderFulfillmentWorkflowProps {
   currentStatus: OrderStatus;
@@ -133,3 +133,4 @@ export function OrderFulfillmentWorkflow({ currentStatus }: OrderFulfillmentWork
     </div>
   );
 }
+

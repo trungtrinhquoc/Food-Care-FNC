@@ -32,7 +32,7 @@ namespace FoodCare.API.Controllers
             [FromBody] CreatePaymentRequest request)
         {
             if (request == null || request.OrderId == Guid.Empty)
-                return BadRequest("Invalid order id");
+                return BadRequest(new { message = "Invalid order id" });
 
             var result = await _paymentService.CreatePayOsPaymentAsync(request.OrderId);
 

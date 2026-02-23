@@ -10,10 +10,12 @@ namespace FoodCare.API.Controllers;
 public class SuppliersController : ControllerBase
 {
     private readonly ISupplierService _supplierService;
+    private readonly ILogger<SuppliersController> _logger;
 
-    public SuppliersController(ISupplierService supplierService)
+    public SuppliersController(ISupplierService supplierService, ILogger<SuppliersController> logger)
     {
         _supplierService = supplierService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -34,6 +36,7 @@ public class SuppliersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error retrieving suppliers");
             return StatusCode(500, new { message = "An error occurred while retrieving suppliers" });
         }
     }
@@ -53,6 +56,7 @@ public class SuppliersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error retrieving supplier {SupplierId}", id);
             return StatusCode(500, new { message = "An error occurred while retrieving the supplier" });
         }
     }
@@ -68,6 +72,7 @@ public class SuppliersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating supplier");
             return StatusCode(500, new { message = "An error occurred while creating the supplier" });
         }
     }
@@ -88,6 +93,7 @@ public class SuppliersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating supplier {SupplierId}", id);
             return StatusCode(500, new { message = "An error occurred while updating the supplier" });
         }
     }
@@ -108,6 +114,7 @@ public class SuppliersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error deleting supplier {SupplierId}", id);
             return StatusCode(500, new { message = "An error occurred while deleting the supplier" });
         }
     }

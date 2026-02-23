@@ -9,6 +9,10 @@ using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Implementations;
 using FoodCare.API.Services.Interfaces.Admin;
 using FoodCare.API.Services.Implementations.Admin;
+using FoodCare.API.Services.Interfaces.SupplierModule;
+using FoodCare.API.Services.Implementations.SupplierModule;
+using FoodCare.API.Services.Interfaces.StaffModule;
+using FoodCare.API.Services.Implementations.StaffModule;
 using System.Text.Json.Serialization;
 using FoodCare.API.Models;
 
@@ -32,6 +36,13 @@ dataSourceBuilder.MapEnum<OrderStatus>("order_status");
 dataSourceBuilder.MapEnum<PaymentStatus>("payment_status");
 dataSourceBuilder.MapEnum<SubFrequency>("sub_frequency");
 dataSourceBuilder.MapEnum<SubStatus>("sub_status");
+
+// Staff Module Enums
+dataSourceBuilder.MapEnum<ShipmentStatus>("shipment_status");
+dataSourceBuilder.MapEnum<ReceiptStatus>("receipt_status");
+dataSourceBuilder.MapEnum<MovementType>("movement_type");
+dataSourceBuilder.MapEnum<DiscrepancyType>("discrepancy_type");
+dataSourceBuilder.MapEnum<InventoryType>("inventory_type");
 
 dataSourceBuilder.EnableDynamicJson();
 
@@ -114,6 +125,22 @@ builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
+
+// Register Supplier Services
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<ISupplierAuthService, SupplierAuthService>();
+
+// Register Staff Module Services
+builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<IStaffMemberService, StaffMemberService>();
+builder.Services.AddScoped<IShipmentService, ShipmentService>();
+builder.Services.AddScoped<IReceiptService, ReceiptService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IDiscrepancyService, DiscrepancyService>();
+builder.Services.AddScoped<IReturnService, ReturnService>();
+
+// Register Shipping Flow Service (Supplier → Staff → User)
+builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
 
 var app = builder.Build();
 

@@ -5,6 +5,8 @@
         public Guid? UserId { get; set; }
 
         public string ShippingAddress { get; set; } = null!;
+        public string? RecipientName { get; set; }
+        public string? PhoneNumber { get; set; }
         public string PaymentMethod { get; set; } = null!;
 
         public string? Note { get; set; }

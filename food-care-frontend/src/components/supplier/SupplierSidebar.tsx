@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   LogOut,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout 
 
   const menuItems = [
     { id: 'overview', label: 'Tổng quan', icon: Home },
+    { id: 'registration', label: 'Đăng ký kinh doanh', icon: ShieldCheck },
     { id: 'orders', label: 'Quản lý đơn hàng', icon: ShoppingCart, badge: badges.orders },
     { id: 'products', label: 'Sản phẩm', icon: Package, badge: badges.products },
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp },
