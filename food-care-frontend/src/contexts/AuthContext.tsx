@@ -8,7 +8,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: LoginRequest) => Promise<AuthResponse>;
     register: (data: RegisterRequest) => Promise<AuthResponse>;
-    loginWithGoogle: (credentialToken: string) => Promise<void>;
+    loginWithGoogle: (credentialToken: string) => Promise<AuthResponse>;
     logout: () => void;
     refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
@@ -56,10 +56,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return response;
     };
 
-    const loginWithGoogle = async (credentialToken: string) => {
+    const loginWithGoogle = async (credentialToken: string): Promise<AuthResponse> => {
         try {
             const response = await authApi.googleAuth(credentialToken);
             handleAuthResponse(response);
+            return response;
         } catch (error) {
             console.error('Google login error:', error);
             throw error;

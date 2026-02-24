@@ -47,3 +47,38 @@ public class OrderChartDataDto
     public int Cancelled { get; set; }
     public int Total { get; set; }
 }
+
+public class CategoryRevenueDto
+{
+    public string CategoryName { get; set; } = string.Empty;
+    public decimal Revenue { get; set; }
+    public int OrderCount { get; set; }
+    public string Color { get; set; } = string.Empty;
+}
+
+public class TopProductResponseDto
+{
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public int TotalSold { get; set; }
+    public decimal Revenue { get; set; }
+    public string? ImageUrl { get; set; }
+}
+
+public class UserTrafficDto
+{
+    public string Date { get; set; } = string.Empty;
+    public int ActiveUsers { get; set; }
+    public int NewUsers { get; set; }
+    public int TotalLogins { get; set; }
+}
+
+public class LatestOrderDto
+{
+    public Guid OrderId { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public decimal TotalAmount { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public int ItemCount { get; set; }
+}

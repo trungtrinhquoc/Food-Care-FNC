@@ -155,10 +155,21 @@ export default function LoginPage() {
         onSuccess: async (tokenResponse) => {
             setIsGoogleLoading(true);
             try {
-                await loginWithGoogle(tokenResponse.access_token);
+                const response = await loginWithGoogle(tokenResponse.access_token);
 
                 toast.success('Đăng nhập bằng Google thành công!');
-                navigate('/', { replace: true }); // Use replace to avoid back navigation
+
+                // Redirect based on user role
+                const userRole = response?.user?.role?.toLowerCase();
+                if (userRole === 'admin') {
+                    navigate('/admin', { replace: true });
+                } else if (userRole === 'supplier') {
+                    navigate('/supplier', { replace: true });
+                } else if (userRole === 'staff') {
+                    navigate('/staff', { replace: true });
+                } else {
+                    navigate('/', { replace: true });
+                }
             } catch (error: any) {
                 console.error('🔴 Google login error:', error);
                 const errorMessage = error?.response?.data?.message || 'Đăng nhập bằng Google thất bại. Vui lòng thử lại.';

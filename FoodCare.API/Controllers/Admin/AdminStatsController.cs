@@ -79,4 +79,49 @@ public class AdminStatsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while retrieving orders chart data" });
         }
     }
+
+    [HttpGet("category-revenue")]
+    public async Task<ActionResult> GetCategoryRevenue()
+    {
+        try
+        {
+            var data = await _statsService.GetCategoryRevenueAsync();
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving category revenue data");
+            return StatusCode(500, new { message = "An error occurred while retrieving category revenue data" });
+        }
+    }
+
+    [HttpGet("top-products")]
+    public async Task<ActionResult> GetTopProducts([FromQuery] int limit = 5)
+    {
+        try
+        {
+            var data = await _statsService.GetTopProductsAsync(limit);
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving top products data");
+            return StatusCode(500, new { message = "An error occurred while retrieving top products data" });
+        }
+    }
+
+    [HttpGet("user-traffic")]
+    public async Task<ActionResult> GetUserTraffic([FromQuery] int days = 7)
+    {
+        try
+        {
+            var data = await _statsService.GetUserTrafficAsync(days);
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving user traffic data");
+            return StatusCode(500, new { message = "An error occurred while retrieving user traffic data" });
+        }
+    }
 }
