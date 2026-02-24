@@ -65,6 +65,10 @@ export interface AdminUser {
   totalSubscriptions: number;
   activeSubscriptions: number;
   totalReviews: number;
+  // Staff/Warehouse info
+  warehouseId?: string | null;
+  warehouseName?: string | null;
+  employeeCode?: string | null;
 }
 
 export interface CustomerDetail extends AdminUser {
@@ -89,6 +93,7 @@ export interface CreateUserDto {
   role?: string;
   phoneNumber?: string;
   avatarUrl?: string;
+  warehouseId?: string;
 }
 
 export interface UpdateUserDto {
@@ -99,6 +104,7 @@ export interface UpdateUserDto {
   tierId?: number | null;
   loyaltyPoints?: number;
   isActive: boolean;
+  warehouseId?: string;
 }
 
 export interface UpdateCustomerDto {

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -30,6 +30,9 @@ import SupplierShipmentManagement from './components/supplier/SupplierShipmentMa
 
 // Components
 import Header from './components/Header';
+import Footer from './components/Footer';
+import ChatWidget from './components/ChatWidget';
+import SubscriptionsPage from './pages/SubscriptionsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,10 +118,11 @@ const StaffRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function AppRoutes() {
+  const location = useLocation();
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="container mx-auto px-4 py-8">
+      <main className="min-h-screen">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
@@ -150,6 +154,15 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+<Route
+            path="/subscriptions"
+            element={
+              <ProtectedRoute>
+                <SubscriptionsPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/admin"
             element={
@@ -238,9 +251,20 @@ function AppRoutes() {
         </Routes>
 
       </main>
+
+      {!location.pathname.startsWith('/admin') && <Footer />}
+
+      {/* Chat Widget - only show when logged in */}
+      <ChatWidgetWrapper />
     </div>
   );
 }
+
+// Wrapper component for Chat Widget
+function ChatWidgetWrapper() {
+  return <ChatWidget />;
+}
+
 
 function App() {
   return (

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { usersService, customersService } from '../../services/admin';
+import { usersService, customersService, warehouseService } from '../../services/admin';
 import type {
   AdminUser,
   CreateUserDto,
@@ -26,6 +26,7 @@ import type {
   MemberTierInfo,
   RoleOption,
 } from '../../types/admin';
+import type { WarehouseDropdownItem } from '../../services/admin/warehouseService';
 
 interface UserDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ interface FormData {
   tierId: string;
   loyaltyPoints: string;
   isActive: boolean;
+  warehouseId: string;
 }
 
 const initialFormData: FormData = {
@@ -56,6 +58,7 @@ const initialFormData: FormData = {
   tierId: '',
   loyaltyPoints: '0',
   isActive: true,
+  warehouseId: '',
 };
 
 export function UserDialog({
@@ -69,6 +72,8 @@ export function UserDialog({
   const [tiersLoading, setTiersLoading] = useState(false);
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
+  const [warehouses, setWarehouses] = useState<WarehouseDropdownItem[]>([]);
+  const [warehousesLoading, setWarehousesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadTiers = useCallback(async () => {
@@ -101,10 +106,23 @@ export function UserDialog({
     }
   }, []);
 
+  const loadWarehouses = useCallback(async () => {
+    setWarehousesLoading(true);
+    try {
+      const data = await warehouseService.getWarehousesDropdown();
+      setWarehouses(data);
+    } catch (error) {
+      console.error('Failed to load warehouses:', error);
+    } finally {
+      setWarehousesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
       loadTiers();
       loadRoles();
+      loadWarehouses();
       if (user) {
         setFormData({
           email: user.email,
@@ -116,12 +134,13 @@ export function UserDialog({
           tierId: user.tierId?.toString() || '',
           loyaltyPoints: user.loyaltyPoints?.toString() || '0',
           isActive: user.isActive,
+          warehouseId: user.warehouseId || '',
         });
       } else {
         setFormData(initialFormData);
       }
     }
-  }, [open, user, loadTiers, loadRoles]);
+  }, [open, user, loadTiers, loadRoles, loadWarehouses]);
 
   const handleSubmit = async () => {
     if (!formData.email.trim()) {
@@ -146,6 +165,7 @@ export function UserDialog({
           tierId: formData.tierId ? parseInt(formData.tierId) : null,
           loyaltyPoints: parseInt(formData.loyaltyPoints) || 0,
           isActive: formData.isActive,
+          warehouseId: formData.role === 'staff' && formData.warehouseId ? formData.warehouseId : undefined,
         };
         await usersService.updateUser(user.id, updateData);
       } else {
@@ -157,6 +177,7 @@ export function UserDialog({
           role: formData.role,
           phoneNumber: formData.phoneNumber || undefined,
           avatarUrl: formData.avatarUrl || undefined,
+          warehouseId: formData.role === 'staff' && formData.warehouseId ? formData.warehouseId : undefined,
         };
         await usersService.createUser(createData);
       }
@@ -251,6 +272,33 @@ export function UserDialog({
               />
             </div>
           </div>
+
+          {/* Warehouse picker - shown when role is staff */}
+          {formData.role === 'staff' && (
+            <div>
+              <Label>Kho hàng *</Label>
+              <Select
+                value={formData.warehouseId}
+                onValueChange={(value) => updateForm('warehouseId', value === 'none' ? '' : value)}
+                disabled={warehousesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={warehousesLoading ? 'Đang tải...' : 'Chọn kho hàng'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Chưa gán kho</SelectItem>
+                  {warehouses.map((wh) => (
+                    <SelectItem key={wh.id} value={wh.id}>
+                      {wh.name} ({wh.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Nhân viên sẽ được gán vào kho hàng này
+              </p>
+            </div>
+          )}
 
           <div>
             <Label>URL Avatar</Label>

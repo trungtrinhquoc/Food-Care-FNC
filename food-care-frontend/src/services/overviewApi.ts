@@ -2,6 +2,7 @@ import api from './api';
 
 // Types for Overview Tab
 export interface OrderChartData {
+
   period: string;
   pending: number;
   confirmed: number;

@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   CheckCircle,
+  Warehouse,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -29,6 +30,7 @@ const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default:
 const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
 const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
+const WarehousesTab = lazy(() => import("./admin/WarehousesTab").then(m => ({ default: m.WarehousesTab })));
 
 // Tab configuration
 const TABS = [
@@ -39,6 +41,7 @@ const TABS = [
   { value: "users", label: "Người dùng", icon: UserCog },
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
+  { value: "warehouses", label: "Kho hàng", icon: Warehouse },
   { value: "approvals", label: "Phê duyệt", icon: CheckCircle },
   { value: "zalo", label: "Zalo", icon: MessageSquare },
 ] as const;
@@ -234,6 +237,13 @@ export default function AdminDashboardPage() {
                 {selectedTab === "suppliers" && (
                   <div>
                     <SuppliersTab />
+                  </div>
+                )}
+
+                {/* Warehouses Tab */}
+                {selectedTab === "warehouses" && (
+                  <div>
+                    <WarehousesTab />
                   </div>
                 )}
 
