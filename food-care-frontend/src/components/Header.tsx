@@ -83,9 +83,6 @@ export default function Header() {
         `relative px-1 py-2 text-sm font-medium transition-colors ${isActiveLink(path)
             ? 'text-emerald-600'
             : 'text-gray-600 hover:text-emerald-600'
-        `relative px-1 py-2 text-sm font-medium transition-colors ${isActiveLink(path)
-            ? 'text-emerald-600'
-            : 'text-gray-600 hover:text-emerald-600'
         }`;
 
     const navLinkUnderline = (path: string) =>

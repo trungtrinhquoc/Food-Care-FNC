@@ -64,6 +64,8 @@ public partial class FoodCareDbContext : DbContext {
     public DbSet<DiscrepancyItem> DiscrepancyItems { get; set; }
     public DbSet<ReturnShipment> ReturnShipments { get; set; }
     public DbSet<ReturnItem> ReturnItems { get; set; }
+    public DbSet<ChatFaq> ChatFaqs { get; set; }
+    public DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
