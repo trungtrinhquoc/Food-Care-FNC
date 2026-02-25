@@ -7,7 +7,6 @@ import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { AlertCircle, X, ShoppingCart, Calendar, ArrowRight } from 'lucide-react';
 import type { Product } from '../types';
-import { ImageWithFallback } from './figma/ImageWithFallback';
 import { recommendationsApi } from '../services/recommendationsApi';
 import type { LowStockNotification as LowStockItem } from '../services/recommendationsApi';
 import { toast } from 'sonner';
@@ -103,10 +102,15 @@ export function LowStockNotification({ }: LowStockNotificationProps) {
                                 <CardContent className="pt-3 p-3">
                                     <div className="flex gap-2 mb-2">
                                         <div className="w-14 h-14 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
-                                            <ImageWithFallback
-                                                src={item.product.imageUrl}
+                                            <img
+                                                src={item.product.imageUrl || '/placeholder.png'}
                                                 alt={item.product.name}
                                                 className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.src = '/placeholder.png';
+                                                    target.onerror = null;
+                                                }}
                                             />
                                         </div>
                                         <div className="flex-1 min-w-0">

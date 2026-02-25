@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ImageWithFallbackProps {
     src?: string;
@@ -17,10 +17,21 @@ export function ImageWithFallback({
     const [isLoading, setIsLoading] = useState(true);
     const [_hasError, setHasError] = useState(false);
 
+    useEffect(() => {
+        setImgSrc(src);
+        setHasError(false);
+        setIsLoading(true);
+    }, [src]);
+
     const handleError = () => {
+        // If we are already on the fallback, or simply cannot load the current src
         if (imgSrc !== fallbackSrc) {
             setImgSrc(fallbackSrc);
             setHasError(true);
+            // Keep loading true, as we are now loading the fallback
+        } else {
+            // Fallback also failed (or src was equal to fallback)
+            setIsLoading(false); // Stop pulse animation so we show the broken image icon or alt text
         }
     };
 

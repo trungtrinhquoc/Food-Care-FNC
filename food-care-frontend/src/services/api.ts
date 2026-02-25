@@ -10,8 +10,8 @@ import type {
     Order
 } from '../types';
 
-const API_URL = 'https://food-care-fnc-production.up.railway.app/api';
-// const API_URL = 'http://localhost:5022/api';
+//const API_URL = 'https://food-care-fnc-production.up.railway.app/api';
+const API_URL = 'http://localhost:5022/api';
 console.log('Configured API_URL:', API_URL);
 
 const api = axios.create({

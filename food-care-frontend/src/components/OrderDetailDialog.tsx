@@ -146,7 +146,7 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
     // 2. Conditional Logic AFTER hooks
     if (!order) return null;
 
-    const allowReview = order.status === 'delivered' || order.status === 'confirmed' || (order.paymentStatus === 'paid' && order.status !== 'cancelled');
+
 
     return (
         <>
@@ -207,30 +207,7 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
                                                         </StatusBadge>
                                                     )}
                                                 </div>
-                                                {allowReview && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className={`mt-2 p-0 h-auto font-normal flex items-center gap-1 ${item.isReviewed
-                                                            ? 'text-gray-400 cursor-not-allowed opacity-70'
-                                                            : 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50'
-                                                            }`}
-                                                        onClick={() => {
-                                                            if (item.isReviewed) {
-                                                                toast.info('Bạn đã đánh giá sản phẩm này rồi');
-                                                                return;
-                                                            }
-                                                            setReviewState({
-                                                                open: true,
-                                                                productId: item.productId,
-                                                                productName: item.productName
-                                                            });
-                                                        }}
-                                                    >
-                                                        <Star className={`w-3.5 h-3.5 ${item.isReviewed ? 'fill-gray-300 text-gray-300' : 'fill-current'}`} />
-                                                        {item.isReviewed ? 'Đã đánh giá' : 'Viết đánh giá'}
-                                                    </Button>
-                                                )}
+
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-bold text-gray-900">

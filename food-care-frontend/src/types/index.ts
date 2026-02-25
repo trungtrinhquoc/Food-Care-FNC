@@ -141,6 +141,7 @@ export interface OrderItem {
     isSubscription: boolean;
     subscriptionFrequency?: SubscriptionFrequency;
     isReviewed?: boolean;
+    productImageUrl?: string;
 }
 
 

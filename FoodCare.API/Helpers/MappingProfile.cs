@@ -70,12 +70,13 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UnitPrice, opt => opt.MapFrom(src => src.Price))
             .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalPrice ?? (src.Price * src.Quantity)))
             .ForMember(dest => dest.IsSubscription, opt => opt.MapFrom(src => ParseIsSubscription(src.VariantSnapshot)))
-            .ForMember(dest => dest.SubscriptionFrequency, opt => opt.MapFrom(src => ParseFrequency(src.VariantSnapshot)));
+            .ForMember(dest => dest.SubscriptionFrequency, opt => opt.MapFrom(src => ParseFrequency(src.VariantSnapshot)))
+            .ForMember(dest => dest.ProductImageUrl, opt => opt.MapFrom(src => src.Product != null ? src.Product.Images : null));
     }
+
 
     private static bool ParseIsSubscription(string? snapshot)
     {
-        if (string.IsNullOrEmpty(snapshot)) return false;
         try
         {
             using var doc = System.Text.Json.JsonDocument.Parse(snapshot);
@@ -117,4 +118,5 @@ public class MappingProfile : Profile
 
         return text;
     }
+
 }

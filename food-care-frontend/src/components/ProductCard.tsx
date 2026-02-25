@@ -1,6 +1,5 @@
 
 import type { Product } from '../types';
-import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ShoppingCart, Star } from 'lucide-react';
 
 interface ProductCardProps {
@@ -19,10 +18,16 @@ export function ProductCard({ product, onViewDetail, onAddToCart }: ProductCardP
         <div className="card hover-lift group cursor-pointer">
             {/* Product Image */}
             <div className="relative mb-3 overflow-hidden rounded-xl" onClick={() => onViewDetail(product)}>
-                <ImageWithFallback
-                    src={product.images[0] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop'}
+                <img
+                    src={product.images[0] || '/placeholder.png'}
                     alt={product.name}
                     className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300"
+                    onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder.png';
+                        // Prevent infinite loop if placeholder is missing
+                        target.onerror = null;
+                    }}
                 />
 
                 {/* Discount Badge */}

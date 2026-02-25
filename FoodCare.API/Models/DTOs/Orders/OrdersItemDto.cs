@@ -10,5 +10,6 @@
         public bool IsSubscription { get; set; }
         public string? SubscriptionFrequency { get; set; }
         public bool IsReviewed { get; set; }
+        public string? ProductImageUrl { get; set; }
     }
 }
