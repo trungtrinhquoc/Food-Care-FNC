@@ -127,6 +127,12 @@ namespace FoodCare.API.Services.Implementations
             if (orderItem == null)
                 throw new AppException("Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng");
 
+            var existingReview = await _db.Reviews
+                .AnyAsync(r => r.UserId == userId && r.ProductId == dto.ProductId && r.OrderId == orderItem.OrderId);
+
+            if (existingReview)
+                throw new AppException("already reviewed");
+
             var review = new Review
             {
                 Id = Guid.NewGuid(),

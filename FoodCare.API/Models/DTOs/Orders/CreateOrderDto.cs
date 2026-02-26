@@ -10,6 +10,7 @@
         public string PaymentMethod { get; set; } = null!;
 
         public string? Note { get; set; }
+        public string? CouponCode { get; set; }
 
         public List<CreateOrderItemDto> Items { get; set; } = new();
     }

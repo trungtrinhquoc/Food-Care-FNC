@@ -29,8 +29,15 @@ public class ReviewsController : ControllerBase
     [HttpPost("reviews")]
     public async Task<IActionResult> Create(CreateReviewDto dto)
     {
-        await _service.CreateReviewAsync(dto, User.GetUserId());
-        return Ok();
+        try
+        {
+            await _service.CreateReviewAsync(dto, User.GetUserId());
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message, inner = ex.InnerException?.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [Authorize]

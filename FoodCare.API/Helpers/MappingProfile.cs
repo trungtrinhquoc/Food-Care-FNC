@@ -63,7 +63,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalPrice ?? (src.Price * src.Quantity)))
             .ForMember(dest => dest.IsSubscription, opt => opt.MapFrom(src => ParseIsSubscription(src.VariantSnapshot)))
             .ForMember(dest => dest.SubscriptionFrequency, opt => opt.MapFrom(src => ParseFrequency(src.VariantSnapshot)))
-            .ForMember(dest => dest.ProductImageUrl, opt => opt.MapFrom(src => src.Product != null ? src.Product.Images : null));
+            .ForMember(dest => dest.ProductImageUrl, opt => opt.MapFrom(src => src.Product != null ? src.Product.Images : null))
+            .ForMember(dest => dest.ProductIsDeleted, opt => opt.MapFrom(src => src.Product != null && (src.Product.IsDeleted == true || src.Product.IsActive == false)))
+            .ForMember(dest => dest.ProductIsActive, opt => opt.MapFrom(src => src.Product != null && src.Product.IsDeleted != true && src.Product.IsActive == true));
+
 
         // Supplier mappings
         CreateMap<Supplier, SupplierDto>()

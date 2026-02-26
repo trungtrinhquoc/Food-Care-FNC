@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import {
     ShoppingBag, User, ShoppingCart, Settings, Menu,
     X, ChevronDown, LogOut, Home, LayoutDashboard, Package,
-    Truck, Store, BarChart3, FileText, Bell
+    Truck, Store, BarChart3, FileText, Bell, Ticket
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -305,6 +305,13 @@ export default function Header() {
                         {isAuthenticated && (
                             <Link to="/subscriptions" className={navLinkClass('/subscriptions')}>Đơn định kỳ <span className={navLinkUnderline('/subscriptions')} /></Link>
                         )}
+                        {isAuthenticated && (
+                            <Link to="/vouchers" className={`${navLinkClass('/vouchers')} flex items-center gap-1`}>
+                                <Ticket className="h-3.5 w-3.5" />
+                                Voucher
+                                <span className={navLinkUnderline('/vouchers')} />
+                            </Link>
+                        )}
                         {isAuthenticated && isAdmin && (
                             <Link to="/admin" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-orange-600 hover:bg-orange-50 transition-all">
                                 <Settings className="h-4 w-4" /> Admin
@@ -354,6 +361,10 @@ export default function Header() {
                                             <Link to="/subscriptions" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Package className="w-5 h-5 text-gray-400" /> <span className="text-sm">Đơn hàng định kỳ</span>
                                             </Link>
+                                            <Link to="/vouchers" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                                                <Ticket className="w-5 h-5 text-amber-500" /> <span className="text-sm">Kho Voucher ưu đãi</span>
+                                                <span className="ml-auto text-[10px] bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded-full">Mới</span>
+                                            </Link>
                                         </div>
                                         <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100">
                                             <LogOut className="w-5 h-5" /> <span className="text-sm font-medium">Đăng xuất</span>
@@ -381,6 +392,11 @@ export default function Header() {
                         {isAuthenticated && (
                             <>
                                 <Link to="/subscriptions" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/subscriptions') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Đơn định kỳ</Link>
+                                <Link to="/vouchers" className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/vouchers') ? 'bg-orange-50 text-orange-600' : 'text-gray-700'}`}>
+                                    <Ticket className="h-4 w-4 text-amber-500" />
+                                    Kho Voucher
+                                    <span className="ml-auto text-[10px] bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded-full">Mới</span>
+                                </Link>
                                 <Link to="/profile" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/profile') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Tài khoản</Link>
                             </>
                         )}

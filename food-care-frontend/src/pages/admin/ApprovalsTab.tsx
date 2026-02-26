@@ -149,6 +149,28 @@ export function ApprovalsTab() {
     }
   };
 
+  const handleBulkApproveLegacy = async () => {
+    if (!window.confirm('Approve tất cả sản phẩm chưa có trạng thái phê duyệt (legacy)? Thao tác này không thể hoàn tác.')) return;
+    try {
+      setProcessing('bulk');
+      const res = await fetch('http://localhost:5022/api/admin/approvals/products/bulk-approve-legacy', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await res.json();
+      toast.success(data.message || 'Đã approve tất cả sản phẩm legacy');
+      loadProducts();
+      loadStats();
+    } catch {
+      toast.error('Lỗi khi bulk approve');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('vi-VN', {
@@ -356,7 +378,7 @@ export function ApprovalsTab() {
                         <TableCell className="text-gray-500 text-sm">{formatDate(product.submittedAt)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-2">
-                            {product.approvalStatus === 'pending' && (
+                            {(product.approvalStatus === 'pending' || product.approvalStatus === null || product.approvalStatus === undefined) && (
                               <>
                                 <Button
                                   size="sm"
@@ -377,8 +399,11 @@ export function ApprovalsTab() {
                                 </Button>
                               </>
                             )}
-                            {product.approvalStatus !== 'pending' && (
-                              <span className="text-sm text-gray-400">Đã xử lý</span>
+                            {product.approvalStatus === 'approved' && (
+                              <span className="text-sm text-emerald-500 font-medium">✅ Đã duyệt</span>
+                            )}
+                            {product.approvalStatus === 'rejected' && (
+                              <span className="text-sm text-red-500">❌ Đã từ chối</span>
                             )}
                           </div>
                         </TableCell>

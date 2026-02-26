@@ -212,6 +212,13 @@ export default function ProfilePage() {
             setLoadingOrders(true);
             const data = await profileApi.getOrders();
             setOrders(data);
+            setSelectedOrder(prev => {
+                if (prev) {
+                    const updated = data.find(o => o.id === prev.id);
+                    return updated || prev;
+                }
+                return prev;
+            });
         } catch (error: any) {
             console.error('Error loading orders:', error);
             // toast.error('Không thể tải danh sách đơn hàng');
@@ -258,9 +265,26 @@ export default function ProfilePage() {
             toast.loading('Đang thêm sản phẩm vào giỏ hàng...', { id: 'buy-again' });
 
             let addedCount = 0;
+            let skippedCount = 0;
+
             for (const item of order.items) {
+                // Skip deleted or inactive products immediately
+                if (item.productIsDeleted || item.productIsActive === false) {
+                    toast.warning(`"${item.productName}" đã bị xóa và không thể mua lại`);
+                    skippedCount++;
+                    continue;
+                }
+
                 try {
                     const product = await productsApi.getProduct(item.productId);
+
+                    // Also check what backend returns
+                    if (!product.isActive) {
+                        toast.warning(`"${item.productName}" hiện không còn bán`);
+                        skippedCount++;
+                        continue;
+                    }
+
                     let frequency: any = undefined;
                     let discount = 0;
                     if (item.isSubscription && item.subscriptionFrequency) {
@@ -278,15 +302,19 @@ export default function ProfilePage() {
                     addedCount++;
                 } catch (err) {
                     console.error('Lỗi khi lấy thông tin sản phẩm:', item.productId, err);
-                    toast.error(`Sản phẩm ${item.productName} hiện không khả dụng`);
+                    toast.error(`Sản phẩm "${item.productName}" hiện không khả dụng`);
+                    skippedCount++;
                 }
             }
 
             if (addedCount > 0) {
-                toast.success(`Đã thêm ${addedCount} sản phẩm vào giỏ hàng`, { id: 'buy-again' });
+                const msg = skippedCount > 0
+                    ? `Đã thêm ${addedCount} sản phẩm (bỏ qua ${skippedCount} sản phẩm không còn bán)`
+                    : `Đã thêm ${addedCount} sản phẩm vào giỏ hàng`;
+                toast.success(msg, { id: 'buy-again' });
                 navigate('/cart');
             } else {
-                toast.error('Không thể thêm sản phẩm nào vào giỏ hàng', { id: 'buy-again' });
+                toast.error('Tất cả sản phẩm trong đơn này đã không còn bán', { id: 'buy-again' });
             }
         } catch (error) {
             console.error('Lỗi khi mua lại:', error);
@@ -1689,11 +1717,13 @@ export default function ProfilePage() {
                 productId={reviewState.productId}
                 productName={reviewState.productName}
                 orderId={reviewState.orderId}
+                onSuccess={loadOrders}
             />
             <OrderDetailDialog
                 open={isDetailOpen}
                 onOpenChange={setIsDetailOpen}
                 order={selectedOrder}
+                onReviewSuccess={loadOrders}
             />
         </div >
     );

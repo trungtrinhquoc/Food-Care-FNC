@@ -163,6 +163,29 @@ public class AuthService : IAuthService
         // Load Tier for DTO mapping
         await _context.Entry(user).Reference(u => u.Tier).LoadAsync();
 
+        try
+        {
+            var welcomeCoupon = new Coupon
+            {
+                Code = $"WELCOME-{Guid.NewGuid().ToString().Substring(0, 6).ToUpper()}",
+                DiscountType = "fixed",
+                DiscountValue = 30000,
+                MinOrderValue = 0,
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddDays(30),
+                UsageLimit = 1,
+                UsageCount = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Coupons.Add(welcomeCoupon);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create welcome coupon. Inner Exception: {InnerException}", ex.InnerException?.Message);
+        }
+
         // Send verification email
         _logger.LogInformation("Sending verification email to: {Email}", user.Email);
         try
