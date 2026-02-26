@@ -1,4 +1,5 @@
 using FoodCare.API.Models.DTOs.Admin.Orders;
+using FoodCare.API.Models.DTOs.Admin.Stats;
 using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -68,6 +69,21 @@ public class AdminOrdersController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving recent orders");
             return StatusCode(500, new { message = "An error occurred while retrieving recent orders" });
+        }
+    }
+
+    [HttpGet("latest")]
+    public async Task<ActionResult<List<LatestOrderDto>>> GetLatestOrders([FromQuery] int limit = 5)
+    {
+        try
+        {
+            var orders = await _orderService.GetLatestOrdersAsync(limit);
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving latest orders");
+            return StatusCode(500, new { message = "An error occurred while retrieving latest orders" });
         }
     }
 

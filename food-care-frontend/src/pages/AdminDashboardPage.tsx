@@ -12,7 +12,8 @@ import {
   LogOut,
   Menu,
   X,
-  ShoppingBag,
+  CheckCircle,
+  Warehouse,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -28,7 +29,8 @@ const ZaloTab = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.Zal
 const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
 const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
-const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
+const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
+const WarehousesTab = lazy(() => import("./admin/WarehousesTab").then(m => ({ default: m.WarehousesTab })));
 
 // Tab configuration
 const TABS = [
@@ -39,8 +41,9 @@ const TABS = [
   { value: "users", label: "Người dùng", icon: UserCog },
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
+  { value: "warehouses", label: "Kho hàng", icon: Warehouse },
+  { value: "approvals", label: "Phê duyệt", icon: CheckCircle },
   { value: "zalo", label: "Zalo", icon: MessageSquare },
-  { value: "subscriptions", label: "Subscriptions", icon: Package },
 ] as const;
 
 // Loading fallback component
@@ -69,11 +72,13 @@ export default function AdminDashboardPage() {
       totalProducts: stats.totalProducts,
       monthlyGrowth: stats.monthlyGrowth,
       activeSubscriptions: stats.pendingOrders,
+      pendingOrders: stats.pendingOrders,
+      lowStockProducts: stats.lowStockProducts,
     };
   }, [stats]);
 
   // Memoized revenue data
-  const formattedRevenueData = useMemo(() =>
+  const formattedRevenueData = useMemo(() => 
     revenueData.map(r => ({ month: r.month, revenue: r.revenue })),
     [revenueData]
   );
@@ -93,8 +98,9 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex">
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-orange-200 via-orange-100/200 to-white border-r border-orange-200 shadow-xl transition-all duration-300 z-40 ${sidebarOpen ? "w-64" : "w-20"
-          }`}
+        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-orange-200 via-orange-100/200 to-white border-r border-orange-200 shadow-xl transition-all duration-300 z-40 ${
+          sidebarOpen ? "w-64" : "w-20"
+        }`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
@@ -102,8 +108,8 @@ export default function AdminDashboardPage() {
             {sidebarOpen ? (
               <>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <ShoppingBag className="w-5 h-5 text-white" />
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                    <Package className="w-5 h-5 text-white" />
                   </div>
                   Food & Care
                 </h2>
@@ -130,10 +136,11 @@ export default function AdminDashboardPage() {
               <button
                 key={value}
                 onClick={() => handleTabChange(value)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${selectedTab === value
-                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold shadow-lg shadow-orange-500/30 scale-105"
-                  : "text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:shadow-md"
-                  }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  selectedTab === value
+                    ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold shadow-lg shadow-orange-500/30 scale-105"
+                    : "text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:shadow-md"
+                }`}
               >
                 <Icon className={`w-5 h-5 flex-shrink-0 ${selectedTab === value ? "text-white" : "text-gray-500"}`} />
                 {sidebarOpen && <span className="truncate">{label}</span>}
@@ -161,8 +168,8 @@ export default function AdminDashboardPage() {
             {/* Header */}
             <header className="mb-8 bg-gradient-to-r from-white to-orange-50 rounded-2xl p-6 shadow-lg border border-orange-100">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <ShoppingBag className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Admin Dashboard</h1>
               </div>
@@ -233,17 +240,24 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
+                {/* Warehouses Tab */}
+                {selectedTab === "warehouses" && (
+                  <div>
+                    <WarehousesTab />
+                  </div>
+                )}
+
+                {/* Approvals Tab */}
+                {selectedTab === "approvals" && (
+                  <div>
+                    <ApprovalsTab />
+                  </div>
+                )}
+
                 {/* Zalo Tab */}
                 {selectedTab === "zalo" && (
                   <div>
                     <ZaloTab />
-                  </div>
-                )}
-
-                {/* Subscription Reminders Tab */}
-                {selectedTab === "subscriptions" && (
-                  <div>
-                    <SubscriptionsTab />
                   </div>
                 )}
               </Suspense>

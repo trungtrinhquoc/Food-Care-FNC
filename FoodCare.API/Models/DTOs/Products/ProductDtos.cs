@@ -17,6 +17,8 @@ public class ProductDto
     public string? ImageUrl { get; set; }
     public int? CategoryId { get; set; }
     public string? CategoryName { get; set; }
+    public int? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public decimal? RatingAverage { get; set; }
     public int? RatingCount { get; set; }
     public bool? IsSubscriptionAvailable { get; set; }

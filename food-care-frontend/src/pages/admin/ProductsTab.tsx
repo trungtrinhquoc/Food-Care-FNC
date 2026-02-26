@@ -7,14 +7,15 @@ import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { SimplePagination } from "../../components/ui/pagination";
 import { Plus, Search, Edit, Trash2, Box, FolderOpen, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { StockBadge } from "../../components/ui/status-badge";
 import type { Product } from "../../types";
 import { CategoriesSection } from "../../components/admin/CategoriesSection";
 import { ProductDialog } from "../../components/admin/ProductDialog";
-import { productsApi } from "../../services/productsApi";
+import { adminProductsService } from "../../services/admin";
 
 export function ProductsTab() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<(Product & { supplierId?: number | null; supplierName?: string | null })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,20 +30,21 @@ export function ProductsTab() {
   const fetchProducts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await productsApi.getProducts({
+      const response = await adminProductsService.getAdminProducts({
         page: currentPage,
         pageSize,
         searchTerm: searchTerm || undefined,
       });
-      setProducts(response.products);
-      setTotalPages(response.totalPages || Math.ceil((response.totalCount || 0) / pageSize));
-      setTotalItems(response.totalCount || response.products.length);
+      setProducts(response.items);
+      setTotalPages(response.totalPages);
+      setTotalItems(response.totalItems);
     } catch (error) {
       console.error("Error fetching products:", error);
+      toast.error("Không thể tải danh sách sản phẩm");
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchTerm]);
+  }, [currentPage, pageSize, searchTerm]);
 
   useEffect(() => {
     fetchProducts();
@@ -70,10 +72,11 @@ export function ProductsTab() {
   const handleDelete = useCallback(async (productId: string) => {
     if (!confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
     try {
-      await productsApi.deleteProduct(productId);
+      await adminProductsService.deleteProduct(productId);
       setProducts(prev => prev.filter(p => p.id !== productId));
     } catch (error) {
       console.error("Error deleting product:", error);
+      toast.error("Không thể xóa sản phẩm");
     }
   }, []);
 
@@ -146,6 +149,7 @@ export function ProductsTab() {
                   <TableRow>
                     <TableHead>Sản phẩm</TableHead>
                     <TableHead>Danh mục</TableHead>
+                    <TableHead>Nhà cung cấp</TableHead>
                     <TableHead>Giá</TableHead>
                     <TableHead>Đơn vị</TableHead>
                     <TableHead>Tồn kho</TableHead>
@@ -156,7 +160,7 @@ export function ProductsTab() {
                 <TableBody>
                   {products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         {searchTerm ? 'Không tìm thấy sản phẩm nào' : 'Chưa có sản phẩm nào'}
                       </TableCell>
                     </TableRow>
@@ -179,6 +183,11 @@ export function ProductsTab() {
                         <TableCell>
                           {product.categoryName ? (
                             <Badge variant="outline">{product.categoryName}</Badge>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {product.supplierName ? (
+                            <Badge variant="outline">{product.supplierName}</Badge>
                           ) : '-'}
                         </TableCell>
                         <TableCell>

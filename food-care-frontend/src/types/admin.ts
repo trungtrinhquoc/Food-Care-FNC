@@ -34,8 +34,8 @@ export interface AdminStats {
   totalProducts: number;
   monthlyGrowth: number;
   activeSubscriptions: number;
-  lowStockProducts?: number;
-  pendingOrders?: number;
+  pendingOrders: number;
+  lowStockProducts: number;
 }
 
 export interface RevenueData {
@@ -65,6 +65,10 @@ export interface AdminUser {
   totalSubscriptions: number;
   activeSubscriptions: number;
   totalReviews: number;
+  // Staff/Warehouse info
+  warehouseId?: string | null;
+  warehouseName?: string | null;
+  employeeCode?: string | null;
 }
 
 export interface CustomerDetail extends AdminUser {
@@ -89,6 +93,7 @@ export interface CreateUserDto {
   role?: string;
   phoneNumber?: string;
   avatarUrl?: string;
+  warehouseId?: string;
 }
 
 export interface UpdateUserDto {
@@ -99,6 +104,7 @@ export interface UpdateUserDto {
   tierId?: number | null;
   loyaltyPoints?: number;
   isActive: boolean;
+  warehouseId?: string;
 }
 
 export interface UpdateCustomerDto {
@@ -127,6 +133,13 @@ export interface MemberTierInfo {
   minPoint: number;
   discountPercent: number | null;
 }
+
+export interface RoleOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
 
 // Legacy type alias for backward compatibility
 export interface AdminCustomer {
@@ -160,13 +173,6 @@ export interface AdminOrder {
   createdAt: string;
   updatedAt: string | null;
   orderItems: AdminOrderItem[];
-  // Additional fields used in UI
-  date?: string;
-  phone?: string;
-  address?: string;
-  products?: string[];
-  total?: number;
-  subscription?: boolean;
 }
 
 export interface AdminOrderItem {

@@ -238,4 +238,94 @@ public class AdminStatsService : IAdminStatsService
 
         return result;
     }
+
+    public async Task<List<CategoryRevenueDto>> GetCategoryRevenueAsync()
+    {
+        var colors = new[] { "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16" };
+
+        var rawData = await _context.OrderItems
+            .Include(oi => oi.Product)
+                .ThenInclude(p => p!.Category)
+            .Include(oi => oi.Order)
+            .Where(oi => oi.Order != null && oi.Order.Status == OrderStatus.delivered &&
+                         oi.Product != null && oi.Product.Category != null)
+            .Select(oi => new
+            {
+                CategoryName = oi.Product!.Category!.Name,
+                Revenue = oi.TotalPrice ?? (oi.Price * oi.Quantity),
+                OrderId = oi.OrderId
+            })
+            .ToListAsync();
+
+        var result = rawData
+            .GroupBy(x => x.CategoryName)
+            .Select((g, index) => new CategoryRevenueDto
+            {
+                CategoryName = g.Key,
+                Revenue = g.Sum(x => x.Revenue),
+                OrderCount = g.Select(x => x.OrderId).Distinct().Count(),
+                Color = colors[index % colors.Length]
+            })
+            .OrderByDescending(c => c.Revenue)
+            .ToList();
+
+        return result;
+    }
+
+    public async Task<List<TopProductResponseDto>> GetTopProductsAsync(int limit = 5)
+    {
+        var result = await _context.OrderItems
+            .Include(oi => oi.Product)
+            .Where(oi => oi.ProductId.HasValue && oi.Product != null)
+            .GroupBy(oi => new { ProductId = oi.ProductId!.Value, oi.Product!.Name, oi.Product.Images })
+            .Select(g => new TopProductResponseDto
+            {
+                ProductId = g.Key.ProductId,
+                ProductName = g.Key.Name,
+                TotalSold = g.Sum(oi => oi.Quantity),
+                Revenue = g.Sum(oi => oi.TotalPrice ?? (oi.Price * oi.Quantity)),
+                ImageUrl = g.Key.Images
+            })
+            .OrderByDescending(p => p.TotalSold)
+            .Take(limit)
+            .ToListAsync();
+
+        return result;
+    }
+
+    public async Task<List<UserTrafficDto>> GetUserTrafficAsync(int days = 7)
+    {
+        var result = new List<UserTrafficDto>();
+        var startDate = DateTime.UtcNow.AddDays(-days).Date;
+
+        // Get login data from LoginLogs
+        var loginData = await _context.LoginLogs
+            .Where(l => l.LoginAt.HasValue && l.LoginAt.Value >= startDate && l.Success == true)
+            .Select(l => new { l.LoginAt, l.UserId })
+            .ToListAsync();
+
+        // Get new user registrations
+        var newUsers = await _context.Users
+            .Where(u => u.CreatedAt.HasValue && u.CreatedAt.Value >= startDate)
+            .Select(u => new { u.CreatedAt })
+            .ToListAsync();
+
+        for (int i = days - 1; i >= 0; i--)
+        {
+            var date = DateTime.UtcNow.AddDays(-i).Date;
+
+            var loginsForDay = loginData.Where(l => l.LoginAt!.Value.Date == date).ToList();
+            var newUsersForDay = newUsers.Count(u => u.CreatedAt!.Value.Date == date);
+
+            result.Add(new UserTrafficDto
+            {
+                Date = date.ToString("dd/MM"),
+                ActiveUsers = loginsForDay.Select(l => l.UserId).Distinct().Count(),
+                NewUsers = newUsersForDay,
+                TotalLogins = loginsForDay.Count
+            });
+        }
+
+        return result;
+    }
 }

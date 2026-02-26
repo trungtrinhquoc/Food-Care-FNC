@@ -72,6 +72,7 @@ export function useProducts(initialProducts: Product[]) {
       basePrice: parseFloat(productForm.basePrice),
       originalPrice: productForm.originalPrice ? parseFloat(productForm.originalPrice) : undefined,
       imageUrl: productForm.imageUrl || 'https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=400',
+      images: [productForm.imageUrl || 'https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=400'],
       description: productForm.description,
       unit: productForm.unit,
       stockQuantity: parseInt(productForm.stockQuantity),
@@ -79,7 +80,6 @@ export function useProducts(initialProducts: Product[]) {
       ratingCount: editingProduct?.ratingCount || 0,
       isSubscriptionAvailable: editingProduct?.isSubscriptionAvailable || false,
       isActive: editingProduct?.isActive ?? true,
-      images: editingProduct?.images || [productForm.imageUrl || 'https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=400'],
     };
 
     if (editingProduct) {

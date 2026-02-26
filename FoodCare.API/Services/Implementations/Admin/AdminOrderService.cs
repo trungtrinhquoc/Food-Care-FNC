@@ -1,6 +1,7 @@
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Orders;
+using FoodCare.API.Models.DTOs.Admin.Stats;
 using FoodCare.API.Models.Enums;
 using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.EntityFrameworkCore;
@@ -263,5 +264,26 @@ public class AdminOrderService : IAdminOrderService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    public async Task<List<LatestOrderDto>> GetLatestOrdersAsync(int limit = 5)
+    {
+        var orders = await _context.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(limit)
+            .Select(o => new LatestOrderDto
+            {
+                OrderId = o.Id,
+                CustomerName = o.User != null ? o.User.FullName ?? o.User.Email : "Khách vãng lai",
+                TotalAmount = o.TotalAmount,
+                Status = o.Status.ToString(),
+                CreatedAt = o.CreatedAt ?? DateTime.UtcNow,
+                ItemCount = o.OrderItems.Count
+            })
+            .ToListAsync();
+
+        return orders;
     }
 }

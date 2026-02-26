@@ -257,22 +257,37 @@ export default function ProfilePage() {
             setBuyingAgain(true);
             toast.loading('Đang thêm sản phẩm vào giỏ hàng...', { id: 'buy-again' });
 
+            let addedCount = 0;
             for (const item of order.items) {
                 try {
                     const product = await productsApi.getProduct(item.productId);
                     let frequency: any = undefined;
+                    let discount = 0;
                     if (item.isSubscription && item.subscriptionFrequency) {
                         frequency = item.subscriptionFrequency;
+                        if (product.subscriptionDiscounts) {
+                            try {
+                                const discounts = typeof product.subscriptionDiscounts === 'string' ? JSON.parse(product.subscriptionDiscounts) : product.subscriptionDiscounts;
+                                discount = discounts[frequency] || 0;
+                            } catch (e) {
+                                console.error('Error parsing subscription discounts', e);
+                            }
+                        }
                     }
-                    addToCart(product, item.quantity, item.isSubscription, frequency);
+                    addToCart(product, item.quantity, item.isSubscription, frequency, discount);
+                    addedCount++;
                 } catch (err) {
                     console.error('Lỗi khi lấy thông tin sản phẩm:', item.productId, err);
-                    toast.error(`Không thể thêm sản phẩm ${item.productName} vào giỏ hàng`);
+                    toast.error(`Sản phẩm ${item.productName} hiện không khả dụng`);
                 }
             }
 
-            toast.success('Đã thêm sản phẩm vào giỏ hàng', { id: 'buy-again' });
-            navigate('/cart');
+            if (addedCount > 0) {
+                toast.success(`Đã thêm ${addedCount} sản phẩm vào giỏ hàng`, { id: 'buy-again' });
+                navigate('/cart');
+            } else {
+                toast.error('Không thể thêm sản phẩm nào vào giỏ hàng', { id: 'buy-again' });
+            }
         } catch (error) {
             console.error('Lỗi khi mua lại:', error);
             toast.error('Có lỗi xảy ra', { id: 'buy-again' });

@@ -18,13 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { usersService, customersService } from '../../services/admin';
+import { usersService, customersService, warehouseService } from '../../services/admin';
 import type {
   AdminUser,
   CreateUserDto,
   UpdateUserDto,
   MemberTierInfo,
+  RoleOption,
 } from '../../types/admin';
+import type { WarehouseDropdownItem } from '../../services/admin/warehouseService';
 
 interface UserDialogProps {
   open: boolean;
@@ -43,6 +45,7 @@ interface FormData {
   tierId: string;
   loyaltyPoints: string;
   isActive: boolean;
+  warehouseId: string;
 }
 
 const initialFormData: FormData = {
@@ -55,6 +58,7 @@ const initialFormData: FormData = {
   tierId: '',
   loyaltyPoints: '0',
   isActive: true,
+  warehouseId: '',
 };
 
 export function UserDialog({
@@ -66,6 +70,10 @@ export function UserDialog({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [tiers, setTiers] = useState<MemberTierInfo[]>([]);
   const [tiersLoading, setTiersLoading] = useState(false);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [warehouses, setWarehouses] = useState<WarehouseDropdownItem[]>([]);
+  const [warehousesLoading, setWarehousesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadTiers = useCallback(async () => {
@@ -80,9 +88,41 @@ export function UserDialog({
     }
   }, []);
 
+  const loadRoles = useCallback(async () => {
+    setRolesLoading(true);
+    try {
+      const data = await usersService.getUserRoles();
+      setRoles(data);
+    } catch (error) {
+      console.error('Failed to load roles:', error);
+      // Fallback to default roles if API fails
+      setRoles([
+        { value: 'customer', label: 'Khách hàng', description: 'Người dùng thông thường' },
+        { value: 'staff', label: 'Nhân viên', description: 'Nhân viên quản lý' },
+        { value: 'admin', label: 'Admin', description: 'Quản trị viên' }
+      ]);
+    } finally {
+      setRolesLoading(false);
+    }
+  }, []);
+
+  const loadWarehouses = useCallback(async () => {
+    setWarehousesLoading(true);
+    try {
+      const data = await warehouseService.getWarehousesDropdown();
+      setWarehouses(data);
+    } catch (error) {
+      console.error('Failed to load warehouses:', error);
+    } finally {
+      setWarehousesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
       loadTiers();
+      loadRoles();
+      loadWarehouses();
       if (user) {
         setFormData({
           email: user.email,
@@ -94,12 +134,13 @@ export function UserDialog({
           tierId: user.tierId?.toString() || '',
           loyaltyPoints: user.loyaltyPoints?.toString() || '0',
           isActive: user.isActive,
+          warehouseId: user.warehouseId || '',
         });
       } else {
         setFormData(initialFormData);
       }
     }
-  }, [open, user, loadTiers]);
+  }, [open, user, loadTiers, loadRoles, loadWarehouses]);
 
   const handleSubmit = async () => {
     if (!formData.email.trim()) {
@@ -124,6 +165,7 @@ export function UserDialog({
           tierId: formData.tierId ? parseInt(formData.tierId) : null,
           loyaltyPoints: parseInt(formData.loyaltyPoints) || 0,
           isActive: formData.isActive,
+          warehouseId: formData.role === 'staff' && formData.warehouseId ? formData.warehouseId : undefined,
         };
         await usersService.updateUser(user.id, updateData);
       } else {
@@ -135,14 +177,15 @@ export function UserDialog({
           role: formData.role,
           phoneNumber: formData.phoneNumber || undefined,
           avatarUrl: formData.avatarUrl || undefined,
+          warehouseId: formData.role === 'staff' && formData.warehouseId ? formData.warehouseId : undefined,
         };
         await usersService.createUser(createData);
       }
       onSuccess();
     } catch (error: unknown) {
       console.error('Failed to save user:', error);
-      const errMsg = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
+      const errMsg = error instanceof Error && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
         : undefined;
       alert(errMsg || 'Không thể lưu người dùng. Vui lòng thử lại.');
     } finally {
@@ -205,14 +248,17 @@ export function UserDialog({
               <Select
                 value={formData.role}
                 onValueChange={(value) => updateForm('role', value)}
+                disabled={rolesLoading}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="customer">Khách hàng</SelectItem>
-                  <SelectItem value="staff">Nhân viên</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -226,6 +272,33 @@ export function UserDialog({
               />
             </div>
           </div>
+
+          {/* Warehouse picker - shown when role is staff */}
+          {formData.role === 'staff' && (
+            <div>
+              <Label>Kho hàng *</Label>
+              <Select
+                value={formData.warehouseId}
+                onValueChange={(value) => updateForm('warehouseId', value === 'none' ? '' : value)}
+                disabled={warehousesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={warehousesLoading ? 'Đang tải...' : 'Chọn kho hàng'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Chưa gán kho</SelectItem>
+                  {warehouses.map((wh) => (
+                    <SelectItem key={wh.id} value={wh.id}>
+                      {wh.name} ({wh.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Nhân viên sẽ được gán vào kho hàng này
+              </p>
+            </div>
+          )}
 
           <div>
             <Label>URL Avatar</Label>

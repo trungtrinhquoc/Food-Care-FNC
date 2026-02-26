@@ -175,12 +175,14 @@ export const adminService = {
   async getStats(): Promise<AdminStats> {
     // TODO: Replace with actual API call
     return Promise.resolve({
-      totalRevenue: 125000000,
-      totalOrders: 1247,
-      totalCustomers: 856,
+      totalRevenue: 2500000,
+      totalOrders: 150,
+      totalCustomers: 1200,
       totalProducts: 45,
       monthlyGrowth: 12.5,
-      activeSubscriptions: 342,
+      activeSubscriptions: 85,
+      pendingOrders: 8,
+      lowStockProducts: 3
     });
   },
 

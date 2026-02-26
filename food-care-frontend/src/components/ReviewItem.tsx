@@ -72,7 +72,7 @@ export const ReviewItem = memo(({ review, onHelpful }: Props) => {
                         {/* REVIEW IMAGES */}
                         {review.images && review.images.length > 0 && (
                             <div className="flex flex-wrap gap-2 mb-4">
-                                {review.images.map((img, idx) => (
+                                {review.images.map((img: string, idx: number) => (
                                     <div key={idx} className="w-20 h-20 rounded-lg overflow-hidden border border-gray-100 cursor-pointer hover:opacity-90 transition-opacity">
                                         <img
                                             src={img}

@@ -8,4 +8,7 @@ public interface IAdminStatsService
     Task<List<RevenueDataDto>> GetRevenueDataAsync(int months = 6);
     Task<DashboardSummaryDto> GetDashboardSummaryAsync();
     Task<List<OrderChartDataDto>> GetOrdersChartDataAsync(int days = 7);
+    Task<List<CategoryRevenueDto>> GetCategoryRevenueAsync();
+    Task<List<TopProductResponseDto>> GetTopProductsAsync(int limit = 5);
+    Task<List<UserTrafficDto>> GetUserTrafficAsync(int days = 7);
 }

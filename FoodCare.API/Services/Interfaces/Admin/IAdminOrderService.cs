@@ -1,5 +1,6 @@
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Orders;
+using FoodCare.API.Models.DTOs.Admin.Stats;
 
 namespace FoodCare.API.Services.Interfaces.Admin;
 
@@ -9,4 +10,5 @@ public interface IAdminOrderService
     Task<AdminOrderDetailDto?> GetOrderDetailAsync(Guid id);
     Task<List<AdminOrderDto>> GetRecentOrdersAsync(int count = 10);
     Task<bool> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDto dto);
+    Task<List<LatestOrderDto>> GetLatestOrdersAsync(int limit = 5);
 }

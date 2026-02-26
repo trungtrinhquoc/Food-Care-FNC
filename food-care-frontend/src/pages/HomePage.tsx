@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import type { Product } from '../types';
+import { useCart } from '../contexts/CartContext';
 import { ProductCard } from '../components/ProductCard';
 import { LowStockNotification } from '../components/LowStockNotification';
 import { productsApi } from '../services/productsApi';
@@ -10,6 +12,7 @@ import { Button } from '../components/ui/button';
 
 export default function HomePage() {
     const navigate = useNavigate();
+    const { addToCart } = useCart();
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -39,9 +42,8 @@ export default function HomePage() {
         .slice(0, 4);
 
     const handleAddToCart = (product: Product) => {
-        // TODO: Implement cart functionality
-        console.log('Add to cart:', product);
-        alert(`Đã thêm ${product.name} vào giỏ hàng`);
+        addToCart(product, 1);
+        toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
     };
 
     const handleViewDetail = (product: Product) => {

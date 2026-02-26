@@ -4,6 +4,8 @@ using FoodCare.API.Models.DTOs.Auth;
 using FoodCare.API.Models.DTOs.Orders;
 using FoodCare.API.Models.DTOs.Products;
 using FoodCare.API.Models.DTOs.Subscriptions;
+using FoodCare.API.Models.DTOs.Suppliers;
+using FoodCare.API.Models.Suppliers;
 
 namespace FoodCare.API.Helpers;
 
@@ -15,12 +17,7 @@ public class MappingProfile : Profile
         CreateMap<User, UserDto>()
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()))
             .ForMember(dest => dest.LoyaltyPoints, opt => opt.MapFrom(src => src.LoyaltyPoints ?? 0))
-            .ForMember(dest => dest.MemberTier, opt => opt.MapFrom(src => src.Tier))
-            .ForMember(dest => dest.TotalSpent, opt => opt.MapFrom(src => 
-                src.Orders
-                    .Where(o => o.PaymentStatus == Models.Enums.PaymentStatus.paid)
-                    .Sum(o => o.TotalAmount)))
-            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt));
+            .ForMember(dest => dest.MemberTier, opt => opt.MapFrom(src => src.Tier));
         
         // MemberTier mappings
         CreateMap<MemberTier, MemberTierDto>();
@@ -31,6 +28,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Sku, opt => opt.MapFrom(src => src.Sku ?? ""))
             .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.Images != null ? src.Images : null)) // Simplified image mapping
             .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
+            .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId))
+            .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier.StoreName : null))
             .ForMember(dest => dest.StockQuantity, opt => opt.MapFrom(src => src.StockQuantity ?? 0))
             .ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src => src.RatingAverage ?? 0))
             .ForMember(dest => dest.RatingCount, opt => opt.MapFrom(src => src.RatingCount ?? 0))
@@ -40,7 +39,7 @@ public class MappingProfile : Profile
         CreateMap<CreateProductDto, Product>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.BasePrice, opt => opt.MapFrom(src => src.BasePrice))
-            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images != null ? string.Join(",", src.Images) : null))
+            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
             .ForMember(dest => dest.Slug, opt => opt.MapFrom(src => GenerateSlug(src.Name)))
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
@@ -56,15 +55,8 @@ public class MappingProfile : Profile
         // Category mappings
         CreateMap<Category, CategoryDto>();
         CreateMap<Subscription, SubscriptionDto>();
-        
-        CreateMap<Order, OrdersDto>()
-            .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.OrderItems))
-            .ForMember(dest => dest.IsSubscriptionOrder, opt => opt.MapFrom(src => src.IsSubscriptionOrder ?? false))
-            .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src => src.DiscountAmount ?? 0))
-            .ForMember(dest => dest.ShippingFee, opt => opt.MapFrom(src => src.ShippingFee ?? 0))
-            .ForMember(dest => dest.MemberDiscountAmount, opt => opt.MapFrom(src => 0m)) // Placeholder
-            .ForMember(dest => dest.SubscriptionDiscountAmount, opt => opt.MapFrom(src => 0m)); // Placeholder
-
+            CreateMap<Order, OrdersDto>()
+                .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.OrderItems));
         CreateMap<OrderItem, OrdersItemDto>()
             .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.ProductName) ? src.ProductName : (src.Product != null ? src.Product.Name : string.Empty)))
             .ForMember(dest => dest.UnitPrice, opt => opt.MapFrom(src => src.Price))
@@ -72,8 +64,34 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.IsSubscription, opt => opt.MapFrom(src => ParseIsSubscription(src.VariantSnapshot)))
             .ForMember(dest => dest.SubscriptionFrequency, opt => opt.MapFrom(src => ParseFrequency(src.VariantSnapshot)))
             .ForMember(dest => dest.ProductImageUrl, opt => opt.MapFrom(src => src.Product != null ? src.Product.Images : null));
-    }
 
+        // Supplier mappings
+        CreateMap<Supplier, SupplierDto>()
+            .ForMember(dest => dest.ProductCount, opt => opt.MapFrom(src => src.Products != null ? src.Products.Count(p => p.IsDeleted != true) : 0));
+            
+        CreateMap<CreateSupplierDto, Supplier>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+            .ForMember(dest => dest.Products, opt => opt.Ignore());
+            
+        CreateMap<UpdateSupplierDto, Supplier>()
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+            
+        // Supplier role mappings
+        CreateMap<Supplier, SupplierProfileDto>()
+            .ForMember(dest => dest.ProductCount, opt => opt.MapFrom(src => src.Products != null ? src.Products.Count(p => p.IsDeleted != true) : 0))
+            .ForMember(dest => dest.TotalRevenue, opt => opt.MapFrom(src => 0)) // TODO: Calculate from orders
+            .ForMember(dest => dest.TotalOrders, opt => opt.MapFrom(src => 0)); // TODO: Calculate from orders
+            
+        CreateMap<Product, SupplierProductDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id.ToString()))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.ApprovalStatus ?? "pending"))
+            .ForMember(dest => dest.OrderCount, opt => opt.MapFrom(src => 0)) // TODO: Calculate from orders
+            .ForMember(dest => dest.TotalRevenue, opt => opt.MapFrom(src => 0)); // TODO: Calculate from orders
+    }
 
     private static bool ParseIsSubscription(string? snapshot)
     {
