@@ -15,8 +15,11 @@ import { orderApi } from '../services/orderApi';
 import { paymentApi } from '../services/paymentApi';
 import { profileApi } from '../services/api';
 import type { Address, CreateOrderRequest } from '../types';
+import { couponApi } from '../services/couponApi';
+import type { CouponDto } from '../services/couponApi';
 
-import { Calendar, CreditCard, MapPin, Package, Check, Plus } from 'lucide-react';
+import { Calendar, CreditCard, MapPin, Package, Check, Plus, Ticket, Percent } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 
 export default function CheckoutPage() {
@@ -47,6 +50,13 @@ export default function CheckoutPage() {
     const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<string>('');
     const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+
+    // Coupon state
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<CouponDto | null>(null);
+    const [couponError, setCouponError] = useState('');
+    const [availableCoupons, setAvailableCoupons] = useState<CouponDto[]>([]);
+    const [showCouponModal, setShowCouponModal] = useState(false);
 
     /* =======================
        GUARD PAGE
@@ -142,9 +152,56 @@ export default function CheckoutPage() {
         setShowNewAddressForm(false);
     };
 
+    // Calculate final totals
+    const subtotal = getSelectedTotal();
+
+    useEffect(() => {
+        if (user && selectedItems.length > 0) {
+            const fetchCoupons = async () => {
+                try {
+                    const list = await couponApi.getAvailableCoupons(subtotal);
+                    setAvailableCoupons(list);
+                } catch (error) {
+                    console.error('Lỗi tải mã giảm giá', error);
+                }
+            };
+            fetchCoupons();
+        }
+    }, [user, subtotal]);
+
     const fullAddress = [formData.address, address.ward, address.district, address.province]
         .filter(part => part && part.trim() !== '')
         .join(', ');
+
+    const handleApplyCoupon = async () => {
+        setCouponError('');
+        if (!couponCode.trim()) return;
+        try {
+            const result = await couponApi.validateCoupon(couponCode, getSelectedTotal());
+            setAppliedCoupon(result);
+            toast.success('Áp dụng mã giảm giá thành công');
+        } catch (error: any) {
+            setAppliedCoupon(null);
+            setCouponError(error.response?.data?.message || 'Mã giảm giá không hợp lệ');
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setCouponCode('');
+        setAppliedCoupon(null);
+        setCouponError('');
+    };
+
+    const discountAmount = appliedCoupon?.discountType === 'percentage'
+        ? subtotal * (appliedCoupon.discountValue / 100)
+        : (appliedCoupon?.discountValue || 0);
+
+    const finalDiscount = appliedCoupon?.maxDiscountAmount
+        ? Math.min(discountAmount, appliedCoupon.maxDiscountAmount)
+        : discountAmount;
+
+    const finalTotal = subtotal - finalDiscount;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -163,6 +220,7 @@ export default function CheckoutPage() {
                 phoneNumber: formData.phone,
                 paymentMethod,
                 note: formData.notes,
+                couponCode: appliedCoupon?.code,
                 items: selectedItems.map(item => ({
                     productId: item.product.id,
                     productName: item.product.name,
@@ -542,12 +600,62 @@ export default function CheckoutPage() {
                                         <span className="text-gray-600">Phí vận chuyển:</span>
                                         <span className="text-emerald-600">Miễn phí</span>
                                     </div>
+
+                                    {/* Coupon Section */}
+                                    <Separator className="my-4" />
+                                    <div className="space-y-3">
+                                        <Label className="text-sm font-semibold flex items-center gap-2">
+                                            <Ticket className="w-4 h-4 text-emerald-600" />
+                                            Mã giảm giá
+                                        </Label>
+
+                                        {!appliedCoupon ? (
+                                            <div className="flex flex-col gap-3">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="w-full justify-between items-center text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 h-12"
+                                                    onClick={() => setShowCouponModal(true)}
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <Ticket className="w-5 h-5" />
+                                                        Chọn hoặc nhập mã giảm giá
+                                                    </span>
+                                                    <span>{availableCoupons.length} ưu đãi có sẵn</span>
+                                                </Button>
+                                                {couponError && <p className="text-sm text-red-500">{couponError}</p>}
+                                            </div>
+                                        ) : (
+                                            <div className="p-4 border border-emerald-200 rounded-xl bg-emerald-50 relative overflow-hidden">
+                                                <div className="flex justify-between items-start relative z-10">
+                                                    <div>
+                                                        <p className="font-bold text-emerald-800 flex items-center gap-2">
+                                                            <Percent className="w-4 h-4" />
+                                                            {appliedCoupon.code}
+                                                        </p>
+                                                        <p className="text-sm text-emerald-600 mt-1">Đã áp dụng giảm {finalDiscount.toLocaleString('vi-VN')}đ</p>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={handleRemoveCoupon}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        Bỏ chọn
+                                                    </Button>
+                                                </div>
+                                                <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-[100px] pointer-events-none" />
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <Separator className="my-4" />
 
                                     <div className="flex justify-between font-semibold text-lg">
                                         <span>Tổng cộng</span>
                                         <span className="text-emerald-600">
-                                            {getSelectedTotal().toLocaleString('vi-VN')}đ
+                                            {finalTotal.toLocaleString('vi-VN')}đ
                                         </span>
                                     </div>
 
@@ -561,6 +669,98 @@ export default function CheckoutPage() {
                     </div>
                 </form>
             </div >
-        </div >
+
+            {/* Modal Chọn Mã Giảm Giá */}
+            <Dialog open={showCouponModal} onOpenChange={setShowCouponModal}>
+                <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col p-4 bg-gray-50 border-0">
+                    <DialogHeader className="mb-4 text-center">
+                        <DialogTitle className="text-2xl font-bold text-emerald-800">Khuyến Mãi</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-gray-100">
+                        <div className="flex gap-2 relative">
+                            <Input
+                                placeholder="Nhập mã ưu đãi..."
+                                value={couponCode}
+                                className="bg-gray-50 focus-visible:ring-emerald-500 font-semibold uppercase font-mono"
+                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            />
+                            <Button type="button" onClick={handleApplyCoupon} disabled={!couponCode.trim()} className="whitespace-nowrap px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm">
+                                Áp dụng
+                            </Button>
+                        </div>
+                        {couponError && <p className="text-sm text-red-500 mt-2 font-medium bg-red-50 p-2 rounded">{couponError}</p>}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                        <h4 className="font-semibold text-gray-700 sticky top-0 bg-gray-50 pt-1 pb-2 z-20">Mã dành cho bạn</h4>
+                        {availableCoupons.length === 0 ? (
+                            <div className="text-center text-gray-400 py-10 bg-white rounded-xl border border-dashed border-gray-200">
+                                <Ticket className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                <p>Tạm thời chưa có mã giảm giá nào.</p>
+                            </div>
+                        ) : (
+                            availableCoupons.map(coupon => {
+                                const isEligible = subtotal >= (coupon.minOrderValue || 0);
+                                return (
+                                    <div key={coupon.id} className={`p-0 border rounded-[1rem] flex transition-all relative overflow-visible ${!isEligible ? 'opacity-60 bg-gray-100 border-gray-200' : 'hover:border-emerald-300 hover:shadow-md bg-white border-emerald-100 shadow-sm'} ${appliedCoupon?.code === coupon.code ? 'ring-2 ring-emerald-500' : ''}`}>
+
+                                        {/* Trái - Icon */}
+                                        <div className={`w-[90px] flex items-center justify-center relative flex-shrink-0 border-r border-dashed border-gray-300 ${isEligible ? 'bg-gradient-to-b from-emerald-500 to-teal-600 rounded-l-[1rem]' : 'bg-gray-400 rounded-l-[1rem]'} p-3`}>
+                                            <div className="flex flex-col items-center text-white">
+                                                <Percent className="w-8 h-8 mb-1" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-1 rounded-full">VOUCHER</span>
+                                            </div>
+                                            <div className="absolute top-1/2 -right-2 transform -translate-y-1/2 w-4 h-4 bg-white/20 rounded-full blur-sm" />
+                                        </div>
+
+                                        {/* Phải - Info & Button */}
+                                        <div className="flex-1 p-4 flex items-center justify-between relative bg-white rounded-r-[1rem]">
+                                            <div className="pr-2">
+                                                <h4 className="font-bold text-gray-900 text-base">{coupon.code}</h4>
+                                                <p className="text-[13px] text-gray-700 mt-1">
+                                                    Giảm <span className="text-emerald-600 font-bold">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `${coupon.discountValue.toLocaleString('vi-VN')}đ`}</span>
+                                                    {coupon.maxDiscountAmount && coupon.discountType === 'percentage' ? ` (Tối đa ${coupon.maxDiscountAmount.toLocaleString('vi-VN')}đ)` : ''}
+                                                </p>
+                                                <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                                                    <span className="w-3 h-3 rounded-full bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-600">i</span>
+                                                    {coupon.minOrderValue ? `Đơn tối thiểu ${coupon.minOrderValue.toLocaleString('vi-VN')}đ` : 'Áp dụng mọi đơn hàng'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center pl-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant={isEligible ? 'default' : 'secondary'}
+                                                    disabled={!isEligible || appliedCoupon?.code === coupon.code}
+                                                    className={`${isEligible && appliedCoupon?.code !== coupon.code ? 'bg-emerald-600 hover:bg-emerald-700 shadow-sm' : ''} rounded-full px-4 font-semibold text-xs`}
+                                                    onClick={() => {
+                                                        setCouponCode(coupon.code);
+                                                        couponApi.validateCoupon(coupon.code, subtotal)
+                                                            .then(res => {
+                                                                setAppliedCoupon(res);
+                                                                setShowCouponModal(false);
+                                                                setCouponError('');
+                                                                toast.success('Áp dụng mã thành công!');
+                                                            }).catch(err => {
+                                                                setCouponError(err.response?.data?.message || 'Lỗi áp dụng');
+                                                            });
+                                                    }}
+                                                >
+                                                    {appliedCoupon?.code === coupon.code ? 'Đang dùng' : isEligible ? 'Dùng' : 'Chưa đủ'}
+                                                </Button>
+                                            </div>
+
+                                            {/* Circle Cutouts Design */}
+                                            <div className="absolute top-0 -left-2 w-4 h-4 bg-gray-50 rounded-full transform -translate-y-1/2" />
+                                            <div className="absolute bottom-0 -left-2 w-4 h-4 bg-gray-50 rounded-full transform translate-y-1/2" />
+                                        </div>
+                                    </div>
+                                )
+                            })
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }

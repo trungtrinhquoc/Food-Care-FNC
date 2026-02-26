@@ -10,10 +10,11 @@ import {
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { StatusBadge } from './ui/status-badge';
-import { MapPin, CreditCard, Package, Clock, Truck, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { MapPin, CreditCard, Package, Clock, Truck, CheckCircle, XCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import type { Order, OrderStatus, PaymentStatus } from '../types';
 import { useMemo, useState } from 'react';
 import { ProductReviewDialog } from './ProductReviewDialog';
+import { toast } from 'sonner';
 
 interface ParsedShippingAddress {
   recipientName?: string;
@@ -31,10 +32,11 @@ interface OrderDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   order: Order | null;
+  onReviewSuccess?: () => void;
 }
 
 
-export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDialogProps) {
+export function OrderDetailDialog({ open, onOpenChange, order, onReviewSuccess }: OrderDetailDialogProps) {
   const navigate = useNavigate();
 
   const [reviewState, setReviewState] = useState<{
@@ -165,6 +167,7 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
         productId={reviewState.productId}
         productName={reviewState.productName}
         orderId={order.id}
+        onSuccess={onReviewSuccess}
       />
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -195,6 +198,7 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
                   <p className="text-center text-gray-500 py-4 italic">Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.</p>
                 ) : (
                   order.items.map((item, idx) => {
+                    const isUnavailable = item.productIsDeleted || item.productIsActive === false;
                     const images = item.productImageUrl ? (() => {
                       try {
                         const parsed = JSON.parse(item.productImageUrl);
@@ -204,24 +208,57 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
                       }
                     })() : [];
                     return (
-                      <div key={idx} className="flex justify-between items-start gap-4">
-                        <div className="w-16 h-16 flex-shrink-0 border border-gray-200 rounded-md overflow-hidden bg-gray-100">
+                      <div key={idx} className={`flex justify-between items-start gap-4 ${isUnavailable ? 'opacity-60' : ''}`}>
+                        {/* Product Image */}
+                        <div
+                          className={`relative w-16 h-16 flex-shrink-0 border border-gray-200 rounded-md overflow-hidden bg-gray-100 ${isUnavailable ? 'cursor-not-allowed' : 'cursor-pointer'
+                            }`}
+                          onClick={() => {
+                            if (isUnavailable) {
+                              toast.warning(`"${item.productName}" đã bị xóa và không còn có sẵn`);
+                              return;
+                            }
+                            navigate(`/products/${item.productId}`);
+                            onOpenChange(false);
+                          }}
+                        >
                           <img
                             src={images[0] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop'}
                             alt={item.productName}
                             className="w-full h-full object-cover"
                           />
+                          {/* Deleted overlay */}
+                          {isUnavailable && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <XCircle className="w-6 h-6 text-white" />
+                            </div>
+                          )}
                         </div>
+
                         <div className="flex-1">
-                          <p
-                            className="font-medium text-gray-900 cursor-pointer hover:text-emerald-600 transition-colors"
-                            onClick={() => {
-                              navigate(`/products/${item.productId}`);
-                              onOpenChange(false);
-                            }}
-                          >
-                            {item.productName}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p
+                              className={`font-medium transition-colors ${isUnavailable
+                                  ? 'text-gray-400 line-through cursor-not-allowed'
+                                  : 'text-gray-900 cursor-pointer hover:text-emerald-600'
+                                }`}
+                              onClick={() => {
+                                if (isUnavailable) {
+                                  toast.warning(`"${item.productName}" đã bị xóa và không còn có sẵn`);
+                                  return;
+                                }
+                                navigate(`/products/${item.productId}`);
+                                onOpenChange(false);
+                              }}
+                            >
+                              {item.productName}
+                            </p>
+                            {isUnavailable && (
+                              <span className="inline-flex items-center gap-1 text-[10px] bg-red-100 text-red-600 font-semibold px-1.5 py-0.5 rounded-full">
+                                <AlertTriangle className="w-2.5 h-2.5" /> Đã xóa
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-sm text-gray-500">
                               {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
@@ -232,8 +269,8 @@ export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDial
                               </StatusBadge>
                             )}
                           </div>
-
                         </div>
+
                         <div className="text-right">
                           <p className="font-bold text-gray-900">
                             {(item.quantity * item.unitPrice).toLocaleString('vi-VN')}đ

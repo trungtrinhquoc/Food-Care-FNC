@@ -132,6 +132,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<ICouponService, CouponService>();
 
 // Register Chat Services (Simplified - Stateless)
 builder.Services.AddScoped<IChatService, ChatService>();
@@ -158,6 +159,50 @@ builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
 
 var app = builder.Build();
+
+// === AUTO-CREATE MISSING TABLES ===
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FoodCareDbContext>();
+    try
+    {
+        var conn = db.Database.GetDbConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            CREATE TABLE IF NOT EXISTS coupons (
+                id              SERIAL PRIMARY KEY,
+                code            VARCHAR(50) NOT NULL UNIQUE,
+                discount_type   VARCHAR(20),
+                discount_value  NUMERIC(15,2) NOT NULL DEFAULT 0,
+                min_order_value NUMERIC(15,2) DEFAULT 0,
+                max_discount_amount NUMERIC(15,2),
+                start_date      TIMESTAMPTZ DEFAULT now(),
+                end_date        TIMESTAMPTZ,
+                usage_limit     INT,
+                usage_count     INT DEFAULT 0,
+                is_active       BOOLEAN DEFAULT TRUE,
+                created_at      TIMESTAMPTZ DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS coupon_usage (
+                id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                coupon_id   INT REFERENCES coupons(id) ON DELETE SET NULL,
+                user_id     UUID NOT NULL,
+                order_id    UUID,
+                created_at  TIMESTAMPTZ DEFAULT now()
+            );
+        ";
+        await cmd.ExecuteNonQueryAsync();
+        await conn.CloseAsync();
+        Console.WriteLine("✅ Tables coupons/coupon_usage ensured.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  Table check failed: {ex.Message}");
+    }
+}
+// ========================================
 
 // Configure the HTTP request pipeline
 // Enable Swagger for all environments (including production for debugging)

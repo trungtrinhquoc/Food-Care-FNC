@@ -38,12 +38,20 @@ public class AdminApprovalsController : ControllerBase
 
         if (!string.IsNullOrEmpty(status))
         {
-            query = query.Where(p => p.ApprovalStatus == status);
+            if (status == "pending")
+            {
+                // Include both null and "pending" for legacy products
+                query = query.Where(p => p.ApprovalStatus == null || p.ApprovalStatus == "pending");
+            }
+            else
+            {
+                query = query.Where(p => p.ApprovalStatus == status);
+            }
         }
         else
         {
-            // Default: show pending
-            query = query.Where(p => p.ApprovalStatus == "pending");
+            // Default: show pending + null (legacy products inserted directly)
+            query = query.Where(p => p.ApprovalStatus == "pending" || p.ApprovalStatus == null);
         }
 
         var totalItems = await query.CountAsync();
@@ -125,6 +133,37 @@ public class AdminApprovalsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = $"Product {dto.Action}d successfully", productId, status = product.ApprovalStatus });
+    }
+
+    /// <summary>
+    /// Bulk approve all products with null approval status (legacy products)
+    /// </summary>
+    [HttpPost("products/bulk-approve-legacy")]
+    public async Task<ActionResult> BulkApproveLegacyProducts()
+    {
+        var adminUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(adminUserId)) return Unauthorized();
+
+        var legacyProducts = await _context.Products
+            .Where(p => p.ApprovalStatus == null && p.IsDeleted != true && p.IsActive == true)
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        var adminGuid = Guid.Parse(adminUserId);
+
+        foreach (var p in legacyProducts)
+        {
+            p.ApprovalStatus = "approved";
+            p.ApprovedAt = now;
+            p.ApprovedBy = adminGuid;
+            p.UpdatedAt = now;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Bulk approved {Count} legacy products by admin {AdminId}", legacyProducts.Count, adminUserId);
+
+        return Ok(new { message = $"Đã approve {legacyProducts.Count} sản phẩm legacy thành công", count = legacyProducts.Count });
     }
 
     // ===== SUPPLIER REGISTRATION APPROVALS =====

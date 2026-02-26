@@ -11,5 +11,9 @@
         public string? SubscriptionFrequency { get; set; }
         public bool IsReviewed { get; set; }
         public string? ProductImageUrl { get; set; }
+        // Product availability fields
+        public bool ProductIsDeleted { get; set; }
+        public bool ProductIsActive { get; set; }
     }
 }
+

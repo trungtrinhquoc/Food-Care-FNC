@@ -14,15 +14,18 @@ namespace FoodCare.API.Services.Implementations
         private readonly FoodCareDbContext _context;
         private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
+        private readonly ICouponService _couponService;
 
         public OrderService(
             FoodCareDbContext context,
             IMapper mapper,
-            ILogger<OrderService> logger)
+            ILogger<OrderService> logger,
+            ICouponService couponService)
         {
             _context = context;
             _mapper = mapper;
             _logger = logger;
+            _couponService = couponService;
         }
 
         public async Task<OrdersDto> CreateOrderAsync(CreateOrderDto dto)
@@ -36,6 +39,27 @@ namespace FoodCare.API.Services.Implementations
 
                 var shippingFee = 0m;
                 var discount = 0m;
+                Coupon? usedCoupon = null;
+
+                if (!string.IsNullOrEmpty(dto.CouponCode) && dto.UserId.HasValue)
+                {
+                    var couponDto = await _couponService.ValidateCouponAsync(dto.CouponCode, subtotal, dto.UserId.Value);
+                    usedCoupon = await _context.Coupons.FindAsync(couponDto.Id);
+
+                    if (usedCoupon != null)
+                    {
+                        var calculatedDiscount = usedCoupon.DiscountType == "percentage"
+                            ? subtotal * (usedCoupon.DiscountValue / 100)
+                            : usedCoupon.DiscountValue;
+
+                        if (usedCoupon.MaxDiscountAmount.HasValue && calculatedDiscount > usedCoupon.MaxDiscountAmount.Value)
+                        {
+                            calculatedDiscount = usedCoupon.MaxDiscountAmount.Value;
+                        }
+
+                        discount = calculatedDiscount;
+                    }
+                }
 
                 // 2. Tạo Order
                 var order = new Order
@@ -125,6 +149,20 @@ namespace FoodCare.API.Services.Implementations
                         CreatedAt = DateTime.UtcNow
                     };
                     _context.PaymentLogs.Add(paymentLog);
+
+                    if (usedCoupon != null)
+                    {
+                        usedCoupon.UsageCount = (usedCoupon.UsageCount ?? 0) + 1;
+                        var couponUsage = new CouponUsage
+                        {
+                            Id = Guid.NewGuid(),
+                            CouponId = usedCoupon.Id,
+                            UserId = dto.UserId.Value,
+                            OrderId = order.Id,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.CouponUsages.Add(couponUsage);
+                    }
                 }
 
 

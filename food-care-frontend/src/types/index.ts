@@ -147,6 +147,8 @@ export interface OrderItem {
     subscriptionFrequency?: SubscriptionFrequency;
     isReviewed?: boolean;
     productImageUrl?: string;
+    productIsDeleted?: boolean;
+    productIsActive?: boolean;
 }
 
 
@@ -192,6 +194,7 @@ export interface CreateOrderRequest {
     phoneNumber?: string;
     paymentMethod: string;
     note?: string;
+    couponCode?: string;
     items: CreateOrderItemRequest[];
 }
 

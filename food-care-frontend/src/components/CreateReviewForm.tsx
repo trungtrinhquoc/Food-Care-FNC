@@ -63,6 +63,7 @@ export function CreateReviewForm({
 
     const handleSubmit = async () => {
         if (!rating || !comment.trim()) return;
+        setSubmitting(true);
 
         try {
             // 1. Upload images first

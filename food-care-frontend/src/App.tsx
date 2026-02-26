@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
+import VoucherCenterPage from './pages/VoucherCenterPage';
 import SupplierDashboardPage from './pages/supplier/supplierDashboardPage';
 import StaffDashboardPage from './pages/staff/StaffDashboardPage';
 
@@ -154,11 +155,19 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-<Route
+          <Route
             path="/subscriptions"
             element={
               <ProtectedRoute>
                 <SubscriptionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vouchers"
+            element={
+              <ProtectedRoute>
+                <VoucherCenterPage />
               </ProtectedRoute>
             }
           />
