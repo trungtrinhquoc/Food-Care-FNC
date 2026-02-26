@@ -131,6 +131,7 @@ export interface CartItem {
     isSubscription: boolean;
     subscription?: {
         frequency: SubscriptionFrequency;
+        discount: number;
     };
 }
 
@@ -145,6 +146,7 @@ export interface OrderItem {
     isSubscription: boolean;
     subscriptionFrequency?: SubscriptionFrequency;
     isReviewed?: boolean;
+    productImageUrl?: string;
 }
 
 
@@ -186,6 +188,8 @@ export interface CreateOrderItemRequest {
 export interface CreateOrderRequest {
     userId: string;
     shippingAddress: string;
+    recipientName?: string;
+    phoneNumber?: string;
     paymentMethod: string;
     note?: string;
     items: CreateOrderItemRequest[];
@@ -295,11 +299,50 @@ export interface AdminCustomer {
     phone: string;
     memberTier: string;
     totalOrders: number;
-    totalSpent: number;
+    totalPrice: number;
     joinDate: string;
     subscriptions: number;
 }
 
+export interface Review {
+    id: string;
+    userName: string;
+    userAvatar: string | null;
+    rating: number;
+    comment: string;
+    images: string[];
+    createdAt: string;
+    helpfulCount: number;
+    isVerifiedPurchase: boolean;
+    isHelpfulByCurrentUser?: boolean;
+}
+
+export interface RatingDistributionItem {
+    stars: number;
+    count: number;
+    percentage: number;
+}
+
+export interface ReviewResponse {
+    averageRating: number;
+    totalReviews: number;
+    ratingDistribution: RatingDistributionItem[];
+    reviews: Review[];
+}
+
+export interface ReviewEligibility {
+    canReview: boolean;
+    reason?: string;
+}
+
+export interface CreatePaymentRequest {
+    orderId: string;
+}
+
+export interface PayOsCreateLinkResponse {
+    checkoutUrl: string;
+    paymentLinkId: string;
+}
 export interface ZaloReminder {
     id: string;
     customerName: string;

@@ -215,7 +215,7 @@ export const ReceivingDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error loading stats:', error);
     }
-  }, [selectedWarehouse]);
+  }, [warehouseName]);
 
   const loadData = useCallback(async () => {
     setLoading(true);

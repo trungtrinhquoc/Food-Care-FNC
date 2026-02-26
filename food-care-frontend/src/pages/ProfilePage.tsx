@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
-import { profileApi } from '../services/api';
+import { profileApi, productsApi } from '../services/api';
 import { toast } from 'sonner';
 import type { Order, Address, PaymentMethod, OrderStatus } from '../types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
@@ -22,7 +23,23 @@ import {
 import { SimplePagination } from '../components/ui/pagination';
 import { AddressSelector } from '../components/AddressSelector';
 import { OrderDetailDialog } from '../components/OrderDetailDialog';
+import { ProductReviewDialog } from '../components/ProductReviewDialog';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { uploadToCloudinary } from '../utils/cloudinary';
+
+function parseImageUrl(imageUrl?: string | string[]): string[] {
+    if (!imageUrl) return [];
+    if (Array.isArray(imageUrl)) return imageUrl;
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('[')) {
+        return [imageUrl];
+    }
+    try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) ? parsed : [imageUrl];
+    } catch {
+        return [imageUrl];
+    }
+}
 
 type MemberTierName = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
@@ -63,7 +80,9 @@ const memberTiers: Record<MemberTierName, TierData> = {
 export default function ProfilePage() {
     const { user, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
+    const { addToCart } = useCart();
     const [activeTab, setActiveTab] = useState('overview');
+    const [buyingAgain, setBuyingAgain] = useState(false);
 
     // State for data
     const [orders, setOrders] = useState<Order[]>([]);
@@ -71,6 +90,19 @@ export default function ProfilePage() {
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    // Review Dialog State
+    const [reviewState, setReviewState] = useState<{
+        open: boolean;
+        productId: string;
+        productName: string;
+        orderId: string;
+    }>({
+        open: false,
+        productId: '',
+        productName: '',
+        orderId: ''
+    });
 
     // Orders filter & pagination
     const [orderFilter, setOrderFilter] = useState<string>('all');
@@ -217,6 +249,51 @@ export default function ProfilePage() {
     const handleLogout = () => {
         logout();
         navigate('/');
+    };
+
+    const handleBuyAgain = async (order: Order) => {
+        if (!order || !order.items || order.items.length === 0) return;
+        try {
+            setBuyingAgain(true);
+            toast.loading('Đang thêm sản phẩm vào giỏ hàng...', { id: 'buy-again' });
+
+            let addedCount = 0;
+            for (const item of order.items) {
+                try {
+                    const product = await productsApi.getProduct(item.productId);
+                    let frequency: any = undefined;
+                    let discount = 0;
+                    if (item.isSubscription && item.subscriptionFrequency) {
+                        frequency = item.subscriptionFrequency;
+                        if (product.subscriptionDiscounts) {
+                            try {
+                                const discounts = typeof product.subscriptionDiscounts === 'string' ? JSON.parse(product.subscriptionDiscounts) : product.subscriptionDiscounts;
+                                discount = discounts[frequency] || 0;
+                            } catch (e) {
+                                console.error('Error parsing subscription discounts', e);
+                            }
+                        }
+                    }
+                    addToCart(product, item.quantity, item.isSubscription, frequency, discount);
+                    addedCount++;
+                } catch (err) {
+                    console.error('Lỗi khi lấy thông tin sản phẩm:', item.productId, err);
+                    toast.error(`Sản phẩm ${item.productName} hiện không khả dụng`);
+                }
+            }
+
+            if (addedCount > 0) {
+                toast.success(`Đã thêm ${addedCount} sản phẩm vào giỏ hàng`, { id: 'buy-again' });
+                navigate('/cart');
+            } else {
+                toast.error('Không thể thêm sản phẩm nào vào giỏ hàng', { id: 'buy-again' });
+            }
+        } catch (error) {
+            console.error('Lỗi khi mua lại:', error);
+            toast.error('Có lỗi xảy ra', { id: 'buy-again' });
+        } finally {
+            setBuyingAgain(false);
+        }
     };
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -554,18 +631,7 @@ export default function ProfilePage() {
         return statusMap[status] || status;
     };
 
-    const getStatusColor = (status: OrderStatus) => {
-        const colorMap: Record<OrderStatus, string> = {
-            pending: 'bg-yellow-100 text-yellow-800',
-            confirmed: 'bg-blue-100 text-blue-800',
-            processing: 'bg-blue-100 text-blue-800',
-            shipping: 'bg-purple-100 text-purple-800',
-            delivered: 'bg-green-100 text-green-800',
-            cancelled: 'bg-red-100 text-red-800',
-            returned: 'bg-gray-100 text-gray-800'
-        };
-        return colorMap[status] || 'bg-gray-100 text-gray-800';
-    };
+
 
     // Mock total orders count
     const totalOrders = orders.length;
@@ -793,8 +859,8 @@ export default function ProfilePage() {
                                     key={tab.id}
                                     onClick={() => setOrderFilter(tab.id)}
                                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${orderFilter === tab.id
-                                            ? 'bg-emerald-600 text-white shadow-md'
-                                            : 'bg-white text-gray-600 border hover:bg-gray-50'
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'bg-white text-gray-600 border hover:bg-gray-50'
                                         }`}
                                 >
                                     {tab.label}
@@ -823,55 +889,179 @@ export default function ProfilePage() {
                                 ) : (
                                     <div className="space-y-4">
                                         {paginatedOrders.map(order => (
-                                            <Card
+                                            <div
                                                 key={order.id}
-                                                className="border-2 cursor-pointer hover:border-emerald-500 transition-all hover:shadow-md group"
-                                                onClick={() => {
-                                                    setSelectedOrder(order);
-                                                    setIsDetailOpen(true);
-                                                }}
+                                                className="bg-white rounded-sm shadow-sm border border-gray-100 mb-4 overflow-hidden"
                                             >
-                                                <CardContent className="pt-6">
-                                                    <div className="flex items-start justify-between mb-4">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <h4 className="font-bold">{order.orderNumber}</h4>
-                                                                <StatusBadge className={getStatusColor(order.status)}>
-                                                                    {getStatusIcon(order.status)}
-                                                                    <span className="ml-1">{getStatusText(order.status)}</span>
-                                                                </StatusBadge>
-                                                            </div>
-                                                            <p className="text-sm text-gray-600">
-                                                                Đặt hàng: {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                                                            </p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-gray-600 text-sm">Tổng tiền</p>
-                                                            <p className="text-emerald-600 text-xl font-bold">{order.totalAmount.toLocaleString('vi-VN')}đ</p>
-                                                        </div>
+                                                {/* Card Header */}
+                                                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 bg-white">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-gray-800 text-sm">Food & Care Official</span>
+                                                        <a href={`/orders/${order.id}`} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                                            <div className="w-4 h-4 text-xs flex items-center justify-center border border-gray-300 rounded-sm">&gt;</div>
+                                                        </a>
                                                     </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-emerald-600 text-sm font-medium uppercase tracking-wide flex items-center gap-1">
+                                                            {getStatusIcon(order.status)}
+                                                            {getStatusText(order.status)}
+                                                        </span>
+                                                        {order.status === 'shipping' && (
+                                                            <div className="h-4 w-[1px] bg-gray-300 mx-1"></div>
+                                                        )}
+                                                        {order.status === 'shipping' && (
+                                                            <span className="text-red-500 text-sm uppercase">ĐANG GIAO HÀNG</span>
+                                                        )}
+                                                    </div>
+                                                </div>
 
-                                                    <Separator className="my-4" />
+                                                {/* Card Body - Products List */}
+                                                <div
+                                                    className="divide-y divide-gray-50 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setIsDetailOpen(true);
+                                                    }}
+                                                >
+                                                    {order.items.slice(0, 2).map((item, idx) => (
+                                                        <div key={idx} className="flex gap-4 px-6 py-4">
+                                                            {/* Product Image */}
+                                                            <div className="w-20 h-20 flex-shrink-0 border border-gray-200 rounded-sm overflow-hidden bg-gray-100">
+                                                                {(() => {
+                                                                    const images = parseImageUrl(item.productImageUrl);
+                                                                    const displayImage = images[0];
 
-                                                    <div className="space-y-3">
-                                                        {order.items.map((item, idx) => (
-                                                            <div key={idx} className="flex gap-3">
-                                                                <div className="flex-1">
-                                                                    <p className="font-medium">{item.productName}</p>
-                                                                    <p className="text-sm text-gray-600">
-                                                                        {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
-                                                                    </p>
-                                                                    {item.isSubscription && item.subscriptionFrequency && (
-                                                                        <StatusBadge variant="secondary" className="mt-1">
-                                                                            📦 {item.subscriptionFrequency === 'Monthly' ? 'Hàng tháng' : item.subscriptionFrequency}
-                                                                        </StatusBadge>
-                                                                    )}
+
+                                                                    return (
+                                                                        <ImageWithFallback
+                                                                            src={displayImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop'}
+                                                                            alt={item.productName}
+                                                                            className="w-full h-full object-cover"
+                                                                            fallbackSrc="/placeholder.png"
+                                                                        />
+                                                                    );
+                                                                })()}
+                                                            </div>
+
+                                                            {/* Product Info */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div className='pr-4'>
+                                                                        <h4 className="text-base text-gray-800 font-medium line-clamp-2 mb-1">{item.productName}</h4>
+                                                                        <div className="flex flex-wrap gap-2 mb-1">
+                                                                            {item.isSubscription && (
+                                                                                <span className="inline-flex items-center bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-sm border border-gray-200">
+                                                                                    Đăng ký định kỳ
+                                                                                    {item.subscriptionFrequency && ` • ${item.subscriptionFrequency}`}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="text-sm text-gray-500">x{item.quantity}</div>
+                                                                    </div>
+                                                                    <div className="text-right flex-shrink-0">
+                                                                        <span className="text-emerald-600 font-medium">{item.unitPrice.toLocaleString('vi-VN')}đ</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        ))}
+                                                        </div>
+                                                    ))}
+
+                                                    {/* Show "and x more items" if needed */}
+                                                    {order.items.length > 2 && (
+                                                        <div className="px-6 py-2 text-center text-xs text-gray-500 bg-gray-50/30">
+                                                            Xem thêm {order.items.length - 2} sản phẩm khác
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Card Footer */}
+                                                <div className="px-6 py-4 bg-white border-t border-gray-50/80">
+                                                    <div className="flex justify-end items-center gap-2 mb-4">
+                                                        <span className="text-sm text-gray-600">Thành tiền:</span>
+                                                        <span className="text-xl font-medium text-emerald-600">
+                                                            {order.totalAmount.toLocaleString('vi-VN')}đ
+                                                        </span>
                                                     </div>
-                                                </CardContent>
-                                            </Card>
+
+                                                    <div className="flex justify-end gap-3 actions">
+                                                        {['delivered', 'cancelled', 'returned'].includes(order.status) && (
+                                                            <Button
+                                                                disabled={buyingAgain}
+                                                                variant="default"
+                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px]"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleBuyAgain(order);
+                                                                }}
+                                                            >
+                                                                {buyingAgain ? 'Đang thêm...' : 'Mua Lại'}
+                                                            </Button>
+                                                        )}
+
+                                                        {['pending', 'confirmed'].includes(order.status) && (
+                                                            <Button
+                                                                variant="outline"
+                                                                className="border-gray-300 text-gray-600 hover:bg-gray-50 min-w-[140px]"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toast.info('Vui lòng liên hệ CSKH để hủy đơn');
+                                                                }}
+                                                            >
+                                                                Hủy Đơn Hàng
+                                                            </Button>
+                                                        )}
+
+                                                        <Button
+                                                            variant="outline"
+                                                            className="border-gray-300 text-gray-600 hover:bg-gray-50 min-w-[140px]"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                // Open details
+                                                                setSelectedOrder(order);
+                                                                setIsDetailOpen(true);
+                                                            }}
+                                                        >
+                                                            Xem Chi Tiết
+                                                        </Button>
+
+                                                        {['delivered'].includes(order.status) && (
+                                                            (() => {
+                                                                const isOrderReviewed = order.items && order.items.length > 0 && order.items.every(i => i.isReviewed);
+                                                                return (
+                                                                    <Button
+                                                                        disabled={isOrderReviewed}
+                                                                        className={`min-w-[140px] ${isOrderReviewed ? 'bg-gray-100 text-gray-400 border-none pointer-events-none' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const itemToReview = order.items && order.items.find(i => !i.isReviewed) || order.items?.[0];
+                                                                            if (itemToReview) {
+                                                                                setReviewState({
+                                                                                    open: true,
+                                                                                    productId: itemToReview.productId,
+                                                                                    productName: itemToReview.productName,
+                                                                                    orderId: order.id
+                                                                                });
+                                                                            } else {
+                                                                                toast.error("Không tìm thấy sản phẩm để đánh giá");
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {isOrderReviewed ? 'Bạn đã đánh giá' : 'Viết đánh giá'}
+                                                                    </Button>
+                                                                );
+                                                            })()
+                                                        )}
+
+                                                        {order.status === 'processing' && (
+                                                            <Button disabled className="bg-gray-100 text-gray-400 border-none min-w-[140px]">
+                                                                Đang Xử Lý
+                                                            </Button>
+                                                        )}
+                                                    </div>
+
+
+                                                </div>
+                                            </div>
                                         ))}
 
                                         {/* Pagination */}
@@ -1493,6 +1683,13 @@ export default function ProfilePage() {
                 </Tabs>
             </section>
 
+            <ProductReviewDialog
+                open={reviewState.open}
+                onOpenChange={(isOpen) => setReviewState(prev => ({ ...prev, open: isOpen }))}
+                productId={reviewState.productId}
+                productName={reviewState.productName}
+                orderId={reviewState.orderId}
+            />
             <OrderDetailDialog
                 open={isDetailOpen}
                 onOpenChange={setIsDetailOpen}
