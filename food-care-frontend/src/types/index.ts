@@ -1,9 +1,9 @@
 // Type definitions
 export type UserRole = 'Customer' | 'Admin';
 
-export type OrderStatus = 'Pending' | 'Processing' | 'Shipping' | 'Delivered' | 'Cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipping' | 'delivered' | 'cancelled' | 'returned';
 
-export type PaymentStatus = 'Unpaid' | 'Paid' | 'Failed' | 'Refunded';
+export type PaymentStatus = 'unpaid' | 'paid' | 'failed' | 'refunded';
 
 export type SubscriptionFrequency = 'Weekly' | 'BiWeekly' | 'Monthly' | 'Custom';
 
@@ -144,6 +144,7 @@ export interface OrderItem {
     totalPrice: number;
     isSubscription: boolean;
     subscriptionFrequency?: SubscriptionFrequency;
+    isReviewed?: boolean;
 }
 
 
@@ -162,6 +163,8 @@ export interface Order {
     isSubscriptionOrder: boolean;
     items: OrderItem[];
     createdAt: string;
+    shippingAddressSnapshot?: string;
+    paymentMethodSnapshot?: string;
 }
 export interface VariantSnapshot {
     isSubscription: boolean;
