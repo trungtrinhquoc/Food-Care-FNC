@@ -638,18 +638,37 @@ export default function ProfilePage() {
     const getStatusIcon = (status: OrderStatus) => {
         switch (status) {
             case 'pending':
-                return <Clock className="w-5 h-5 text-yellow-600" />;
+                return <Clock className="w-3.5 h-3.5" />;
             case 'confirmed':
             case 'processing':
-                return <AlertCircle className="w-5 h-5 text-blue-600" />;
+                return <AlertCircle className="w-3.5 h-3.5" />;
             case 'shipping':
-                return <Truck className="w-5 h-5 text-purple-600" />;
+                return <Truck className="w-3.5 h-3.5" />;
             case 'delivered':
-                return <CheckCircle className="w-5 h-5 text-green-600" />;
+                return <CheckCircle className="w-3.5 h-3.5" />;
             case 'cancelled':
-                return <XCircle className="w-5 h-5 text-red-600" />;
+                return <XCircle className="w-3.5 h-3.5" />;
             default:
-                return <Clock className="w-5 h-5 text-gray-600" />;
+                return <Clock className="w-3.5 h-3.5" />;
+        }
+    };
+
+    const getStatusStyle = (status: OrderStatus) => {
+        switch (status) {
+            case 'pending':
+                return 'text-amber-700 bg-amber-50 border-amber-200';
+            case 'confirmed':
+            case 'processing':
+                return 'text-blue-700 bg-blue-50 border-blue-200';
+            case 'shipping':
+                return 'text-purple-700 bg-purple-50 border-purple-200';
+            case 'delivered':
+                return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+            case 'cancelled':
+            case 'returned':
+                return 'text-rose-700 bg-rose-50 border-rose-200';
+            default:
+                return 'text-gray-700 bg-gray-50 border-gray-200';
         }
     };
 
@@ -939,7 +958,7 @@ export default function ProfilePage() {
                                                         </a>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-emerald-600 text-sm font-medium uppercase tracking-wide flex items-center gap-1">
+                                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(order.status)}`}>
                                                             {getStatusIcon(order.status)}
                                                             {getStatusText(order.status)}
                                                         </span>
@@ -947,7 +966,7 @@ export default function ProfilePage() {
                                                             <div className="h-4 w-[1px] bg-gray-300 mx-1"></div>
                                                         )}
                                                         {order.status === 'shipping' && (
-                                                            <span className="text-red-500 text-sm uppercase">ĐANG GIAO HÀNG</span>
+                                                            <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border border-orange-200">Đang giao hàng</span>
                                                         )}
                                                     </div>
                                                 </div>

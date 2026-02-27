@@ -56,9 +56,7 @@ public class MappingProfile : Profile
         CreateMap<Category, CategoryDto>();
         CreateMap<Subscription, SubscriptionDto>()
             .ForMember(dest => dest.ProductImages, opt => opt.MapFrom(src => 
-                src.Product != null && !string.IsNullOrEmpty(src.Product.Images) 
-                ? src.Product.Images.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries) 
-                : null));
+                src.Product != null ? ParseImages(src.Product.Images) : null));
 
             CreateMap<Order, OrdersDto>()
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.OrderItems));
@@ -145,4 +143,17 @@ public class MappingProfile : Profile
         return text;
     }
 
+    private static string[]? ParseImages(string? imagesStr)
+    {
+        if (string.IsNullOrEmpty(imagesStr)) return null;
+        try
+        {
+            if (imagesStr.TrimStart().StartsWith("["))
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<string[]>(imagesStr);
+            }
+        }
+        catch { }
+        return imagesStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+    }
 }

@@ -25,6 +25,19 @@ interface Subscription {
     discountPercent: number;
 }
 
+function parseImageUrl(imageUrl?: string | string[]): string[] {
+    if (!imageUrl) return [];
+    if (Array.isArray(imageUrl)) return imageUrl;
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('[')) {
+        return [imageUrl];
+    }
+    try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) ? parsed : [imageUrl];
+    } catch {
+        return [imageUrl];
+    }
+}
 
 export default function SubscriptionsPage() {
     const navigate = useNavigate();
@@ -182,71 +195,73 @@ export default function SubscriptionsPage() {
                                     style={{ animationDelay: `${index * 0.1}s` }}
                                 >
                                     <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
-                                        {/* Product Image Section - Slimmer */}
-                                        <div className="relative shrink-0 w-full md:w-auto flex justify-center md:block">
-                                            <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 shadow-sm group-hover:scale-[1.05] transition-transform duration-500">
-                                                <ImageWithFallback
-                                                    src={sub.productImages && sub.productImages.length > 0 ? sub.productImages[0] : undefined}
-                                                    alt={sub.productName}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-emerald-600 text-white rounded-md text-[9px] font-black shadow-lg">
-                                                    -{sub.discountPercent}%
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Main Content Section - Tighter */}
-                                        <div className="flex-1 min-w-0 w-full">
-                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                                                <h3 className="text-base md:text-lg font-bold text-gray-900 truncate hover:text-emerald-600 transition-colors cursor-pointer" onClick={() => navigate(`/products/${sub.productId}`)}>
-                                                    {sub.productName}
-                                                </h3>
-                                                <div className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight uppercase border transition-colors ${config.color.replace('text-', '').split(' ')[0]} ${config.color}`}>
-                                                    <StatusIcon className="w-2.5 h-2.5" />
-                                                    {config.label}
+                                        <div className="flex flex-row items-start gap-4 flex-1 w-full">
+                                            {/* Product Image Section - Slimmer */}
+                                            <div className="relative shrink-0">
+                                                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 shadow-sm group-hover:scale-[1.05] transition-transform duration-500 bg-gray-50">
+                                                    <ImageWithFallback
+                                                        src={parseImageUrl(sub.productImages as any)[0]}
+                                                        alt={sub.productName}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-emerald-600 text-white rounded-md text-[9px] font-black shadow-lg">
+                                                        -{sub.discountPercent}%
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3">
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                        <Calendar className="w-2.5 h-2.5" /> Chu kỳ
-                                                    </p>
-                                                    <p className="text-xs font-bold text-gray-800">{getFrequencyText(sub.frequency)}</p>
+                                            {/* Main Content Section - Tighter */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                                    <h3 className="text-base md:text-lg font-bold text-gray-900 truncate hover:text-emerald-600 transition-colors cursor-pointer" onClick={() => navigate(`/products/${sub.productId}`)}>
+                                                        {sub.productName}
+                                                    </h3>
+                                                    <div className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight uppercase border transition-colors ${config.color.replace('text-', '').split(' ')[0]} ${config.color}`}>
+                                                        <StatusIcon className="w-2.5 h-2.5" />
+                                                        {config.label}
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                        <Package className="w-2.5 h-2.5" /> Số lượng
-                                                    </p>
-                                                    <p className="text-xs font-bold text-gray-800">{sub.quantity} sp</p>
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                        <TrendingUp className="w-2.5 h-2.5" /> Tiết kiệm
-                                                    </p>
-                                                    <p className="text-xs font-bold text-emerald-600">Giảm {sub.discountPercent}%</p>
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                        <Clock className="w-2.5 h-2.5" /> Giao tiếp
-                                                    </p>
-                                                    <p className="text-xs font-bold text-gray-800">
-                                                        {new Date(sub.nextDeliveryDate).toLocaleDateString('vi-VN')}
-                                                    </p>
-                                                </div>
-                                            </div>
 
-                                            {sub.pauseUntil && (
-                                                <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold border border-amber-100 italic">
-                                                    <AlertCircle className="w-3 h-3" />
-                                                    Tạm dừng đến {new Date(sub.pauseUntil).toLocaleDateString('vi-VN')}
+                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3">
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <Calendar className="w-2.5 h-2.5" /> Chu kỳ
+                                                        </p>
+                                                        <p className="text-xs font-bold text-gray-800">{getFrequencyText(sub.frequency)}</p>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <Package className="w-2.5 h-2.5" /> Số lượng
+                                                        </p>
+                                                        <p className="text-xs font-bold text-gray-800">{sub.quantity} sp</p>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <TrendingUp className="w-2.5 h-2.5" /> Tiết kiệm
+                                                        </p>
+                                                        <p className="text-xs font-bold text-emerald-600">Giảm {sub.discountPercent}%</p>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <Clock className="w-2.5 h-2.5" /> Giao tiếp
+                                                        </p>
+                                                        <p className="text-xs font-bold text-gray-800">
+                                                            {new Date(sub.nextDeliveryDate).toLocaleDateString('vi-VN')}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            )}
+
+                                                {sub.pauseUntil && (
+                                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold border border-amber-100 italic">
+                                                        <AlertCircle className="w-3 h-3" />
+                                                        Tạm dừng đến {new Date(sub.pauseUntil).toLocaleDateString('vi-VN')}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Actions Section - Compact Buttons */}
-                                        <div className="flex shrink-0 flex-row md:flex-col items-center gap-2 w-full md:w-32 pt-3 md:pt-0 border-t md:border-t-0 border-gray-50">
+                                        <div className="flex shrink-0 w-full md:w-32 flex-row md:flex-col items-center justify-between gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-gray-50">
                                             {sub.status === 'active' && (
                                                 <Button
                                                     size="sm"
@@ -306,7 +321,7 @@ export default function SubscriptionsPage() {
                                 Đơn định kỳ giúp bạn tiết kiệm đến 15% chi phí và đảm bảo thực phẩm tươi ngon mỗi ngày. Bạn có toàn quyền quản lý bất kỳ lúc nào.
                             </p>
                         </div>
-                        <Button 
+                        <Button
                             onClick={() => navigate('/products')}
                             className="bg-white text-emerald-600 hover:bg-emerald-50 h-10 px-6 font-bold rounded-lg shadow-md active:scale-95 transition-all shrink-0 text-xs"
                         >
