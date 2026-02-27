@@ -24,6 +24,19 @@ public class AdminReviewService : IAdminReviewService
             .AsQueryable();
 
         // Apply filters
+        if (!string.IsNullOrEmpty(filter.Search))
+        {
+            var searchLower = filter.Search.ToLower();
+            query = query.Where(r => 
+                (r.Product != null && r.Product.Name.ToLower().Contains(searchLower)) ||
+                (r.User != null && (
+                    (r.User.FullName != null && r.User.FullName.ToLower().Contains(searchLower)) || 
+                    r.User.Email.ToLower().Contains(searchLower)
+                )) ||
+                (r.Comment != null && r.Comment.ToLower().Contains(searchLower))
+            );
+        }
+
         if (filter.ProductId.HasValue)
         {
             query = query.Where(r => r.ProductId == filter.ProductId.Value);

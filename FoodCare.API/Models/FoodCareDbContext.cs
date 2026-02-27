@@ -469,6 +469,24 @@ public partial class FoodCareDbContext : DbContext {
             entity.HasOne(d => d.Subscription).WithMany(p => p.SubscriptionSchedules).HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("subscription_schedules_subscription_id_fkey");
         });
 
+        modelBuilder.Entity<SubscriptionConfirmation>(entity => {
+            entity.HasKey(e => e.Id).HasName("subscription_confirmations_pkey");
+            entity.ToTable("subscription_confirmations");
+            entity.HasIndex(e => e.Token, "idx_subscription_confirmations_token").IsUnique();
+            entity.HasIndex(e => e.SubscriptionId, "idx_subscription_confirmations_subscription_id");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.Token).HasMaxLength(255).HasColumnName("token");
+            entity.Property(e => e.ScheduledDeliveryDate).HasColumnName("scheduled_delivery_date");
+            entity.Property(e => e.IsConfirmed).HasDefaultValue(false).HasColumnName("is_confirmed");
+            entity.Property(e => e.CustomerResponse).HasMaxLength(50).HasColumnName("customer_response");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+
+            entity.HasOne(d => d.Subscription).WithMany().HasForeignKey(d => d.SubscriptionId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("subscription_confirmations_subscription_id_fkey");
+        });
+
         modelBuilder.Entity<Supplier>(entity => {
             entity.HasKey(e => e.Id).HasName("suppliers_pkey");
             entity.ToTable("suppliers");

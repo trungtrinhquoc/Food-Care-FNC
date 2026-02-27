@@ -277,8 +277,8 @@ function AppRoutes() {
 
       {!location.pathname.startsWith('/admin') && <Footer />}
 
-      {/* Chat Widget - only show when logged in */}
-      <ChatWidgetWrapper />
+      {/* Chat Widget - only show when logged in and not on admin routes */}
+      {!location.pathname.startsWith('/admin') && <ChatWidgetWrapper />}
     </div>
   );
 }

@@ -12,15 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { 
-  Plus, Search, Edit, Trash2, UserCheck, UserX, 
-  Users, UserPlus, Shield, Key, BarChart3 
+import {
+  Plus, Search, Edit, Trash2, UserCheck, UserX,
+  Users, UserPlus, Shield, Key, BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { usersService } from "../../services/admin";
 import type { AdminUser, UserStats, PagedResult } from "../../types/admin";
 import { UserDialog } from "../../components/admin/UserDialog";
 import { ChangePasswordDialog } from "../../components/admin/ChangePasswordDialog";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -40,13 +41,15 @@ export function UsersTab() {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const result: PagedResult<AdminUser> = await usersService.getUsers({
         page: currentPage,
         pageSize,
-        search: searchTerm || undefined,
+        search: debouncedSearchTerm || undefined,
         role: roleFilter === 'all' ? undefined : roleFilter || undefined,
         isActive: activeFilter === 'all' ? undefined : activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
         sortBy: 'createdAt',
@@ -61,7 +64,7 @@ export function UsersTab() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, roleFilter, activeFilter]);
+  }, [currentPage, debouncedSearchTerm, roleFilter, activeFilter]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -106,7 +109,7 @@ export function UsersTab() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa người dùng này?')) return;
-    
+
     try {
       await usersService.deleteUser(id);
       loadUsers();
@@ -245,10 +248,7 @@ export function UsersTab() {
                 <Input
                   placeholder="Tìm kiếm theo email, tên, số điện thoại..."
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -361,14 +361,6 @@ export function UsersTab() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleChangePassword(user.id)}
-                            title="Đổi mật khẩu"
-                          >
-                            <Key className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
                             onClick={() => handleToggleActive(user)}
                             title={user.isActive ? "Khóa tài khoản" : "Mở khóa"}
                           >
@@ -377,14 +369,6 @@ export function UsersTab() {
                             ) : (
                               <UserCheck className="w-4 h-4 text-green-500" />
                             )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(user.id)}
-                            title="Xóa"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         </div>
                       </TableCell>

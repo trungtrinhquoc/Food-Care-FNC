@@ -11,6 +11,24 @@ export default function SubscriptionsList() {
     const [selectedForEmail, setSelectedForEmail] = useState<Set<string>>(new Set());
     const [sendingEmail, setSendingEmail] = useState(false);
 
+    const getFirstImageUrl = (imageString: any): string | null => {
+        if (!imageString) return null;
+        try {
+            if (typeof imageString === 'string' && imageString.startsWith('[')) {
+                const parsed = JSON.parse(imageString);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed[0];
+                }
+            } else if (typeof imageString === 'string') {
+                return imageString; // It might be a direct URL string
+            }
+            return null;
+        } catch (error) {
+            console.error("Failed to parse image URL:", imageString);
+            return null;
+        }
+    };
+
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
@@ -261,8 +279,8 @@ export default function SubscriptionsList() {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
-                                                {sub.productImage && (
-                                                    <img src={sub.productImage} alt={sub.productName} className="w-10 h-10 rounded object-cover" />
+                                                {sub.productImage && getFirstImageUrl(sub.productImage) && (
+                                                    <img src={getFirstImageUrl(sub.productImage)!} alt={sub.productName} className="w-10 h-10 rounded object-cover" />
                                                 )}
                                                 <div>
                                                     <div className="font-medium text-gray-900">{sub.productName}</div>

@@ -48,11 +48,10 @@ api.interceptors.response.use(
             error.config?.url?.includes('/auth/register');
 
         if (error.response?.status === 401 && !isAuthEndpoint) {
-            // Only redirect to login if not already on admin pages or auth pages
-            const isAdminRoute = window.location.pathname.startsWith('/admin');
+            // Redirect to login on unauthorized
             const isLoginPage = window.location.pathname === '/login';
 
-            if (!isAdminRoute && !isLoginPage) {
+            if (!isLoginPage) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 window.location.href = '/login';

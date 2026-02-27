@@ -24,6 +24,7 @@ public class AdminReviewDto
 public class AdminReviewFilterDto
 {
     public Guid? ProductId { get; set; }
+    public string? Search { get; set; }
     public Guid? UserId { get; set; }
     public int? MinRating { get; set; }
     public int? MaxRating { get; set; }

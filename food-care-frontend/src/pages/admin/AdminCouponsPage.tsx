@@ -216,7 +216,7 @@ export default function AdminCouponsPage() {
 
             {/* Coupon Cards Grid */}
             {filtered.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
                     <Ticket className="w-16 h-16 mx-auto mb-4 text-gray-200" />
                     <p className="text-gray-400 text-lg">Chưa có mã giảm giá nào</p>
                     <Button onClick={openCreateModal} variant="outline" className="mt-4">
