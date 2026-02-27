@@ -36,8 +36,9 @@ public class ProductService : IProductService
 
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
         {
-            query = query.Where(p => p.Name.Contains(filter.SearchTerm) || 
-                                    (p.Description != null && p.Description.Contains(filter.SearchTerm)));
+            var searchTerm = $"%{filter.SearchTerm.Trim()}%";
+            query = query.Where(p => EF.Functions.ILike(p.Name, searchTerm) || 
+                                    (p.Description != null && EF.Functions.ILike(p.Description, searchTerm)));
         }
 
         if (filter.MinPrice.HasValue)
@@ -57,6 +58,11 @@ public class ProductService : IProductService
 
         var totalCount = await query.CountAsync();
 
+        if (totalCount == 0)
+        {
+            return (new List<ProductDto>(), 0);
+        }
+
         query = filter.SortBy?.ToLower() switch
         {
             "price_asc" => query.OrderBy(p => p.BasePrice),
@@ -67,6 +73,8 @@ public class ProductService : IProductService
         };
 
         var products = await query
+            .Include(p => p.Category)
+            .Include(p => p.Supplier)
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .ToListAsync();

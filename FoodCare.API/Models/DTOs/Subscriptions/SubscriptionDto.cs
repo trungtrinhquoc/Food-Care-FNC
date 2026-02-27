@@ -8,6 +8,8 @@ namespace FoodCare.API.Models.DTOs.Subscriptions
 
         public Guid ProductId { get; set; }
         public string ProductName { get; set; } = null!;
+        public string[]? ProductImages { get; set; }
+
 
         public SubFrequency Frequency { get; set; }
         public int Quantity { get; set; }

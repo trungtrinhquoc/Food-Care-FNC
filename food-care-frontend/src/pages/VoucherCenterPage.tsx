@@ -23,8 +23,8 @@ function CouponCard({ coupon, onCopy, copied }: CouponCardProps) {
             {/* Left colored panel */}
             <div className={`w-[90px] flex-shrink-0 flex flex-col items-center justify-center p-3 relative
                 ${isPercent
-                    ? 'bg-gradient-to-b from-purple-500 to-pink-600'
-                    : 'bg-gradient-to-b from-orange-400 to-amber-500'}`}
+                    ? 'bg-gradient-to-b from-emerald-500 to-teal-600'
+                    : 'bg-gradient-to-b from-emerald-400 to-emerald-600'}`}
             >
                 <div className="text-white text-center">
                     {isPercent
@@ -50,7 +50,7 @@ function CouponCard({ coupon, onCopy, copied }: CouponCardProps) {
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className={`text-xl font-black font-mono tracking-wider ${isPercent ? 'text-purple-700' : 'text-orange-600'}`}>
+                        <span className={`text-xl font-bold tracking-tight ${isPercent ? 'text-emerald-700' : 'text-emerald-600'}`}>
                             {coupon.code}
                         </span>
                         {daysLeft !== null && daysLeft <= 7 && (
@@ -62,7 +62,7 @@ function CouponCard({ coupon, onCopy, copied }: CouponCardProps) {
                     </div>
                     <p className="text-sm font-semibold text-gray-800 mb-1">
                         Giảm{' '}
-                        <span className={isPercent ? 'text-purple-600' : 'text-orange-500'}>
+                        <span className="text-emerald-600">
                             {isPercent ? `${coupon.discountValue}%` : `${coupon.discountValue.toLocaleString('vi-VN')}đ`}
                         </span>
                         {coupon.maxDiscountAmount && isPercent && (
@@ -82,9 +82,7 @@ function CouponCard({ coupon, onCopy, copied }: CouponCardProps) {
                     className={`ml-3 flex-shrink-0 flex flex-col items-center justify-center w-16 h-14 rounded-xl border-2 border-dashed transition-all
                         ${copied
                             ? 'border-green-400 bg-green-50 text-green-600'
-                            : isPercent
-                                ? 'border-purple-300 bg-purple-50 text-purple-600 hover:border-purple-500 hover:bg-purple-100'
-                                : 'border-orange-300 bg-orange-50 text-orange-500 hover:border-orange-500 hover:bg-orange-100'
+                            : 'border-emerald-300 bg-emerald-50 text-emerald-600 hover:border-emerald-500 hover:bg-emerald-100'
                         }`}
                 >
                     {copied ? (
@@ -140,9 +138,9 @@ export default function VoucherCenterPage() {
     const fixedCoupons = coupons.filter(c => c.discountType !== 'percentage');
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-white">
+        <div className="min-h-screen bg-gray-50/50">
             {/* Hero Banner */}
-            <div className="relative bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 overflow-hidden">
+            <div className="relative bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 overflow-hidden">
                 <div className="absolute inset-0 opacity-20">
                     {/* Pattern background */}
                     {Array.from({ length: 20 }).map((_, i) => (
@@ -159,13 +157,8 @@ export default function VoucherCenterPage() {
                     ))}
                 </div>
                 <div className="relative container mx-auto px-4 py-12 text-center text-white">
-                    <div className="flex justify-center mb-4">
-                        <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                            <Ticket className="w-9 h-9 text-white" />
-                        </div>
-                    </div>
-                    <h1 className="text-4xl font-black mb-2">🎁 Kho Voucher Của Bạn</h1>
-                    <p className="text-white/80 text-lg">
+                    <h1 className="text-3xl font-bold mb-2 tracking-tight">Kho Voucher Của Bạn</h1>
+                    <p className="text-emerald-50 text-lg max-w-2xl mx-auto font-medium">
                         Tất cả ưu đãi khuyến mãi dành riêng cho bạn — sao chép và áp dụng ngay khi mua hàng!
                     </p>
                     <div className="flex justify-center gap-3 mt-6 flex-wrap">
@@ -196,7 +189,7 @@ export default function VoucherCenterPage() {
                         <p className="text-gray-400 text-sm mb-6">Hãy quay lại sau, chúng tôi thường xuyên cập nhật ưu đãi mới nhé!</p>
                         <button
                             onClick={() => navigate('/products')}
-                            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+                            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
                         >
                             Mua sắm ngay <ChevronRight className="w-4 h-4" />
                         </button>
@@ -206,11 +199,11 @@ export default function VoucherCenterPage() {
                         {percentCoupons.length > 0 && (
                             <section>
                                 <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                        <Percent className="w-4 h-4 text-purple-600" />
+                                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                        <Percent className="w-4 h-4 text-emerald-600" />
                                     </div>
                                     <h2 className="text-lg font-bold text-gray-800">Giảm theo phần trăm</h2>
-                                    <span className="bg-purple-100 text-purple-600 text-xs font-semibold px-2 py-0.5 rounded-full">{percentCoupons.length}</span>
+                                    <span className="bg-emerald-100 text-emerald-600 text-xs font-semibold px-2 py-0.5 rounded-full">{percentCoupons.length}</span>
                                 </div>
                                 <div className="space-y-3">
                                     {percentCoupons.map(c => (
@@ -228,11 +221,11 @@ export default function VoucherCenterPage() {
                         {fixedCoupons.length > 0 && (
                             <section>
                                 <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                                        <Gift className="w-4 h-4 text-orange-600" />
+                                    <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
+                                        <Gift className="w-4 h-4 text-teal-600" />
                                     </div>
                                     <h2 className="text-lg font-bold text-gray-800">Giảm tiền trực tiếp</h2>
-                                    <span className="bg-orange-100 text-orange-600 text-xs font-semibold px-2 py-0.5 rounded-full">{fixedCoupons.length}</span>
+                                    <span className="bg-teal-100 text-teal-600 text-xs font-semibold px-2 py-0.5 rounded-full">{fixedCoupons.length}</span>
                                 </div>
                                 <div className="space-y-3">
                                     {fixedCoupons.map(c => (
@@ -248,12 +241,12 @@ export default function VoucherCenterPage() {
                         )}
 
                         {/* CTA */}
-                        <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-6 text-center text-white shadow-lg">
-                            <p className="font-bold text-lg mb-1">Sẵn sàng mua sắm?</p>
-                            <p className="text-white/80 text-sm mb-4">Copy mã và áp dụng ngay tại bước thanh toán</p>
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-8 text-center text-white shadow-xl shadow-emerald-500/10">
+                            <p className="font-bold text-xl mb-2">Sẵn sàng mua sắm?</p>
+                            <p className="text-emerald-50 text-sm mb-6">Copy mã và áp dụng ngay tại bước thanh toán để nhận ưu đãi</p>
                             <button
                                 onClick={() => navigate('/products')}
-                                className="bg-white text-orange-600 font-bold px-6 py-2.5 rounded-xl hover:bg-orange-50 transition-colors inline-flex items-center gap-2"
+                                className="bg-white text-emerald-600 font-bold px-8 py-3 rounded-xl hover:bg-emerald-50 transition-all shadow-md inline-flex items-center gap-2"
                             >
                                 Mua sắm ngay <ChevronRight className="w-4 h-4" />
                             </button>
@@ -261,6 +254,6 @@ export default function VoucherCenterPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

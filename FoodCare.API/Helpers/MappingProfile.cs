@@ -54,7 +54,12 @@ public class MappingProfile : Profile
         
         // Category mappings
         CreateMap<Category, CategoryDto>();
-        CreateMap<Subscription, SubscriptionDto>();
+        CreateMap<Subscription, SubscriptionDto>()
+            .ForMember(dest => dest.ProductImages, opt => opt.MapFrom(src => 
+                src.Product != null && !string.IsNullOrEmpty(src.Product.Images) 
+                ? src.Product.Images.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries) 
+                : null));
+
             CreateMap<Order, OrdersDto>()
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.OrderItems));
         CreateMap<OrderItem, OrdersItemDto>()

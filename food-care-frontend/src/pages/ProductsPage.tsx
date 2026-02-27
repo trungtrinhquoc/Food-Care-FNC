@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../services/productsApi';
 import { categoriesApi } from '../services/api';
 import { useCart } from '../contexts/CartContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import type { Product } from '../types'
 import { ProductCard } from '../components/ProductCard'
@@ -27,6 +27,15 @@ export default function ProductsPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearchQuery(searchInput);
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
     const { data: categories } = useQuery({
         queryKey: ['categories'],
         queryFn: categoriesApi.getCategories,
@@ -38,7 +47,7 @@ export default function ProductsPage() {
                 page: currentPage,
                 pageSize,
                 searchTerm: searchQuery || undefined,
-                categoryId: selectedCategory === 'all' ? undefined : parseInt(selectedCategory, 10),
+                categoryId: (searchQuery || selectedCategory === 'all') ? undefined : parseInt(selectedCategory, 10),
             }),
     });
 
@@ -48,6 +57,8 @@ export default function ProductsPage() {
     // Reset page when filters change
     const handleCategoryChange = (category: string) => {
         setSelectedCategory(category);
+        setSearchInput('');
+        setSearchQuery('');
         setCurrentPage(1);
     };
 
@@ -56,11 +67,14 @@ export default function ProductsPage() {
         setCurrentPage(1);
     };
 
-    const { addToCart } = useCart();
+    const handleClearFilters = () => {
+        setSelectedCategory('all');
+        setSearchInput('');
+        setSearchQuery('');
+        setCurrentPage(1);
+    };
 
-    if (isLoading) {
-        return <div className="text-center py-12">Đang tải...</div>;
-    }
+    const { addToCart } = useCart();
 
     if (error) {
         return (
@@ -72,11 +86,11 @@ export default function ProductsPage() {
 
     return (
         <div>
-            <section className="bg-emerald-50/30">
-                <div className="container mx-auto px-4 py-6 md:py-10">
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-2">Sản Phẩm Thiết Yếu</h1>
-                    <p className="text-sm md:text-base text-gray-600 max-w-2xl">
-                        Khám phá các sản phẩm chất lượng cao với giá ưu đãi khi đặt hàng định kỳ
+            <section className="bg-white border-b border-gray-100">
+                <div className="container mx-auto px-4 py-8 md:py-12">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 tracking-tight">Sản Phẩm Thiết Yếu</h1>
+                    <p className="text-sm md:text-base text-gray-500 max-w-2xl leading-relaxed">
+                        Khám phá các sản phẩm chất lượng cao với giá ưu đãi đặc biệt khi đặt hàng định kỳ.
                     </p>
                 </div>
             </section>
@@ -85,10 +99,10 @@ export default function ProductsPage() {
                 <div className="container mx-auto px-4 py-3 md:py-4">
                     <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
                         {/* Category Tabs */}
-                        <div className="w-full lg:w-auto overflow-hidden">
+                        <div className="w-full lg:w-auto overflow-x-auto scrollbar-hide no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
                             <Tabs value={selectedCategory} className="w-full">
                                 <TabsList
-                                    className="flex gap-1.5 p-1 bg-gray-50/50 rounded-xl overflow-x-auto whitespace-nowrap scrollbar-hide no-scrollbar"
+                                    className="flex flex-nowrap gap-1.5 p-1 bg-gray-50/80 rounded-xl overflow-x-auto scrollbar-hide no-scrollbar min-w-max"
                                 >
                                     <TabsTrigger
                                         value="all"
@@ -156,15 +170,35 @@ export default function ProductsPage() {
             </section>
 
             <div className="container mx-auto px-4 py-6 md:py-8 lg:py-12">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-                    {data?.products.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            product={product}
-                            onViewDetail={handleViewDetail}
-                            onAddToCart={handleAddToCart}
-                        />
-                    ))}
+                <div className="relative min-h-[400px]">
+                    {isLoading ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6 opacity-50">
+                            {[...Array(pageSize)].map((_, i) => (
+                                <div key={i} className="bg-gray-100 animate-pulse aspect-[3/4] rounded-xl" />
+                            ))}
+                        </div>
+                    ) : (data?.products.length || 0) > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+                            {data?.products.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    onViewDetail={handleViewDetail}
+                                    onAddToCart={handleAddToCart}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 bg-gray-50 rounded-3xl">
+                            <p className="text-gray-500 font-medium mb-4">Không tìm thấy sản phẩm nào phù hợp.</p>
+                            <button
+                                onClick={handleClearFilters}
+                                className="px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
+                            >
+                                Xóa bộ lọc và xem tất cả
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Pagination */}
