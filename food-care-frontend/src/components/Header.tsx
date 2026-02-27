@@ -80,7 +80,7 @@ export default function Header() {
     };
 
     const navLinkClass = (path: string) =>
-        `relative px-1 py-2 text-sm font-medium transition-colors ${isActiveLink(path)
+        `relative px-1 py-2 text-base font-medium transition-colors ${isActiveLink(path)
             ? 'text-emerald-600'
             : 'text-gray-600 hover:text-emerald-600'
         }`;
@@ -299,7 +299,7 @@ export default function Header() {
                         </div>
                     </Link>
 
-                    <nav className="hidden lg:flex items-center space-x-1">
+                    <nav className="hidden lg:flex items-center space-x-6">
                         <Link to="/" className={navLinkClass('/')}>Trang chủ <span className={navLinkUnderline('/')} /></Link>
                         <Link to="/products" className={navLinkClass('/products')}>Sản phẩm <span className={navLinkUnderline('/products')} /></Link>
                         {isAuthenticated && (

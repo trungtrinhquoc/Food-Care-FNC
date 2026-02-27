@@ -74,7 +74,7 @@ export default function ProductsPage() {
         <div>
             <section className="bg-emerald-50/30">
                 <div className="container mx-auto px-4 py-6 md:py-10">
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">Sản Phẩm Thiết Yếu</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-2">Sản Phẩm Thiết Yếu</h1>
                     <p className="text-sm md:text-base text-gray-600 max-w-2xl">
                         Khám phá các sản phẩm chất lượng cao với giá ưu đãi khi đặt hàng định kỳ
                     </p>

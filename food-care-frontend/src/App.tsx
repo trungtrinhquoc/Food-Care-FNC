@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -18,6 +19,8 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
 import SupplierDashboardPage from './pages/supplier/supplierDashboardPage';
 import StaffDashboardPage from './pages/staff/StaffDashboardPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
 
 // Warehouse Receiving Components
 import ReceivingDashboard from './components/staff/ReceivingDashboard';
@@ -42,6 +45,15 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Scroll to top on navigation
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -154,7 +166,7 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-<Route
+          <Route
             path="/subscriptions"
             element={
               <ProtectedRoute>
@@ -245,6 +257,8 @@ function AppRoutes() {
               </StaffRoute>
             }
           />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
 
           {/* 404 catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -270,6 +284,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <CartProvider>
             <AppRoutes />
