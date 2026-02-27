@@ -7,7 +7,7 @@ function formatTimeAgo(date: string | Date): string {
   const now = new Date();
   const past = new Date(date);
   const seconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-  
+
   if (seconds < 60) return 'vài giây trước';
   if (seconds < 3600) return `${Math.floor(seconds / 60)} phút trước`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} giờ trước`;
@@ -85,7 +85,9 @@ export function LatestOrdersTable({ orders, isLoading = false, onViewOrder }: La
           {orders.map((order) => (
             <tr key={order.id} className="hover:bg-gray-50 transition-colors">
               <td className="py-3 px-4">
-                <span className="text-sm font-medium text-gray-900">#{order.id}</span>
+                <span className="text-sm font-medium text-gray-900" title={`#${order.id}`}>
+                  #{order.id.slice(0, 8)}{order.id.length > 8 ? "..." : ""}
+                </span>
               </td>
               <td className="py-3 px-4">
                 <span className="text-sm text-gray-700">{order.customerName}</span>

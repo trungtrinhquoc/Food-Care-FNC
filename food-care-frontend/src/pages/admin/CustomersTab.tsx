@@ -12,6 +12,7 @@ import { CustomerDialog } from "../../components/admin/CustomerDialog";
 import { CustomerDetailDialog } from "../../components/admin/CustomerDetailDialog";
 import { customersService } from "../../services/admin";
 import type { AdminUser, CustomerStats, MemberTier } from "../../types/admin";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export function CustomersTab() {
   // State
@@ -25,12 +26,14 @@ export function CustomersTab() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10;
-  
+
   // Dialog state
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<AdminUser | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [viewingCustomerId, setViewingCustomerId] = useState<string | null>(null);
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Fetch customers from API
   const fetchCustomers = useCallback(async () => {
@@ -40,11 +43,11 @@ export function CustomersTab() {
         page,
         pageSize,
         role: 'customer',
-        search: searchTerm || undefined,
+        search: debouncedSearchTerm || undefined,
         tierId: tierFilter !== 'all' ? parseInt(tierFilter) : undefined,
         isActive: statusFilter !== 'all' ? statusFilter === 'active' : undefined,
       });
-      
+
       setCustomers(response.items || []);
       setTotalPages(response.totalPages || 1);
       setTotalItems(response.totalItems || 0);
@@ -54,7 +57,7 @@ export function CustomersTab() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchTerm, tierFilter, statusFilter]);
+  }, [page, debouncedSearchTerm, tierFilter, statusFilter]);
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -78,7 +81,7 @@ export function CustomersTab() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, tierFilter, statusFilter]);
+  }, [debouncedSearchTerm, tierFilter, statusFilter]);
 
   const handleEdit = (customer: AdminUser) => {
     setEditingCustomer(customer);
@@ -147,7 +150,7 @@ export function CustomersTab() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -161,7 +164,7 @@ export function CustomersTab() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -175,7 +178,7 @@ export function CustomersTab() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -323,18 +326,17 @@ export function CustomersTab() {
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm text-gray-600">
                             <Clock className="h-3 w-3 text-gray-400" />
-                            {customer.lastLoginAt 
+                            {customer.lastLoginAt
                               ? formatDateTime(customer.lastLoginAt)
                               : <span className="text-gray-400">Chưa đăng nhập</span>
                             }
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            customer.isActive 
-                              ? 'bg-green-100 text-green-700' 
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${customer.isActive
+                              ? 'bg-green-100 text-green-700'
                               : 'bg-gray-100 text-gray-600'
-                          }`}>
+                            }`}>
                             {customer.isActive ? 'Hoạt động' : 'Ngừng HĐ'}
                           </span>
                         </TableCell>

@@ -11,6 +11,7 @@ import { OrderDetailDialog } from "../../components/admin/OrderDetailDialog";
 import { ordersService } from "../../services/admin";
 import type { AdminOrder, OrderStatus } from "../../types/admin";
 import { formatCurrency, formatShortDate } from "../../constants/admin";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export function OrdersTab() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -24,13 +25,15 @@ export function OrdersTab() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const pageSize = 10;
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const fetchOrders = useCallback(async () => {
     try {
       setIsLoading(true);
       const result = await ordersService.getOrders({
         page: currentPage,
         pageSize,
-        searchTerm: searchTerm || undefined,
+        searchTerm: debouncedSearchTerm || undefined,
         status: statusFilter !== 'all' ? statusFilter as OrderStatus : undefined,
         sortBy: 'createdAt',
         sortDescending: true,
@@ -43,7 +46,7 @@ export function OrdersTab() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter]);
 
   useEffect(() => {
     fetchOrders();
@@ -52,7 +55,7 @@ export function OrdersTab() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [debouncedSearchTerm, statusFilter]);
 
   const handleViewDetail = useCallback((order: AdminOrder) => {
     setSelectedOrder(order);
@@ -71,7 +74,7 @@ export function OrdersTab() {
 
   if (isLoading && orders.length === 0) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
         <span className="ml-2 text-gray-600">Đang tải...</span>
       </div>

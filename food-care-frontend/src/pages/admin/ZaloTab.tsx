@@ -51,22 +51,22 @@ export function ZaloTab() {
   }, [filteredReminders, currentPage, pageSize]);
 
   const handleSendReminder = useCallback((reminderId: string) => {
-    setReminders(prev => prev.map(r => 
+    setReminders(prev => prev.map(r =>
       r.id === reminderId ? { ...r, status: 'sent' as const, sentDate: new Date().toISOString().split('T')[0] } : r
     ));
   }, []);
 
   const handleSendBulk = useCallback(() => {
-    setReminders(prev => prev.map(r => 
+    setReminders(prev => prev.map(r =>
       r.status === 'pending' ? { ...r, status: 'sent' as const, sentDate: new Date().toISOString().split('T')[0] } : r
     ));
   }, []);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        <span className="ml-2 text-gray-600">Đang tải...</span>
+        <span className="ml-2 text-gray-600">Đang tải cấu hình Zalo...</span>
       </div>
     );
   }

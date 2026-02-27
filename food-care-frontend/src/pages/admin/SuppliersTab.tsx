@@ -156,7 +156,7 @@ export function SuppliersTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
         <span className="ml-2 text-gray-600">Đang tải...</span>
       </div>
@@ -166,124 +166,124 @@ export function SuppliersTab() {
   return (
     <>
       <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Quản lý nhà cung cấp</CardTitle>
-            <CardDescription>Tổng {suppliers.length} nhà cung cấp</CardDescription>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Quản lý nhà cung cấp</CardTitle>
+              <CardDescription>Tổng {suppliers.length} nhà cung cấp</CardDescription>
+            </div>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAdd}>
+              <Plus className="w-4 h-4 mr-2" />
+              Thêm nhà cung cấp
+            </Button>
           </div>
-          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAdd}>
-            <Plus className="w-4 h-4 mr-2" />
-            Thêm nhà cung cấp
-          </Button>
-        </div>
-        <div className="relative mt-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Tìm kiếm theo tên hoặc email..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-10 max-w-sm"
-          />
-        </div>
-      </CardHeader>
-      <CardContent>
-        {selectedSupplier && (
-          <Card className="mb-4">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-sm text-gray-500">Nhà cung cấp</div>
-                  <div className="text-lg font-semibold">{selectedSupplier.name}</div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setSelectedSupplier(null)}>
-                  Đóng
-                </Button>
-              </div>
-              <div className="text-sm text-gray-600 mb-2">Sản phẩm cung cấp</div>
-              <div className="flex flex-wrap gap-2">
-                {selectedSupplier.products.length === 0 ? (
-                  <span className="text-sm text-gray-500">Chưa có sản phẩm</span>
-                ) : (
-                  selectedSupplier.products.map(p => (
-                    <Badge key={p.id} variant="outline">{p.name}</Badge>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        <div className="space-y-4">
-          {paginatedSuppliers.map((supplier) => (
-            <Card key={supplier.id}>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Tìm kiếm theo tên hoặc email..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10 max-w-sm"
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {selectedSupplier && (
+            <Card className="mb-4">
               <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => handleViewSupplier(supplier)}
-                        className="text-lg font-semibold text-left hover:underline"
-                      >
-                        {supplier.name}
-                      </button>
-                      <SupplierStatusBadge status={supplier.status} />
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3 space-y-1">
-                      <div>📧 {supplier.email}</div>
-                      <div>📱 {supplier.phone}</div>
-                      <div>📍 {supplier.address}</div>
-                      <div>👤 Người liên hệ: {supplier.contact}</div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {supplier.products.map((product, idx) => (
-                        <Badge key={idx} variant="outline">
-                          {product}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Tổng {supplier.totalProducts} sản phẩm
-                    </div>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm text-gray-500">Nhà cung cấp</div>
+                    <div className="text-lg font-semibold">{selectedSupplier.name}</div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(supplier)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(supplier.id)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedSupplier(null)}>
+                    Đóng
+                  </Button>
+                </div>
+                <div className="text-sm text-gray-600 mb-2">Sản phẩm cung cấp</div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSupplier.products.length === 0 ? (
+                    <span className="text-sm text-gray-500">Chưa có sản phẩm</span>
+                  ) : (
+                    selectedSupplier.products.map(p => (
+                      <Badge key={p.id} variant="outline">{p.name}</Badge>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          )}
+          <div className="space-y-4">
+            {paginatedSuppliers.map((supplier) => (
+              <Card key={supplier.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => handleViewSupplier(supplier)}
+                          className="text-lg font-semibold text-left hover:underline"
+                        >
+                          {supplier.name}
+                        </button>
+                        <SupplierStatusBadge status={supplier.status} />
+                      </div>
+                      <div className="text-sm text-gray-600 mb-3 space-y-1">
+                        <div>📧 {supplier.email}</div>
+                        <div>📱 {supplier.phone}</div>
+                        <div>📍 {supplier.address}</div>
+                        <div>👤 Người liên hệ: {supplier.contact}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {supplier.products.map((product, idx) => (
+                          <Badge key={idx} variant="outline">
+                            {product}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Tổng {supplier.totalProducts} sản phẩm
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(supplier)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(supplier.id)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-        {/* Pagination */}
-        <SimplePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredSuppliers.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          itemLabel="nhà cung cấp"
-        />
-      </CardContent>
-    </Card>
+          {/* Pagination */}
+          <SimplePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredSuppliers.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            itemLabel="nhà cung cấp"
+          />
+        </CardContent>
+      </Card>
 
-    {/* Supplier Dialog */}
-    <SupplierDialog
-      open={isDialogOpen}
-      onOpenChange={setIsDialogOpen}
-      editingSupplier={editingSupplier}
-      onSave={handleSave}
-      supplierForm={supplierForm}
-      onUpdateForm={updateSupplierForm}
-    />
-  </>
+      {/* Supplier Dialog */}
+      <SupplierDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        editingSupplier={editingSupplier}
+        onSave={handleSave}
+        supplierForm={supplierForm}
+        onUpdateForm={updateSupplierForm}
+      />
+    </>
   );
 }

@@ -14,6 +14,18 @@ interface TopProductsPanelProps {
   isLoading?: boolean;
 }
 
+function getFirstImageUrl(imageUrl?: string): string | undefined {
+  if (!imageUrl) return undefined;
+  if (!imageUrl.startsWith('[')) return imageUrl;
+
+  try {
+    const parsed = JSON.parse(imageUrl);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function TopProductsPanel({ products, isLoading = false }: TopProductsPanelProps) {
   const navigate = useNavigate();
 
@@ -49,8 +61,8 @@ export function TopProductsPanel({ products, isLoading = false }: TopProductsPan
             {index + 1}
           </div>
           <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100 overflow-hidden">
-            {product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.productName} className="w-full h-full object-cover" />
+            {product.imageUrl && getFirstImageUrl(product.imageUrl) ? (
+              <img src={getFirstImageUrl(product.imageUrl)} alt={product.productName} className="w-full h-full object-cover" />
             ) : (
               <Package className="w-6 h-6 text-gray-400" />
             )}

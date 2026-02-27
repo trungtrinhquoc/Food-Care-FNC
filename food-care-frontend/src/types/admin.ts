@@ -335,6 +335,7 @@ export interface AdminReview {
 export interface AdminReviewFilter {
   page?: number;
   pageSize?: number;
+  search?: string;
   productId?: string;
   userId?: string;
   minRating?: number;

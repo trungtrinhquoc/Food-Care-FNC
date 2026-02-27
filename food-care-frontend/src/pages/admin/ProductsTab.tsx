@@ -13,6 +13,7 @@ import type { Product } from "../../types";
 import { CategoriesSection } from "../../components/admin/CategoriesSection";
 import { ProductDialog } from "../../components/admin/ProductDialog";
 import { adminProductsService } from "../../services/admin";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export function ProductsTab() {
   const [products, setProducts] = useState<(Product & { supplierId?: number | null; supplierName?: string | null })[]>([]);
@@ -26,6 +27,8 @@ export function ProductsTab() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const pageSize = 10;
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   // Fetch products with server-side pagination
   const fetchProducts = useCallback(async () => {
     try {
@@ -33,7 +36,7 @@ export function ProductsTab() {
       const response = await adminProductsService.getAdminProducts({
         page: currentPage,
         pageSize,
-        searchTerm: searchTerm || undefined,
+        searchTerm: debouncedSearchTerm || undefined,
       });
       setProducts(response.items);
       setTotalPages(response.totalPages);
@@ -44,7 +47,7 @@ export function ProductsTab() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize, searchTerm]);
+  }, [currentPage, pageSize, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchProducts();
@@ -53,7 +56,7 @@ export function ProductsTab() {
   // Reset page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
@@ -88,7 +91,7 @@ export function ProductsTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
         <span className="ml-2 text-gray-600">Đang tải...</span>
       </div>
