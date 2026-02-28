@@ -47,6 +47,50 @@ export interface WarehouseStaff {
   isActive: boolean;
 }
 
+export interface WarehouseStaffDetail extends WarehouseStaff {
+  avatarUrl?: string;
+  canOverrideFifo: boolean;
+  createdAt: string;
+  currentWarehouseId?: string;
+  currentWarehouseName?: string;
+}
+
+export interface PagedWarehouseStaff {
+  items: WarehouseStaffDetail[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  warehouseName: string;
+}
+
+export interface CreateWarehouseStaffDto {
+  email: string;
+  password: string;
+  fullName?: string;
+  phoneNumber?: string;
+  employeeCode?: string;
+  department?: string;
+  position?: string;
+  canApproveReceipts?: boolean;
+  canAdjustInventory?: boolean;
+  canOverrideFifo?: boolean;
+}
+
+export interface TransferStaffDto {
+  staffMemberId: string;
+  targetWarehouseId: string;
+}
+
+export interface UpdateWarehouseStaffDto {
+  department?: string;
+  position?: string;
+  canApproveReceipts?: boolean;
+  canAdjustInventory?: boolean;
+  canOverrideFifo?: boolean;
+  isActive?: boolean;
+}
+
 export interface WarehouseDropdownItem {
   id: string;
   code: string;
@@ -155,6 +199,80 @@ export const getWarehouseStats = async (): Promise<WarehouseStats> => {
   return response.data;
 };
 
+// ==================== WAREHOUSE STAFF MANAGEMENT ====================
+
+export const getWarehouseStaff = async (
+  warehouseId: string,
+  params?: { page?: number; pageSize?: number; search?: string; isActive?: boolean }
+): Promise<PagedWarehouseStaff> => {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append('page', params.page.toString());
+  if (params?.pageSize) searchParams.append('pageSize', params.pageSize.toString());
+  if (params?.search) searchParams.append('search', params.search);
+  if (params?.isActive !== undefined) searchParams.append('isActive', params.isActive.toString());
+
+  const response = await api.get<PagedWarehouseStaff>(
+    `/admin/warehouses/${warehouseId}/staff?${searchParams}`
+  );
+  return response.data;
+};
+
+export const getUnassignedStaff = async (search?: string): Promise<WarehouseStaffDetail[]> => {
+  const params = search ? `?search=${encodeURIComponent(search)}` : '';
+  const response = await api.get<WarehouseStaffDetail[]>(`/admin/warehouses/staff/unassigned${params}`);
+  return response.data;
+};
+
+export const getAllStaffWithWarehouse = async (
+  search?: string,
+  excludeWarehouseId?: string
+): Promise<WarehouseStaffDetail[]> => {
+  const searchParams = new URLSearchParams();
+  if (search) searchParams.append('search', search);
+  if (excludeWarehouseId) searchParams.append('excludeWarehouseId', excludeWarehouseId);
+
+  const response = await api.get<WarehouseStaffDetail[]>(
+    `/admin/warehouses/staff/all?${searchParams}`
+  );
+  return response.data;
+};
+
+export const assignStaffToWarehouse = async (
+  warehouseId: string,
+  staffMemberId: string
+): Promise<void> => {
+  await api.post(`/admin/warehouses/${warehouseId}/staff/assign`, { staffMemberId });
+};
+
+export const transferStaff = async (
+  warehouseId: string,
+  data: TransferStaffDto
+): Promise<void> => {
+  await api.post(`/admin/warehouses/${warehouseId}/staff/transfer`, data);
+};
+
+export const createWarehouseStaff = async (
+  warehouseId: string,
+  data: CreateWarehouseStaffDto
+): Promise<void> => {
+  await api.post(`/admin/warehouses/${warehouseId}/staff/create`, data);
+};
+
+export const removeStaffFromWarehouse = async (
+  warehouseId: string,
+  staffMemberId: string
+): Promise<void> => {
+  await api.delete(`/admin/warehouses/${warehouseId}/staff/${staffMemberId}`);
+};
+
+export const updateWarehouseStaff = async (
+  warehouseId: string,
+  staffMemberId: string,
+  data: UpdateWarehouseStaffDto
+): Promise<void> => {
+  await api.put(`/admin/warehouses/${warehouseId}/staff/${staffMemberId}`, data);
+};
+
 // Export as object for convenience
 export const warehouseService = {
   getWarehouses,
@@ -165,6 +283,15 @@ export const warehouseService = {
   toggleWarehouseActive,
   deleteWarehouse,
   getWarehouseStats,
+  // Staff management
+  getWarehouseStaff,
+  getUnassignedStaff,
+  getAllStaffWithWarehouse,
+  assignStaffToWarehouse,
+  transferStaff,
+  createWarehouseStaff,
+  removeStaffFromWarehouse,
+  updateWarehouseStaff,
 };
 
 export default warehouseService;

@@ -285,6 +285,410 @@ public class AdminWarehouseController : ControllerBase
         return Ok(new { message = "Xóa kho hàng thành công" });
     }
 
+    // =====================================================
+    // WAREHOUSE STAFF MANAGEMENT ENDPOINTS
+    // =====================================================
+
+    /// <summary>
+    /// Get all staff members assigned to a specific warehouse
+    /// </summary>
+    [HttpGet("{warehouseId:guid}/staff")]
+    public async Task<IActionResult> GetWarehouseStaff(
+        Guid warehouseId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] bool? isActive = null)
+    {
+        var warehouse = await _context.Warehouses.FindAsync(warehouseId);
+        if (warehouse == null)
+            return NotFound(new { message = "Không tìm thấy kho hàng" });
+
+        var query = _context.StaffMembers
+            .Include(s => s.User)
+            .Where(s => s.WarehouseId == warehouseId);
+
+        if (isActive.HasValue)
+            query = query.Where(s => s.IsActive == isActive.Value);
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(sm =>
+                (sm.User.FullName != null && sm.User.FullName.ToLower().Contains(s)) ||
+                sm.User.Email.ToLower().Contains(s) ||
+                sm.EmployeeCode.ToLower().Contains(s));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var staffList = await query
+            .OrderBy(s => s.EmployeeCode)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new WarehouseStaffDetailDto
+            {
+                StaffMemberId = s.Id,
+                UserId = s.UserId,
+                EmployeeCode = s.EmployeeCode,
+                FullName = s.User.FullName,
+                Email = s.User.Email,
+                Phone = s.User.PhoneNumber,
+                AvatarUrl = s.User.AvatarUrl,
+                Department = s.Department,
+                Position = s.Position,
+                CanApproveReceipts = s.CanApproveReceipts,
+                CanAdjustInventory = s.CanAdjustInventory,
+                CanOverrideFifo = s.CanOverrideFifo,
+                HireDate = s.HireDate,
+                IsActive = s.IsActive,
+                CreatedAt = s.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            items = staffList,
+            totalCount,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+            warehouseName = warehouse.Name
+        });
+    }
+
+    /// <summary>
+    /// Get staff members not assigned to any warehouse (available for assignment)
+    /// </summary>
+    [HttpGet("staff/unassigned")]
+    public async Task<IActionResult> GetUnassignedStaff([FromQuery] string? search = null)
+    {
+        var query = _context.StaffMembers
+            .Include(s => s.User)
+            .Where(s => s.WarehouseId == null && s.IsActive);
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(sm =>
+                (sm.User.FullName != null && sm.User.FullName.ToLower().Contains(s)) ||
+                sm.User.Email.ToLower().Contains(s) ||
+                sm.EmployeeCode.ToLower().Contains(s));
+        }
+
+        var staffList = await query
+            .OrderBy(s => s.EmployeeCode)
+            .Take(50)
+            .Select(s => new WarehouseStaffDetailDto
+            {
+                StaffMemberId = s.Id,
+                UserId = s.UserId,
+                EmployeeCode = s.EmployeeCode,
+                FullName = s.User.FullName,
+                Email = s.User.Email,
+                Phone = s.User.PhoneNumber,
+                AvatarUrl = s.User.AvatarUrl,
+                Department = s.Department,
+                Position = s.Position,
+                CanApproveReceipts = s.CanApproveReceipts,
+                CanAdjustInventory = s.CanAdjustInventory,
+                CanOverrideFifo = s.CanOverrideFifo,
+                HireDate = s.HireDate,
+                IsActive = s.IsActive,
+                CreatedAt = s.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(staffList);
+    }
+
+    /// <summary>
+    /// Get all staff members with their warehouse info (for transfer UI)
+    /// </summary>
+    [HttpGet("staff/all")]
+    public async Task<IActionResult> GetAllStaffWithWarehouse(
+        [FromQuery] string? search = null,
+        [FromQuery] Guid? excludeWarehouseId = null)
+    {
+        var query = _context.StaffMembers
+            .Include(s => s.User)
+            .Include(s => s.Warehouse)
+            .Where(s => s.IsActive);
+
+        if (excludeWarehouseId.HasValue)
+            query = query.Where(s => s.WarehouseId != excludeWarehouseId.Value || s.WarehouseId == null);
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(sm =>
+                (sm.User.FullName != null && sm.User.FullName.ToLower().Contains(s)) ||
+                sm.User.Email.ToLower().Contains(s) ||
+                sm.EmployeeCode.ToLower().Contains(s));
+        }
+
+        var staffList = await query
+            .OrderBy(s => s.EmployeeCode)
+            .Take(50)
+            .Select(s => new WarehouseStaffDetailDto
+            {
+                StaffMemberId = s.Id,
+                UserId = s.UserId,
+                EmployeeCode = s.EmployeeCode,
+                FullName = s.User.FullName,
+                Email = s.User.Email,
+                Phone = s.User.PhoneNumber,
+                AvatarUrl = s.User.AvatarUrl,
+                Department = s.Department,
+                Position = s.Position,
+                CanApproveReceipts = s.CanApproveReceipts,
+                CanAdjustInventory = s.CanAdjustInventory,
+                CanOverrideFifo = s.CanOverrideFifo,
+                HireDate = s.HireDate,
+                IsActive = s.IsActive,
+                CreatedAt = s.CreatedAt,
+                CurrentWarehouseId = s.WarehouseId,
+                CurrentWarehouseName = s.Warehouse != null ? s.Warehouse.Name : null
+            })
+            .ToListAsync();
+
+        return Ok(staffList);
+    }
+
+    /// <summary>
+    /// Assign an existing staff member to a warehouse
+    /// </summary>
+    [HttpPost("{warehouseId:guid}/staff/assign")]
+    public async Task<IActionResult> AssignStaffToWarehouse(Guid warehouseId, [FromBody] AssignStaffRequest request)
+    {
+        var warehouse = await _context.Warehouses.FindAsync(warehouseId);
+        if (warehouse == null)
+            return NotFound(new { message = "Không tìm thấy kho hàng" });
+
+        if (!warehouse.IsActive)
+            return BadRequest(new { message = "Kho hàng đã bị vô hiệu hóa" });
+
+        var staff = await _context.StaffMembers
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == request.StaffMemberId);
+
+        if (staff == null)
+            return NotFound(new { message = "Không tìm thấy nhân viên" });
+
+        var oldWarehouseName = staff.WarehouseId.HasValue
+            ? (await _context.Warehouses.FindAsync(staff.WarehouseId))?.Name
+            : null;
+
+        staff.WarehouseId = warehouseId;
+        staff.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = oldWarehouseName != null
+                ? $"Đã chuyển nhân viên {staff.User?.FullName ?? staff.EmployeeCode} từ '{oldWarehouseName}' sang '{warehouse.Name}'"
+                : $"Đã gán nhân viên {staff.User?.FullName ?? staff.EmployeeCode} vào kho '{warehouse.Name}'",
+            staffMemberId = staff.Id,
+            warehouseId = warehouse.Id
+        });
+    }
+
+    /// <summary>
+    /// Transfer a staff member from this warehouse to another warehouse
+    /// </summary>
+    [HttpPost("{warehouseId:guid}/staff/transfer")]
+    public async Task<IActionResult> TransferStaff(Guid warehouseId, [FromBody] TransferStaffRequest request)
+    {
+        var sourceWarehouse = await _context.Warehouses.FindAsync(warehouseId);
+        if (sourceWarehouse == null)
+            return NotFound(new { message = "Không tìm thấy kho hàng nguồn" });
+
+        var targetWarehouse = await _context.Warehouses.FindAsync(request.TargetWarehouseId);
+        if (targetWarehouse == null)
+            return NotFound(new { message = "Không tìm thấy kho hàng đích" });
+
+        if (!targetWarehouse.IsActive)
+            return BadRequest(new { message = "Kho hàng đích đã bị vô hiệu hóa" });
+
+        if (warehouseId == request.TargetWarehouseId)
+            return BadRequest(new { message = "Kho hàng nguồn và đích không được trùng nhau" });
+
+        var staff = await _context.StaffMembers
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == request.StaffMemberId && s.WarehouseId == warehouseId);
+
+        if (staff == null)
+            return NotFound(new { message = "Nhân viên không thuộc kho hàng này" });
+
+        staff.WarehouseId = request.TargetWarehouseId;
+        staff.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = $"Đã chuyển nhân viên {staff.User?.FullName ?? staff.EmployeeCode} từ '{sourceWarehouse.Name}' sang '{targetWarehouse.Name}'",
+            staffMemberId = staff.Id,
+            fromWarehouseId = warehouseId,
+            toWarehouseId = request.TargetWarehouseId
+        });
+    }
+
+    /// <summary>
+    /// Create a new staff account and assign to this warehouse
+    /// </summary>
+    [HttpPost("{warehouseId:guid}/staff/create")]
+    public async Task<IActionResult> CreateStaffForWarehouse(Guid warehouseId, [FromBody] CreateWarehouseStaffRequest request)
+    {
+        var warehouse = await _context.Warehouses.FindAsync(warehouseId);
+        if (warehouse == null)
+            return NotFound(new { message = "Không tìm thấy kho hàng" });
+
+        if (!warehouse.IsActive)
+            return BadRequest(new { message = "Kho hàng đã bị vô hiệu hóa" });
+
+        // Check email uniqueness
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (existingUser != null)
+            return BadRequest(new { message = $"Email '{request.Email}' đã tồn tại trong hệ thống" });
+
+        // Check employee code uniqueness
+        if (!string.IsNullOrEmpty(request.EmployeeCode))
+        {
+            var codeExists = await _context.StaffMembers.AnyAsync(s => s.EmployeeCode == request.EmployeeCode);
+            if (codeExists)
+                return BadRequest(new { message = $"Mã nhân viên '{request.EmployeeCode}' đã tồn tại" });
+        }
+
+        // Create user in Supabase Auth
+        Guid supabaseUserId;
+        try
+        {
+            // Get Supabase client from DI
+            var supabaseClient = HttpContext.RequestServices.GetRequiredService<Supabase.Client>();
+            var session = await supabaseClient.Auth.SignUp(request.Email, request.Password);
+
+            if (session?.User == null || string.IsNullOrEmpty(session.User.Id))
+                return BadRequest(new { message = "Không thể tạo tài khoản. Vui lòng kiểm tra email và mật khẩu hợp lệ." });
+
+            supabaseUserId = Guid.Parse(session.User.Id);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi tạo tài khoản: {ex.Message}" });
+        }
+
+        // Get default membership tier
+        var defaultTier = await _context.MemberTiers.FirstOrDefaultAsync(mt => mt.Id == 1);
+
+        // Create user record
+        var user = new User
+        {
+            Id = supabaseUserId,
+            Email = request.Email,
+            FullName = request.FullName,
+            Role = Models.Enums.UserRole.staff,
+            PhoneNumber = request.PhoneNumber,
+            TierId = defaultTier?.Id ?? 1,
+            IsActive = true,
+            LoyaltyPoints = 0,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+
+        // Auto-generate employee code if not provided
+        var employeeCode = request.EmployeeCode;
+        if (string.IsNullOrEmpty(employeeCode))
+        {
+            var staffCount = await _context.StaffMembers.CountAsync();
+            employeeCode = $"EMP{(staffCount + 1):D4}";
+        }
+
+        // Create staff member linked to this warehouse
+        var staffMember = new StaffMember
+        {
+            Id = Guid.NewGuid(),
+            UserId = supabaseUserId,
+            EmployeeCode = employeeCode,
+            Department = request.Department ?? "General",
+            Position = request.Position ?? "Staff",
+            WarehouseId = warehouseId,
+            CanApproveReceipts = request.CanApproveReceipts,
+            CanAdjustInventory = request.CanAdjustInventory,
+            CanOverrideFifo = request.CanOverrideFifo,
+            HireDate = DateTime.UtcNow,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.StaffMembers.Add(staffMember);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetWarehouseStaff), new { warehouseId }, new
+        {
+            message = $"Đã tạo tài khoản nhân viên '{request.FullName ?? request.Email}' và gán vào kho '{warehouse.Name}'",
+            staffMemberId = staffMember.Id,
+            userId = user.Id,
+            employeeCode = staffMember.EmployeeCode,
+            warehouseId = warehouse.Id
+        });
+    }
+
+    /// <summary>
+    /// Remove staff member from warehouse (unassign, not delete)
+    /// </summary>
+    [HttpDelete("{warehouseId:guid}/staff/{staffMemberId:guid}")]
+    public async Task<IActionResult> RemoveStaffFromWarehouse(Guid warehouseId, Guid staffMemberId)
+    {
+        var staff = await _context.StaffMembers
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == staffMemberId && s.WarehouseId == warehouseId);
+
+        if (staff == null)
+            return NotFound(new { message = "Nhân viên không thuộc kho hàng này" });
+
+        staff.WarehouseId = null;
+        staff.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = $"Đã gỡ nhân viên {staff.User?.FullName ?? staff.EmployeeCode} khỏi kho hàng",
+            staffMemberId = staff.Id
+        });
+    }
+
+    /// <summary>
+    /// Update staff member permissions within warehouse
+    /// </summary>
+    [HttpPut("{warehouseId:guid}/staff/{staffMemberId:guid}")]
+    public async Task<IActionResult> UpdateWarehouseStaff(Guid warehouseId, Guid staffMemberId, [FromBody] UpdateWarehouseStaffRequest request)
+    {
+        var staff = await _context.StaffMembers
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == staffMemberId && s.WarehouseId == warehouseId);
+
+        if (staff == null)
+            return NotFound(new { message = "Nhân viên không thuộc kho hàng này" });
+
+        if (request.Department != null) staff.Department = request.Department;
+        if (request.Position != null) staff.Position = request.Position;
+        if (request.CanApproveReceipts.HasValue) staff.CanApproveReceipts = request.CanApproveReceipts.Value;
+        if (request.CanAdjustInventory.HasValue) staff.CanAdjustInventory = request.CanAdjustInventory.Value;
+        if (request.CanOverrideFifo.HasValue) staff.CanOverrideFifo = request.CanOverrideFifo.Value;
+        if (request.IsActive.HasValue) staff.IsActive = request.IsActive.Value;
+
+        staff.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = $"Đã cập nhật thông tin nhân viên {staff.User?.FullName ?? staff.EmployeeCode}",
+            staffMemberId = staff.Id
+        });
+    }
+
     /// <summary>
     /// Get warehouse statistics
     /// </summary>
@@ -354,4 +758,54 @@ public class WarehouseStaffDto
     public bool CanAdjustInventory { get; set; }
     public DateTime? HireDate { get; set; }
     public bool IsActive { get; set; }
+}
+
+public class WarehouseStaffDetailDto : WarehouseStaffDto
+{
+    public string? AvatarUrl { get; set; }
+    public bool CanOverrideFifo { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public Guid? CurrentWarehouseId { get; set; }
+    public string? CurrentWarehouseName { get; set; }
+}
+
+public class AssignStaffRequest
+{
+    public Guid StaffMemberId { get; set; }
+}
+
+public class TransferStaffRequest
+{
+    public Guid StaffMemberId { get; set; }
+    public Guid TargetWarehouseId { get; set; }
+}
+
+public class CreateWarehouseStaffRequest
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.EmailAddress]
+    public string Email { get; set; } = null!;
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MinLength(6)]
+    public string Password { get; set; } = null!;
+
+    public string? FullName { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? EmployeeCode { get; set; }
+    public string? Department { get; set; }
+    public string? Position { get; set; }
+    public bool CanApproveReceipts { get; set; } = false;
+    public bool CanAdjustInventory { get; set; } = false;
+    public bool CanOverrideFifo { get; set; } = false;
+}
+
+public class UpdateWarehouseStaffRequest
+{
+    public string? Department { get; set; }
+    public string? Position { get; set; }
+    public bool? CanApproveReceipts { get; set; }
+    public bool? CanAdjustInventory { get; set; }
+    public bool? CanOverrideFifo { get; set; }
+    public bool? IsActive { get; set; }
 }
