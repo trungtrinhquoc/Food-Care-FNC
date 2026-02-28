@@ -79,6 +79,9 @@ export interface StaffMember {
   employeeCode: string;
   department?: string;
   position?: string;
+  staffPositionEnum?: string;
+  staffPositionLabel?: string;
+  canAccessSystem?: boolean;
   warehouseId?: string;
   warehouseName?: string;
   canApproveReceipts: boolean;
@@ -98,6 +101,7 @@ export interface CreateStaffMemberRequest {
   employeeCode: string;
   department?: string;
   position?: string;
+  staffPositionEnum?: string;
   warehouseId?: string;
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
@@ -108,6 +112,7 @@ export interface CreateStaffMemberRequest {
 export interface UpdateStaffMemberRequest {
   department?: string;
   position?: string;
+  staffPositionEnum?: string;
   warehouseId?: string;
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
@@ -565,4 +570,99 @@ export interface ShipmentStats {
   storedCount: number;
   closedCount: number;
   cancelledCount: number;
+}
+
+// =====================================================
+// INBOUND SESSION TYPES (Phiên nhập kho)
+// =====================================================
+
+export type InboundSessionStatus = 'Draft' | 'Processing' | 'Completed' | 'Cancelled';
+export type InboundReceiptStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled';
+
+export interface InboundSession {
+  id: string;
+  sessionCode: string;
+  warehouseId: string;
+  warehouseName?: string;
+  createdBy: string;
+  createdByName?: string;
+  approvedBy?: string;
+  approvedByName?: string;
+  status: InboundSessionStatus;
+  note?: string;
+  totalSuppliers: number;
+  totalItems: number;
+  totalQuantity: number;
+  totalAmount: number;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  receipts: InboundReceipt[];
+}
+
+export interface InboundReceipt {
+  id: string;
+  receiptCode: string;
+  sessionId: string;
+  supplierId: number;
+  supplierName?: string;
+  status: InboundReceiptStatus;
+  totalItems: number;
+  totalQuantity: number;
+  totalAmount: number;
+  note?: string;
+  confirmedAt?: string;
+  createdAt: string;
+  details: InboundReceiptDetail[];
+}
+
+export interface InboundReceiptDetail {
+  id: string;
+  receiptId: string;
+  productId: string;
+  productName?: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  unit?: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  manufactureDate?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface CreateInboundSessionRequest {
+  warehouseId: string;
+  note?: string;
+}
+
+export interface AddInboundItemRequest {
+  productId: string;
+  supplierId?: number;
+  quantity: number;
+  unitPrice: number;
+  unit?: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  manufactureDate?: string;
+  note?: string;
+}
+
+export interface AddInboundItemsBatchRequest {
+  items: AddInboundItemRequest[];
+}
+
+export interface UpdateInboundDetailRequest {
+  quantity?: number;
+  unitPrice?: number;
+  unit?: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  manufactureDate?: string;
+  note?: string;
+}
+
+export interface CompleteInboundSessionRequest {
+  note?: string;
 }

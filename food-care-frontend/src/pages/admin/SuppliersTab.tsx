@@ -4,17 +4,66 @@ import { Button } from "../../components/admin/Button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { SimplePagination } from "../../components/ui/pagination";
-import { Plus, Edit, Trash2, Search, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Plus, Edit, Trash2, Search, Loader2, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierStatusBadge } from "../../components/ui/status-badge";
 import { SupplierDialog } from "../../components/admin/SupplierDialog";
 import type { Supplier, SupplierFormData } from "../../types/admin";
 import { suppliersService } from "../../services/admin";
 
+// Vietnamese provinces/cities for region extraction
+const KNOWN_REGIONS = [
+  'Hà Nội', 'TP.HCM', 'Hồ Chí Minh', 'TP. Hồ Chí Minh', 'Thành phố Hồ Chí Minh',
+  'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Bình Dương', 'Đồng Nai',
+  'Long An', 'Bà Rịa - Vũng Tàu', 'Vũng Tàu', 'Bắc Ninh', 'Hưng Yên',
+  'Hải Dương', 'Thanh Hóa', 'Nghệ An', 'Huế', 'Thừa Thiên Huế',
+  'Quảng Nam', 'Quảng Ngãi', 'Bình Định', 'Khánh Hòa', 'Nha Trang',
+  'Lâm Đồng', 'Đà Lạt', 'Gia Lai', 'Đắk Lắk', 'Tây Ninh',
+  'Bình Phước', 'Tiền Giang', 'Bến Tre', 'Vĩnh Long', 'An Giang',
+  'Kiên Giang', 'Phú Quốc', 'Sóc Trăng', 'Trà Vinh', 'Bạc Liêu',
+  'Cà Mau', 'Đồng Tháp', 'Hậu Giang', 'Lào Cai', 'Yên Bái',
+  'Phú Thọ', 'Vĩnh Phúc', 'Thái Nguyên', 'Bắc Giang', 'Quảng Ninh',
+  'Lạng Sơn', 'Nam Định', 'Ninh Bình', 'Thái Bình', 'Hà Nam',
+  'Tân Bình', 'Bình Tân', 'Thủ Đức', 'Gò Vấp', 'Tân Phú',
+];
+
+/** Extract region from supplier address */
+function extractRegion(address: string): string {
+  if (!address) return 'Không xác định';
+  const normalized = address.trim();
+  for (const region of KNOWN_REGIONS) {
+    if (normalized.toLowerCase().includes(region.toLowerCase())) {
+      // Normalize TP.HCM variants
+      if (['hồ chí minh', 'tp.hcm', 'tp. hồ chí minh', 'thành phố hồ chí minh'].includes(region.toLowerCase())) {
+        return 'TP.HCM';
+      }
+      if (['huế', 'thừa thiên huế'].includes(region.toLowerCase())) {
+        return 'Thừa Thiên Huế';
+      }
+      if (['nha trang'].includes(region.toLowerCase())) {
+        return 'Khánh Hòa';
+      }
+      if (['đà lạt'].includes(region.toLowerCase())) {
+        return 'Lâm Đồng';
+      }
+      if (['phú quốc'].includes(region.toLowerCase())) {
+        return 'Kiên Giang';
+      }
+      if (['vũng tàu'].includes(region.toLowerCase())) {
+        return 'Bà Rịa - Vũng Tàu';
+      }
+      return region;
+    }
+  }
+  return 'Khác';
+}
+
 export function SuppliersTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
@@ -50,13 +99,25 @@ export function SuppliersTab() {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
+  // Extract unique regions from supplier addresses
+  const availableRegions = useMemo(() => {
+    const regionSet = new Set<string>();
+    suppliers.forEach((s) => {
+      regionSet.add(extractRegion(s.address));
+    });
+    return Array.from(regionSet).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [suppliers]);
+
   const filteredSuppliers = useMemo(() => {
-    return suppliers.filter(
-      (s) =>
+    return suppliers.filter((s) => {
+      const matchesSearch =
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [suppliers, searchTerm]);
+        s.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRegion =
+        selectedRegion === 'all' || extractRegion(s.address) === selectedRegion;
+      return matchesSearch && matchesRegion;
+    });
+  }, [suppliers, searchTerm, selectedRegion]);
 
   const totalPages = Math.ceil(filteredSuppliers.length / pageSize);
   const paginatedSuppliers = useMemo(() => {
@@ -177,17 +238,54 @@ export function SuppliersTab() {
               Thêm nhà cung cấp
             </Button>
           </div>
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm theo tên hoặc email..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-10 max-w-sm"
-            />
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Tìm kiếm theo tên hoặc email..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2 min-w-[220px]">
+              <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <Select
+                value={selectedRegion}
+                onValueChange={(val) => {
+                  setSelectedRegion(val);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Lọc theo khu vực" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả khu vực</SelectItem>
+                  {availableRegions.map((region) => (
+                    <SelectItem key={region} value={region}>
+                      {region}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedRegion !== 'all' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-2"
+                  onClick={() => {
+                    setSelectedRegion('all');
+                    setCurrentPage(1);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

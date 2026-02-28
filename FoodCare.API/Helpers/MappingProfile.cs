@@ -94,9 +94,24 @@ public class MappingProfile : Profile
             
         CreateMap<Product, SupplierProductDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id.ToString()))
+            .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.Images))
+            .ForMember(dest => dest.Images, opt => opt.MapFrom(src => ParseImagesJson(src.Images)))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.ApprovalStatus ?? "pending"))
             .ForMember(dest => dest.OrderCount, opt => opt.MapFrom(src => 0)) // TODO: Calculate from orders
             .ForMember(dest => dest.TotalRevenue, opt => opt.MapFrom(src => 0)); // TODO: Calculate from orders
+    }
+
+    private static string[]? ParseImagesJson(string? images)
+    {
+        if (string.IsNullOrWhiteSpace(images)) return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<string[]>(images);
+        }
+        catch
+        {
+            return images.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
     }
 
     private static bool ParseIsSubscription(string? snapshot)

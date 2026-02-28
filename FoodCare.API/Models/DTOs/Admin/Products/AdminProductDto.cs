@@ -23,6 +23,8 @@ public class AdminProductDto
     public string? SupplierName { get; set; }
     public bool IsSubscriptionAvailable { get; set; }
     public bool IsActive { get; set; }
+    public string? ApprovalStatus { get; set; }
+    public DateTime? SubmittedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

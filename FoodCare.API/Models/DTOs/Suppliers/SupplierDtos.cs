@@ -103,7 +103,7 @@ public class CreateSupplierProductDto
     public int? MinStock { get; set; }
     public int? MaxStock { get; set; }
     public string? Sku { get; set; }
-    public Guid? CategoryId { get; set; }
+    public int? CategoryId { get; set; }
     public string[]? Images { get; set; }
     public bool IsActive { get; set; } = true;
 }
@@ -118,7 +118,7 @@ public class UpdateSupplierProductDto
     public int? MinStock { get; set; }
     public int? MaxStock { get; set; }
     public string? Sku { get; set; }
-    public Guid? CategoryId { get; set; }
+    public int? CategoryId { get; set; }
     public string[]? Images { get; set; }
     public bool? IsActive { get; set; }
 }

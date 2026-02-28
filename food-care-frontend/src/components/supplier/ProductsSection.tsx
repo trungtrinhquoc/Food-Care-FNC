@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -26,6 +26,8 @@ import {
     CheckCircle2,
     XCircle,
     Send,
+    Loader2,
+    ImagePlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -34,6 +36,8 @@ import {
     type CreateProductRequest,
     type UpdateProductRequest,
 } from '../../services/supplier/supplierApi';
+import { categoriesApi, type Category } from '../../services/categoriesApi';
+import { uploadToCloudinary } from '../../utils/cloudinary';
 
 interface ProductsSectionProps {
     products: SupplierProduct[];
@@ -66,8 +70,16 @@ export function ProductsSection({
         stockQuantity: 0,
         minStock: 10,
         sku: '',
+        categoryId: '',
         images: [],
     });
+
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [uploading, setUploading] = useState(false);
+
+    useEffect(() => {
+        categoriesApi.getCategories().then(setCategories).catch(console.error);
+    }, []);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', {
@@ -102,7 +114,7 @@ export function ProductsSection({
     };
 
     const openCreateModal = () => {
-        setForm({ name: '', description: '', basePrice: 0, cost: 0, stockQuantity: 0, minStock: 10, sku: '', images: [] });
+        setForm({ name: '', description: '', basePrice: 0, cost: 0, stockQuantity: 0, minStock: 10, sku: '', categoryId: '', images: [] });
         setEditingProduct(null);
         setModalMode('create');
     };
@@ -116,10 +128,43 @@ export function ProductsSection({
             stockQuantity: product.stockQuantity,
             minStock: product.minStock || 10,
             sku: product.sku || '',
+            categoryId: product.categoryId || '',
             images: product.images || [],
         });
         setEditingProduct(product);
         setModalMode('edit');
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        const maxImages = 5;
+        const currentCount = form.images?.length || 0;
+        const remaining = maxImages - currentCount;
+        if (remaining <= 0) {
+            toast.error(`Tối đa ${maxImages} hình ảnh`);
+            return;
+        }
+
+        const filesToUpload = Array.from(files).slice(0, remaining);
+        setUploading(true);
+        try {
+            const results = await Promise.all(filesToUpload.map(uploadToCloudinary));
+            const newUrls = results.map((r) => r.url);
+            setForm((p) => ({ ...p, images: [...(p.images || []), ...newUrls] }));
+            toast.success(`Đã tải lên ${results.length} ảnh`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Upload thất bại';
+            toast.error(message);
+        } finally {
+            setUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const removeImage = (index: number) => {
+        setForm((p) => ({ ...p, images: (p.images || []).filter((_, i) => i !== index) }));
     };
 
     const handleSave = async () => {
@@ -127,14 +172,22 @@ export function ProductsSection({
         if (form.basePrice <= 0) { toast.error('Giá bán phải lớn hơn 0'); return; }
         try {
             setSaving(true);
+            // Clean payload: strip empty optional fields that backend expects as Guid?
+            const cleanForm = {
+                ...form,
+                categoryId: form.categoryId || undefined,
+                sku: form.sku || undefined,
+                images: form.images && form.images.length > 0 ? form.images : undefined,
+            };
             if (modalMode === 'create') {
-                await productsApi.createProduct(form);
+                await productsApi.createProduct(cleanForm);
                 toast.success('Đã thêm sản phẩm mới! Đang chờ admin duyệt.');
             } else if (modalMode === 'edit' && editingProduct) {
                 const updateData: UpdateProductRequest = {
                     name: form.name, description: form.description, basePrice: form.basePrice,
                     cost: form.cost, stockQuantity: form.stockQuantity, minStock: form.minStock,
-                    sku: form.sku, images: form.images,
+                    sku: form.sku || undefined, categoryId: form.categoryId || undefined,
+                    images: form.images && form.images.length > 0 ? form.images : undefined,
                 };
                 await productsApi.updateProduct(editingProduct.id, updateData);
                 toast.success('Đã cập nhật sản phẩm!');
@@ -142,7 +195,17 @@ export function ProductsSection({
             setModalMode(null);
             onRefresh();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Không thể lưu sản phẩm');
+            const data = error.response?.data;
+            // ASP.NET validation errors format: { errors: { FieldName: ["message"] } }
+            if (data?.errors) {
+                const messages = Object.entries(data.errors)
+                    .map(([field, msgs]: [string, any]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+                    .join('\n');
+                console.error('Validation errors:', data.errors);
+                toast.error(messages || 'Dữ liệu không hợp lệ');
+            } else {
+                toast.error(data?.message || 'Không thể lưu sản phẩm');
+            }
         } finally {
             setSaving(false);
         }
@@ -476,6 +539,22 @@ export function ProductsSection({
                                         placeholder="Mô tả chi tiết sản phẩm"
                                     />
                                 </div>
+                                {/* Category select */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Danh mục</label>
+                                    <Select value={form.categoryId || ''} onValueChange={(val) => setForm((p) => ({ ...p, categoryId: val }))}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Chọn danh mục sản phẩm" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categories.map((cat) => (
+                                                <SelectItem key={cat.id} value={String(cat.id)}>
+                                                    {cat.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Giá bán (VNĐ) <span className="text-red-500">*</span></label>
@@ -498,6 +577,44 @@ export function ProductsSection({
                                     <div>
                                         <label className="block text-sm font-medium mb-1">SKU</label>
                                         <Input value={form.sku} onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))} placeholder="Mã SKU" />
+                                    </div>
+                                </div>
+                                {/* Image upload */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Hình ảnh sản phẩm <span className="text-gray-400 font-normal">(tối đa 5 ảnh, mỗi ảnh ≤ 5MB)</span></label>
+                                    <div className="flex flex-wrap gap-3 mt-1">
+                                        {form.images && form.images.map((url, idx) => (
+                                            <div key={idx} className="relative group w-24 h-24">
+                                                <img src={url} alt={`Ảnh ${idx + 1}`} className="w-full h-full rounded-lg object-cover border" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }} />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeImage(idx)}
+                                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(!form.images || form.images.length < 5) && (
+                                            <label className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                                                {uploading ? (
+                                                    <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <ImagePlus className="h-6 w-6 text-gray-400" />
+                                                        <span className="text-xs text-gray-400 mt-1">Tải ảnh</span>
+                                                    </>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    multiple
+                                                    className="hidden"
+                                                    onChange={handleImageUpload}
+                                                    disabled={uploading}
+                                                />
+                                            </label>
+                                        )}
                                     </div>
                                 </div>
                             </div>

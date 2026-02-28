@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using FoodCare.API.Models.Enums;
 
 namespace FoodCare.API.Models.DTOs.Staff;
 
@@ -90,6 +91,9 @@ public class StaffMemberDto
     public string EmployeeCode { get; set; } = null!;
     public string? Department { get; set; }
     public string? Position { get; set; }
+    public StaffPosition? StaffPositionEnum { get; set; }
+    public string? StaffPositionLabel { get; set; }
+    public bool CanAccessSystem { get; set; }
     public Guid? WarehouseId { get; set; }
     public string? WarehouseName { get; set; }
     public bool CanApproveReceipts { get; set; }
@@ -117,6 +121,7 @@ public class CreateStaffMemberRequest
 
     public string? Department { get; set; }
     public string? Position { get; set; }
+    public StaffPosition? StaffPositionEnum { get; set; }
     public Guid? WarehouseId { get; set; }
     public bool CanApproveReceipts { get; set; } = false;
     public bool CanAdjustInventory { get; set; } = false;
@@ -128,6 +133,7 @@ public class UpdateStaffMemberRequest
 {
     public string? Department { get; set; }
     public string? Position { get; set; }
+    public StaffPosition? StaffPositionEnum { get; set; }
     public Guid? WarehouseId { get; set; }
     public bool? CanApproveReceipts { get; set; }
     public bool? CanAdjustInventory { get; set; }

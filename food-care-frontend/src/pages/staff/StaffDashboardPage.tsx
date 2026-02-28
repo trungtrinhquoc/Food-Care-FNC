@@ -52,6 +52,7 @@ import {
 // Import Layout and Shipping Manager
 import { StaffLayout } from '../../components/staff/StaffLayout';
 import { StaffShippingManager } from '../../components/staff/StaffShippingManager';
+import { InboundSessionManager } from '../../components/staff/InboundSessionManager';
 
 // Import types
 import type {
@@ -1062,6 +1063,8 @@ export default function StaffDashboardPage() {
         return renderOverview();
       case 'shipping':
         return <StaffShippingManager onRefreshStats={fetchDashboardData} />;
+      case 'inbound-sessions':
+        return <InboundSessionManager onRefreshStats={fetchDashboardData} />;
       case 'warehouses':
         return renderWarehouses();
       case 'receipts':
@@ -1082,7 +1085,7 @@ export default function StaffDashboardPage() {
       currentTab={selectedTab}
       onTabChange={setSelectedTab}
       staffName={staffProfile?.userFullName || user.fullName || 'Nhân viên kho'}
-      staffPosition={staffProfile?.position || 'Staff'}
+      staffPosition={staffProfile?.staffPositionLabel || staffProfile?.position || 'Staff'}
       employeeCode={staffProfile?.employeeCode}
       notificationCount={stats.openDiscrepancies + stats.pendingReturns}
       onRefresh={fetchDashboardData}

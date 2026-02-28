@@ -4,6 +4,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
 using FoodCare.API.Models.Staff;
 using FoodCare.API.Services.Interfaces.SupplierModule;
+using System.Text.Json;
 
 namespace FoodCare.API.Services.Implementations.SupplierModule;
 
@@ -337,6 +338,15 @@ public class SupplierAuthService : ISupplierAuthService
         if (supplier.RegistrationStatus != "approved")
             throw new InvalidOperationException("Nhà cung cấp chưa được duyệt đăng ký kinh doanh. Vui lòng hoàn tất đăng ký trước.");
 
+        // Check for duplicate SKU
+        if (!string.IsNullOrWhiteSpace(dto.Sku))
+        {
+            var skuExists = await _context.Products
+                .AnyAsync(p => p.Sku == dto.Sku && p.IsDeleted == false);
+            if (skuExists)
+                throw new InvalidOperationException($"Mã SKU '{dto.Sku}' đã tồn tại. Vui lòng sử dụng mã SKU khác.");
+        }
+
         var slug = dto.Name.ToLower()
             .Replace(" ", "-")
             .Replace("đ", "d")
@@ -356,7 +366,8 @@ public class SupplierAuthService : ISupplierAuthService
             Sku = dto.Sku,
             StockQuantity = dto.StockQuantity,
             LowStockThreshold = dto.MinStock ?? 10,
-            Images = dto.Images != null ? string.Join(",", dto.Images) : null,
+            CategoryId = dto.CategoryId,
+            Images = dto.Images != null && dto.Images.Length > 0 ? JsonSerializer.Serialize(dto.Images) : null,
             SupplierId = supplier.Id,
             IsActive = false, // Not active until approved
             IsDeleted = false,
@@ -380,6 +391,7 @@ public class SupplierAuthService : ISupplierAuthService
             StockQuantity = product.StockQuantity ?? 0,
             Sku = product.Sku,
             Image = product.Images,
+            Images = ParseImagesJson(product.Images),
             IsActive = product.IsActive ?? false,
             Status = product.ApprovalStatus,
             CreatedAt = product.CreatedAt ?? DateTime.UtcNow,
@@ -408,8 +420,17 @@ public class SupplierAuthService : ISupplierAuthService
         if (dto.Cost.HasValue) product.CostPrice = dto.Cost.Value;
         if (dto.StockQuantity.HasValue) product.StockQuantity = dto.StockQuantity.Value;
         if (dto.MinStock.HasValue) product.LowStockThreshold = dto.MinStock.Value;
-        if (dto.Sku != null) product.Sku = dto.Sku;
-        if (dto.Images != null) product.Images = string.Join(",", dto.Images);
+        if (dto.Sku != null)
+        {
+            // Check for duplicate SKU (exclude current product)
+            var skuExists = await _context.Products
+                .AnyAsync(p => p.Sku == dto.Sku && p.Id != productId && p.IsDeleted == false);
+            if (skuExists)
+                throw new InvalidOperationException($"Mã SKU '{dto.Sku}' đã tồn tại. Vui lòng sử dụng mã SKU khác.");
+            product.Sku = dto.Sku;
+        }
+        if (dto.CategoryId.HasValue) product.CategoryId = dto.CategoryId.Value;
+        if (dto.Images != null) product.Images = dto.Images.Length > 0 ? JsonSerializer.Serialize(dto.Images) : null;
         
         product.UpdatedAt = DateTime.UtcNow;
 
@@ -435,6 +456,7 @@ public class SupplierAuthService : ISupplierAuthService
             StockQuantity = product.StockQuantity ?? 0,
             Sku = product.Sku,
             Image = product.Images,
+            Images = ParseImagesJson(product.Images),
             IsActive = product.IsActive ?? false,
             Status = product.ApprovalStatus,
             CreatedAt = product.CreatedAt ?? DateTime.UtcNow,
@@ -594,5 +616,23 @@ public class SupplierAuthService : ISupplierAuthService
             .ToListAsync();
 
         return warehouses;
+    }
+
+    /// <summary>
+    /// Parse Images JSON string (stored as JSON array in PostgreSQL) to string array.
+    /// Handles both JSON arrays ["url1","url2"] and legacy comma-separated "url1,url2" formats.
+    /// </summary>
+    private static string[]? ParseImagesJson(string? images)
+    {
+        if (string.IsNullOrWhiteSpace(images)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(images);
+        }
+        catch
+        {
+            // Fallback: legacy comma-separated format
+            return images.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
     }
 }

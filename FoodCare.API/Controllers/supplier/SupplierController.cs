@@ -155,11 +155,18 @@ public class SupplierController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var product = await _supplierAuthService.UpdateProductAsync(userId, productId, dto);
-        if (product == null)
-            return NotFound(new { message = "Product not found or you don't have permission" });
+        try
+        {
+            var product = await _supplierAuthService.UpdateProductAsync(userId, productId, dto);
+            if (product == null)
+                return NotFound(new { message = "Product not found or you don't have permission" });
 
-        return Ok(product);
+            return Ok(product);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("products/{productId}")]

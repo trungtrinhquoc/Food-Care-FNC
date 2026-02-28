@@ -42,6 +42,12 @@ import type {
   WarehouseDropdownItem,
   CreateWarehouseStaffDto,
   UpdateWarehouseStaffDto,
+  StaffPositionEnum,
+} from "../../services/admin/warehouseService";
+import {
+  STAFF_POSITION_LABELS,
+  SYSTEM_ACCESS_POSITIONS,
+  canAccessSystem as checkCanAccessSystem,
 } from "../../services/admin/warehouseService";
 
 // =====================================================
@@ -315,7 +321,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
   // Create account state
   const [createForm, setCreateForm] = useState({
     email: "", password: "", fullName: "", phoneNumber: "",
-    employeeCode: "", department: "", position: "",
+    employeeCode: "", department: "", staffPositionEnum: "WarehouseStaff" as StaffPositionEnum,
     canApproveReceipts: false, canAdjustInventory: false, canOverrideFifo: false,
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -463,7 +469,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
         phoneNumber: createForm.phoneNumber || undefined,
         employeeCode: createForm.employeeCode || undefined,
         department: createForm.department || undefined,
-        position: createForm.position || undefined,
+        staffPositionEnum: createForm.staffPositionEnum,
         canApproveReceipts: createForm.canApproveReceipts,
         canAdjustInventory: createForm.canAdjustInventory,
         canOverrideFifo: createForm.canOverrideFifo,
@@ -472,7 +478,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
       toast.success("Tạo tài khoản nhân viên thành công");
       setCreateForm({
         email: "", password: "", fullName: "", phoneNumber: "",
-        employeeCode: "", department: "", position: "",
+        employeeCode: "", department: "", staffPositionEnum: "WarehouseStaff",
         canApproveReceipts: false, canAdjustInventory: false, canOverrideFifo: false,
       });
       fetchStaff();
@@ -490,7 +496,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
     setEditingStaff(staff);
     setEditForm({
       department: staff.department || "",
-      position: staff.position || "",
+      staffPositionEnum: staff.staffPositionEnum || "WarehouseStaff",
       canApproveReceipts: staff.canApproveReceipts,
       canAdjustInventory: staff.canAdjustInventory,
       canOverrideFifo: staff.canOverrideFifo,
@@ -597,7 +603,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
                 <div>
                   <p className="font-medium">{staff.fullName || staff.email}</p>
                   <p className="text-xs text-gray-500">
-                    {staff.employeeCode} • {staff.position || "Staff"} • {staff.department || "General"}
+                    {staff.employeeCode} • {staff.staffPositionEnum ? STAFF_POSITION_LABELS[staff.staffPositionEnum] : (staff.position || "Staff")} • {staff.department || "General"}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -675,7 +681,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
                 <div className="min-w-0">
                   <p className="font-medium truncate">{staff.fullName || staff.email}</p>
                   <p className="text-xs text-gray-500 truncate">
-                    {staff.employeeCode} • {staff.position || "Staff"} • {staff.department || "General"}
+                    {staff.employeeCode} • {staff.staffPositionEnum ? STAFF_POSITION_LABELS[staff.staffPositionEnum] : (staff.position || "Staff")} • {staff.department || "General"}
                   </p>
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {staff.canApproveReceipts && (
@@ -754,7 +760,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
               <div className="min-w-0 flex-1">
                 <p className="font-medium truncate">{staff.fullName || staff.email}</p>
                 <p className="text-xs text-gray-500">
-                  {staff.employeeCode} • {staff.position || "Staff"}
+                  {staff.employeeCode} • {staff.staffPositionEnum ? STAFF_POSITION_LABELS[staff.staffPositionEnum] : (staff.position || "Staff")}
                   {staff.currentWarehouseName && (
                     <span className="ml-1 text-blue-600">• Đang ở: {staff.currentWarehouseName}</span>
                   )}
@@ -884,11 +890,25 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
         </div>
         <div className="col-span-2">
           <Label>Chức vụ</Label>
-          <Input
-            value={createForm.position}
-            onChange={(e) => setCreateForm(f => ({ ...f, position: e.target.value }))}
-            placeholder="Staff"
-          />
+          <Select
+            value={createForm.staffPositionEnum}
+            onValueChange={(v) => setCreateForm(f => ({ ...f, staffPositionEnum: v as StaffPositionEnum }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Chọn chức vụ" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(STAFF_POSITION_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                  {SYSTEM_ACCESS_POSITIONS.includes(value as StaffPositionEnum) ? " (Truy cập HT)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {checkCanAccessSystem(createForm.staffPositionEnum) && (
+            <p className="text-xs text-emerald-600 mt-1">✓ Được phép truy cập hệ thống staff</p>
+          )}
         </div>
       </div>
 
@@ -958,10 +978,22 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
         </div>
         <div>
           <Label>Chức vụ</Label>
-          <Input
-            value={editForm.position || ""}
-            onChange={(e) => setEditForm(f => ({ ...f, position: e.target.value }))}
-          />
+          <Select
+            value={editForm.staffPositionEnum || "WarehouseStaff"}
+            onValueChange={(v) => setEditForm(f => ({ ...f, staffPositionEnum: v as StaffPositionEnum }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(STAFF_POSITION_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                  {SYSTEM_ACCESS_POSITIONS.includes(value as StaffPositionEnum) ? " (HT)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
