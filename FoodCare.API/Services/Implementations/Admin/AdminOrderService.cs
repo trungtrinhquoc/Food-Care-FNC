@@ -33,8 +33,10 @@ public class AdminOrderService : IAdminOrderService
         {
             var searchLower = filter.SearchTerm.ToLower();
             query = query.Where(o => 
+                (o.User != null && o.User.FullName != null && o.User.FullName.ToLower().Contains(searchLower)) ||
                 (o.User != null && o.User.Email.ToLower().Contains(searchLower)) ||
-                (o.TrackingNumber != null && o.TrackingNumber.ToLower().Contains(searchLower)));
+                (o.TrackingNumber != null && o.TrackingNumber.ToLower().Contains(searchLower)) ||
+                o.Id.ToString().ToLower().Contains(searchLower));
         }
 
         if (filter.Status.HasValue)

@@ -17,7 +17,7 @@ export default function Footer() {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-[#f1f7f5] text-slate-600 pt-10 pb-6 border-t border-emerald-100/50">
+        <footer className="bg-[#f1f7f5] text-slate-600 pt-2 pb-1 border-t border-emerald-100/50">
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
                     {/* Brand Section */}
@@ -133,7 +133,7 @@ export default function Footer() {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="pt-6 border-t border-emerald-100/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="pt-4 border-t border-emerald-100/50 flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-xs text-slate-400 font-medium order-2 md:order-1">
                         &copy; {currentYear} <span className="text-slate-900 font-bold">Food & Care</span>. All rights reserved.
                     </p>

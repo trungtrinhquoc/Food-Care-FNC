@@ -623,7 +623,14 @@ export default function ProfilePage() {
     const currentTierIndex = tierKeys.indexOf(userTierName);
     const nextTier = currentTierIndex < tierKeys.length - 1 ? tierKeys[currentTierIndex + 1] : null;
     const nextTierData = nextTier ? memberTiers[nextTier] : null;
-    const userTotalSpent = user.totalSpent || 0;
+    const userTotalSpentFromOrders = useMemo(() => {
+        return orders
+            .filter(o => o.status === 'delivered')
+            .reduce((sum, o) => sum + o.totalAmount, 0);
+    }, [orders]);
+
+    const userTotalSpent = (user.totalSpent && user.totalSpent > 0) ? user.totalSpent : userTotalSpentFromOrders;
+
     const progressToNextTier = nextTierData
         ? Math.min((userTotalSpent / nextTierData.minSpend) * 100, 100)
         : 100;
@@ -631,18 +638,37 @@ export default function ProfilePage() {
     const getStatusIcon = (status: OrderStatus) => {
         switch (status) {
             case 'pending':
-                return <Clock className="w-5 h-5 text-yellow-600" />;
+                return <Clock className="w-3.5 h-3.5" />;
             case 'confirmed':
             case 'processing':
-                return <AlertCircle className="w-5 h-5 text-blue-600" />;
+                return <AlertCircle className="w-3.5 h-3.5" />;
             case 'shipping':
-                return <Truck className="w-5 h-5 text-purple-600" />;
+                return <Truck className="w-3.5 h-3.5" />;
             case 'delivered':
-                return <CheckCircle className="w-5 h-5 text-green-600" />;
+                return <CheckCircle className="w-3.5 h-3.5" />;
             case 'cancelled':
-                return <XCircle className="w-5 h-5 text-red-600" />;
+                return <XCircle className="w-3.5 h-3.5" />;
             default:
-                return <Clock className="w-5 h-5 text-gray-600" />;
+                return <Clock className="w-3.5 h-3.5" />;
+        }
+    };
+
+    const getStatusStyle = (status: OrderStatus) => {
+        switch (status) {
+            case 'pending':
+                return 'text-amber-700 bg-amber-50 border-amber-200';
+            case 'confirmed':
+            case 'processing':
+                return 'text-blue-700 bg-blue-50 border-blue-200';
+            case 'shipping':
+                return 'text-purple-700 bg-purple-50 border-purple-200';
+            case 'delivered':
+                return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+            case 'cancelled':
+            case 'returned':
+                return 'text-rose-700 bg-rose-50 border-rose-200';
+            default:
+                return 'text-gray-700 bg-gray-50 border-gray-200';
         }
     };
 
@@ -727,17 +753,17 @@ export default function ProfilePage() {
             <section className="container mx-auto px-4 py-8">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="mb-10 w-full justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide no-scrollbar bg-gray-100/80 p-1.5 rounded-2xl border-none h-auto">
-                        <TabsTrigger value="overview" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
-                            <User className="w-4 h-4" /> <span>Tổng quan</span>
+                        <TabsTrigger value="overview" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
+                            <User className="w-4 h-4 text-blue-500" /> <span>Tổng quan</span>
                         </TabsTrigger>
-                        <TabsTrigger value="orders" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
-                            <Package className="w-4 h-4" /> <span>Đơn hàng</span>
+                        <TabsTrigger value="orders" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
+                            <Package className="w-4 h-4 text-orange-500" /> <span>Đơn hàng</span>
                         </TabsTrigger>
-                        <TabsTrigger value="membership" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
-                            <Crown className="w-4 h-4" /> <span>Hạng thành viên</span>
+                        <TabsTrigger value="membership" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
+                            <Crown className="w-4 h-4 text-yellow-500" /> <span>Hạng thành viên</span>
                         </TabsTrigger>
-                        <TabsTrigger value="settings" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-orange-500 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-orange-500">
-                            <Settings className="w-4 h-4" /> <span>Cài đặt</span>
+                        <TabsTrigger value="settings" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
+                            <Settings className="w-4 h-4 text-gray-500" /> <span>Cài đặt</span>
                         </TabsTrigger>
                     </TabsList>
 
@@ -850,7 +876,9 @@ export default function ProfilePage() {
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p className="font-medium">{address.recipientName}</p>
-                                                        <StatusBadge variant="secondary">Mặc định</StatusBadge>
+                                                        <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm border border-orange-200 uppercase tracking-wider">
+                                                            Mặc định
+                                                        </span>
                                                     </div>
                                                     <p className="text-sm text-gray-600">{address.phoneNumber}</p>
                                                     <p className="text-sm text-gray-600">
@@ -930,7 +958,7 @@ export default function ProfilePage() {
                                                         </a>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-emerald-600 text-sm font-medium uppercase tracking-wide flex items-center gap-1">
+                                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(order.status)}`}>
                                                             {getStatusIcon(order.status)}
                                                             {getStatusText(order.status)}
                                                         </span>
@@ -938,7 +966,7 @@ export default function ProfilePage() {
                                                             <div className="h-4 w-[1px] bg-gray-300 mx-1"></div>
                                                         )}
                                                         {order.status === 'shipping' && (
-                                                            <span className="text-red-500 text-sm uppercase">ĐANG GIAO HÀNG</span>
+                                                            <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border border-orange-200">Đang giao hàng</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1011,12 +1039,12 @@ export default function ProfilePage() {
                                                         </span>
                                                     </div>
 
-                                                    <div className="flex justify-end gap-3 actions">
+                                                    <div className="flex justify-end gap-2 actions flex-wrap">
                                                         {['delivered', 'cancelled', 'returned'].includes(order.status) && (
                                                             <Button
                                                                 disabled={buyingAgain}
-                                                                variant="default"
-                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px]"
+                                                                size="sm"
+                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[100px] h-9 text-xs font-semibold rounded-lg shadow-sm"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleBuyAgain(order);
@@ -1029,7 +1057,8 @@ export default function ProfilePage() {
                                                         {['pending', 'confirmed'].includes(order.status) && (
                                                             <Button
                                                                 variant="outline"
-                                                                className="border-gray-300 text-gray-600 hover:bg-gray-50 min-w-[140px]"
+                                                                size="sm"
+                                                                className="border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 min-w-[100px] h-9 text-xs font-semibold rounded-lg shadow-sm transition-all"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     toast.info('Vui lòng liên hệ CSKH để hủy đơn');
@@ -1041,7 +1070,8 @@ export default function ProfilePage() {
 
                                                         <Button
                                                             variant="outline"
-                                                            className="border-gray-300 text-gray-600 hover:bg-gray-50 min-w-[140px]"
+                                                            size="sm"
+                                                            className="border-gray-200 text-gray-600 hover:bg-gray-50 min-w-[100px] h-9 text-xs font-semibold rounded-lg shadow-sm"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 // Open details
@@ -1058,7 +1088,8 @@ export default function ProfilePage() {
                                                                 return (
                                                                     <Button
                                                                         disabled={isOrderReviewed}
-                                                                        className={`min-w-[140px] ${isOrderReviewed ? 'bg-gray-100 text-gray-400 border-none pointer-events-none' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                                                                        size="sm"
+                                                                        className={`min-w-[100px] h-9 text-xs font-semibold rounded-lg shadow-sm ${isOrderReviewed ? 'bg-gray-50 text-gray-400 border-none' : 'bg-red-500 hover:bg-red-600 text-white'}`}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             const itemToReview = order.items && order.items.find(i => !i.isReviewed) || order.items?.[0];
@@ -1074,14 +1105,14 @@ export default function ProfilePage() {
                                                                             }
                                                                         }}
                                                                     >
-                                                                        {isOrderReviewed ? 'Bạn đã đánh giá' : 'Viết đánh giá'}
+                                                                        {isOrderReviewed ? 'Đã đánh giá' : 'Viết đánh giá'}
                                                                     </Button>
                                                                 );
                                                             })()
                                                         )}
 
                                                         {order.status === 'processing' && (
-                                                            <Button disabled className="bg-gray-100 text-gray-400 border-none min-w-[140px]">
+                                                            <Button disabled size="sm" className="bg-gray-50 text-gray-400 border-none min-w-[100px] h-9 text-xs font-semibold rounded-lg">
                                                                 Đang Xử Lý
                                                             </Button>
                                                         )}

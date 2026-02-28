@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/admin/Button";
+import { Input } from "../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import { SimplePagination } from "../../components/ui/pagination";
@@ -16,6 +17,7 @@ import { toast } from "sonner";
 import { reviewsService } from "../../services/admin";
 import type { AdminReview, ReviewStats, PagedResult } from "../../types/admin";
 import { ReviewReplyDialog } from "../../components/admin/ReviewReplyDialog";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export function ReviewsTab() {
   const [reviews, setReviews] = useState<AdminReview[]>([]);
@@ -35,14 +37,18 @@ export function ReviewsTab() {
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [selectedReview, setSelectedReview] = useState<AdminReview | null>(null);
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const loadReviews = useCallback(async () => {
     setLoading(true);
     try {
       const result: PagedResult<AdminReview> = await reviewsService.getReviews({
         page: currentPage,
         pageSize,
-        minRating: ratingFilter ? parseInt(ratingFilter) : undefined,
-        maxRating: ratingFilter ? parseInt(ratingFilter) : undefined,
+        search: debouncedSearchTerm || undefined,
+        minRating: ratingFilter && ratingFilter !== 'all' ? parseInt(ratingFilter) : undefined,
+        maxRating: ratingFilter && ratingFilter !== 'all' ? parseInt(ratingFilter) : undefined,
         isHidden: hiddenFilter === 'true' ? true : hiddenFilter === 'false' ? false : undefined,
         hasReply: replyFilter === 'true' ? true : replyFilter === 'false' ? false : undefined,
         sortBy: 'createdAt',
@@ -57,7 +63,7 @@ export function ReviewsTab() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, ratingFilter, hiddenFilter, replyFilter]);
+  }, [currentPage, debouncedSearchTerm, ratingFilter, hiddenFilter, replyFilter]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -86,7 +92,7 @@ export function ReviewsTab() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
-    
+
     try {
       await reviewsService.deleteReview(id);
       loadReviews();
@@ -115,9 +121,8 @@ export function ReviewsTab() {
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`w-4 h-4 ${
-              star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-            }`}
+            className={`w-4 h-4 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+              }`}
           />
         ))}
       </div>
@@ -223,42 +228,53 @@ export function ReviewsTab() {
           </CardHeader>
           <CardContent>
             {/* Filters */}
-            <div className="flex gap-4 mb-4">
-              <Select value={ratingFilter} onValueChange={(v) => { setRatingFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Lọc theo sao" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả sao</SelectItem>
-                  <SelectItem value="5">5 sao</SelectItem>
-                  <SelectItem value="4">4 sao</SelectItem>
-                  <SelectItem value="3">3 sao</SelectItem>
-                  <SelectItem value="2">2 sao</SelectItem>
-                  <SelectItem value="1">1 sao</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm nội dung, tên người dùng..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex gap-4">
+                <Select value={ratingFilter} onValueChange={(v) => { setRatingFilter(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Lọc theo sao" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả sao</SelectItem>
+                    <SelectItem value="5">5 sao</SelectItem>
+                    <SelectItem value="4">4 sao</SelectItem>
+                    <SelectItem value="3">3 sao</SelectItem>
+                    <SelectItem value="2">2 sao</SelectItem>
+                    <SelectItem value="1">1 sao</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={hiddenFilter} onValueChange={(v) => { setHiddenFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="false">Đang hiển thị</SelectItem>
-                  <SelectItem value="true">Đang ẩn</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={hiddenFilter} onValueChange={(v) => { setHiddenFilter(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="false">Đang hiển thị</SelectItem>
+                    <SelectItem value="true">Đang ẩn</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={replyFilter} onValueChange={(v) => { setReplyFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Phản hồi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="true">Đã trả lời</SelectItem>
-                  <SelectItem value="false">Chưa trả lời</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={replyFilter} onValueChange={(v) => { setReplyFilter(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Phản hồi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="true">Đã trả lời</SelectItem>
+                    <SelectItem value="false">Chưa trả lời</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {loading ? (

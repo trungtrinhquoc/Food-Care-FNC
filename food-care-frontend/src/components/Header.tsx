@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
     ShoppingBag, User, ShoppingCart, Settings, Menu,
     X, ChevronDown, LogOut, Home, LayoutDashboard, Package,
-    Truck, Store, BarChart3, FileText, Bell, Ticket
+    Truck, Store, BarChart3, FileText, Bell, Ticket,
+    CheckCircle, XCircle, AlertCircle, Plus, Loader2,
+    Camera, Box, ShoppingCart as ShoppingCartIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -79,14 +81,14 @@ export default function Header() {
         return location.pathname.startsWith(path);
     };
 
-    const navLinkClass = (path: string) =>
-        `relative px-1 py-2 text-sm font-medium transition-colors ${isActiveLink(path)
+    const navLinkClass = (isActive: boolean) =>
+        `relative px-1 py-2 text-base font-medium transition-colors flex items-center ${isActive
             ? 'text-emerald-600'
             : 'text-gray-600 hover:text-emerald-600'
         }`;
 
-    const navLinkUnderline = (path: string) =>
-        isActiveLink(path)
+    const navLinkUnderline = (isActive: boolean) =>
+        isActive
             ? 'absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full'
             : '';
 
@@ -299,18 +301,29 @@ export default function Header() {
                         </div>
                     </Link>
 
-                    <nav className="hidden lg:flex items-center space-x-1">
-                        <Link to="/" className={navLinkClass('/')}>Trang chủ <span className={navLinkUnderline('/')} /></Link>
-                        <Link to="/products" className={navLinkClass('/products')}>Sản phẩm <span className={navLinkUnderline('/products')} /></Link>
+                    <nav className="hidden lg:flex items-center space-x-6">
+                        <NavLink to="/" className={({ isActive }) => navLinkClass(isActive)}>
+                            Trang chủ
+                            <span className={navLinkUnderline(isActiveLink('/'))} />
+                        </NavLink>
+                        <NavLink to="/products" className={({ isActive }) => navLinkClass(isActive)}>
+
+                            Sản phẩm
+                            <span className={navLinkUnderline(isActiveLink('/products'))} />
+                        </NavLink>
                         {isAuthenticated && (
-                            <Link to="/subscriptions" className={navLinkClass('/subscriptions')}>Đơn định kỳ <span className={navLinkUnderline('/subscriptions')} /></Link>
+                            <NavLink to="/subscriptions" className={({ isActive }) => navLinkClass(isActive)}>
+                                <Box className="w-4 h-4 text-orange-500 mr-1.5" />
+                                Đơn định kỳ
+                                <span className={navLinkUnderline(isActiveLink('/subscriptions'))} />
+                            </NavLink>
                         )}
                         {isAuthenticated && (
-                            <Link to="/vouchers" className={`${navLinkClass('/vouchers')} flex items-center gap-1`}>
-                                <Ticket className="h-3.5 w-3.5" />
+                            <NavLink to="/vouchers" className={({ isActive }) => navLinkClass(isActive)}>
+                                <Ticket className="w-4 h-4 text-purple-500 mr-1.5" />
                                 Voucher
-                                <span className={navLinkUnderline('/vouchers')} />
-                            </Link>
+                                <span className={navLinkUnderline(isActiveLink('/vouchers'))} />
+                            </NavLink>
                         )}
                         {isAuthenticated && isAdmin && (
                             <Link to="/admin" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-orange-600 hover:bg-orange-50 transition-all">

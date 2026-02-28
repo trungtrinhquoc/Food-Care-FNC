@@ -1,14 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileApi } from '../services/api';
 import { toast } from 'sonner';
-import { Package, Calendar, TrendingUp, Pause, Play, X, Loader2 } from 'lucide-react';
+import {
+    Package, Calendar, TrendingUp, Pause, Play,
+    X, Loader2, ChevronRight, Clock, AlertCircle, Plus
+} from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { Button } from '../components/ui/button';
 
 interface Subscription {
     id: string;
     productId: string;
     productName: string;
-    productImage?: string;
+    productImages?: string[];
     frequency: string;
     quantity: number;
     status: string;
@@ -18,73 +25,75 @@ interface Subscription {
     discountPercent: number;
 }
 
+function parseImageUrl(imageUrl?: string | string[]): string[] {
+    if (!imageUrl) return [];
+    if (Array.isArray(imageUrl)) return imageUrl;
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('[')) {
+        return [imageUrl];
+    }
+    try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) ? parsed : [imageUrl];
+    } catch {
+        return [imageUrl];
+    }
+}
+
 export default function SubscriptionsPage() {
     const navigate = useNavigate();
-    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const [activeTab, setActiveTab] = useState('all');
 
-    useEffect(() => {
-        loadSubscriptions();
-    }, []);
+    const { data: subscriptions = [], isLoading } = useQuery({
+        queryKey: ['subscriptions'],
+        queryFn: profileApi.getSubscriptions,
+    });
 
-    const loadSubscriptions = async () => {
-        try {
-            setLoading(true);
-            const data = await profileApi.getSubscriptions();
-            setSubscriptions(data);
-        } catch (error: any) {
-            console.error('Error loading subscriptions:', error);
-            toast.error('Không thể tải danh sách đơn định kỳ');
-        } finally {
-            setLoading(false);
+    const mutationOptions = {
+        onSuccess: (data: any) => {
+            toast.success(data.message || 'Thành công');
+            queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Đã có lỗi xảy ra');
         }
     };
 
-    const handlePauseSubscription = async (subscriptionId: string) => {
-        try {
-            await profileApi.pauseSubscription(subscriptionId);
-            toast.success('Đã tạm dừng đơn định kỳ');
-            loadSubscriptions();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Không thể tạm dừng');
+    const pauseMutation = useMutation({
+        mutationFn: profileApi.pauseSubscription,
+        ...mutationOptions
+    });
+
+    const resumeMutation = useMutation({
+        mutationFn: profileApi.resumeSubscription,
+        ...mutationOptions
+    });
+
+    const cancelMutation = useMutation({
+        mutationFn: profileApi.cancelSubscription,
+        ...mutationOptions
+    });
+
+    const handlePauseSubscription = (id: string) => pauseMutation.mutate(id);
+    const handleResumeSubscription = (id: string) => resumeMutation.mutate(id);
+    const handleCancelSubscription = (id: string) => {
+        if (confirm('Bạn có chắc muốn hủy đơn định kỳ này?')) {
+            cancelMutation.mutate(id);
         }
     };
 
-    const handleResumeSubscription = async (subscriptionId: string) => {
-        try {
-            await profileApi.resumeSubscription(subscriptionId);
-            toast.success('Đã kích hoạt lại đơn định kỳ');
-            loadSubscriptions();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Không thể kích hoạt lại');
-        }
-    };
+    const filteredSubscriptions = subscriptions.filter((sub: Subscription) => {
+        if (activeTab === 'all') return true;
+        return sub.status === activeTab;
+    });
 
-    const handleCancelSubscription = async (subscriptionId: string) => {
-        if (!confirm('Bạn có chắc muốn hủy đơn định kỳ này?')) return;
-
-        try {
-            await profileApi.cancelSubscription(subscriptionId);
-            toast.success('Đã hủy đơn định kỳ');
-            loadSubscriptions();
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Không thể hủy');
-        }
-    };
-
-    const getStatusBadge = (status: string) => {
-        const statusConfig: Record<string, { label: string; className: string }> = {
-            active: { label: 'Đang hoạt động', className: 'bg-green-100 text-green-800' },
-            paused: { label: 'Tạm dừng', className: 'bg-yellow-100 text-yellow-800' },
-            cancelled: { label: 'Đã hủy', className: 'bg-red-100 text-red-800' },
+    const getStatusConfig = (status: string) => {
+        const configs: Record<string, { label: string; color: string; icon: any }> = {
+            active: { label: 'Hoạt động', color: 'text-emerald-600 bg-emerald-50 border-emerald-100', icon: Clock },
+            paused: { label: 'Tạm dừng', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Pause },
+            cancelled: { label: 'Đã hủy', color: 'text-rose-600 bg-rose-50 border-rose-100', icon: X },
         };
-
-        const config = statusConfig[status] || statusConfig.active;
-        return (
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config.className}`}>
-                {config.label}
-            </span>
-        );
+        return configs[status] || configs.active;
     };
 
     const getFrequencyText = (frequency: string) => {
@@ -97,184 +106,231 @@ export default function SubscriptionsPage() {
         return frequencyMap[frequency] || frequency;
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Đang tải danh sách đơn định kỳ...</p>
-                </div>
+            <div className="min-h-[60vh] flex flex-col items-center justify-center">
+                <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+                <p className="text-gray-500 font-medium">Đang tải dữ liệu...</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-6">
-            <div className="max-w-6xl mx-auto px-4">
-                {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-1">📦 Đơn Hàng Định Kỳ</h1>
-                    <p className="text-sm text-gray-500">Quản lý các đơn hàng tự động giao hàng định kỳ của bạn</p>
+        <div className="min-h-screen bg-[#FDFDFD]">
+            {/* Standard Hero Header - Slimmer */}
+            <div className="bg-white border-b border-gray-100">
+                <div className="max-w-5xl mx-auto px-4 py-8 text-center md:text-left">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+                        Đơn Hàng Định Kỳ
+                    </h1>
+                    <p className="text-gray-500 text-sm md:text-base max-w-xl font-medium leading-relaxed">
+                        Theo dõi và quản lý các đơn hàng tự động của bạn một cách tiện lợi và nhanh chóng.
+                    </p>
+                </div>
+            </div>
+
+            <div className="max-w-5xl mx-auto px-4 py-8">
+                {/* Modern Slim Tabs - More Compact */}
+                <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+                        <TabsList className="bg-gray-100/80 p-0.5 rounded-lg w-full md:w-fit border-none shadow-sm">
+                            {[
+                                { id: 'all', label: 'Tất cả' },
+                                { id: 'active', label: 'Hoạt động' },
+                                { id: 'paused', label: 'Tạm dừng' },
+                                { id: 'cancelled', label: 'Đã hủy' },
+                            ].map((tab) => (
+                                <TabsTrigger
+                                    key={tab.id}
+                                    value={tab.id}
+                                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === tab.id
+                                        ? 'bg-white text-emerald-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    {tab.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/products')}
+                        className="btn-outline h-9 px-4 border-emerald-500 text-emerald-600 font-bold text-xs"
+                    >
+                        <Plus className="w-3.5 h-3.5 mr-2" />
+                        Đăng ký mới
+                    </Button>
                 </div>
 
-                {/* Subscriptions List */}
-                {subscriptions.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-md p-10 text-center">
-                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chưa có đơn định kỳ nào</h3>
-                        <p className="text-sm text-gray-500 mb-6">
-                            Bạn chưa đăng ký đơn hàng định kỳ nào. Hãy khám phá các sản phẩm và đăng ký ngay!
+                {/* Subscription List */}
+                {filteredSubscriptions.length === 0 ? (
+                    <div className="bg-white rounded-3xl border-2 border-dashed border-gray-100 p-20 text-center animate-fade-in shadow-sm">
+                        <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Package className="w-10 h-10 text-emerald-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Chưa có đơn hàng nào</h3>
+                        <p className="text-gray-500 text-base mb-8 max-w-sm mx-auto">
+                            Khám phá danh sách sản phẩm và bắt đầu cuộc sống tiện lợi với dịch vụ giao hàng định kỳ.
                         </p>
-                        <button
+                        <Button
                             onClick={() => navigate('/products')}
-                            className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition shadow-md"
+                            className="btn-primary h-12 px-10 rounded-full"
                         >
-                            Khám phá sản phẩm
-                        </button>
+                            Khám phá ngay
+                        </Button>
                     </div>
                 ) : (
-                    <div className="grid gap-6">
-                        {subscriptions.map((subscription) => (
-                            <div
-                                key={subscription.id}
-                                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-                            >
-                                <div className="p-6">
-                                    <div className="flex items-start gap-4">
-                                        {/* Product Image */}
-                                        {subscription.productImage && (
-                                            <img
-                                                src={subscription.productImage}
-                                                alt={subscription.productName}
-                                                className="w-24 h-24 object-cover rounded-lg"
-                                            />
-                                        )}
+                    <div className="grid grid-cols-1 gap-6">
+                        {filteredSubscriptions.map((sub, index) => {
+                            const config = getStatusConfig(sub.status);
+                            const StatusIcon = config.icon;
 
-                                        {/* Product Info */}
-                                        <div className="flex-1">
-                                            <div className="flex items-start justify-between mb-2">
-                                                <div>
-                                                    <h3 className="text-lg font-bold text-gray-900 mb-1">
-                                                        {subscription.productName}
+                            return (
+                                <div
+                                    key={sub.id}
+                                    className="bg-white border border-gray-100 rounded-xl p-4 md:p-5 hover:shadow-lg hover:border-emerald-100 transition-all duration-300 animate-slide-up group"
+                                    style={{ animationDelay: `${index * 0.1}s` }}
+                                >
+                                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
+                                        <div className="flex flex-row items-start gap-4 flex-1 w-full">
+                                            {/* Product Image Section - Slimmer */}
+                                            <div className="relative shrink-0">
+                                                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 shadow-sm group-hover:scale-[1.05] transition-transform duration-500 bg-gray-50">
+                                                    <ImageWithFallback
+                                                        src={parseImageUrl(sub.productImages as any)[0]}
+                                                        alt={sub.productName}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-emerald-600 text-white rounded-md text-[9px] font-black shadow-lg">
+                                                        -{sub.discountPercent}%
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Main Content Section - Tighter */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                                    <h3 className="text-base md:text-lg font-bold text-gray-900 truncate hover:text-emerald-600 transition-colors cursor-pointer" onClick={() => navigate(`/products/${sub.productId}`)}>
+                                                        {sub.productName}
                                                     </h3>
-                                                    {getStatusBadge(subscription.status)}
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                                    <div>
-                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tần suất</p>
-                                                        <p className="text-sm font-semibold">{getFrequencyText(subscription.frequency)}</p>
+                                                    <div className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight uppercase border transition-colors ${config.color.replace('text-', '').split(' ')[0]} ${config.color}`}>
+                                                        <StatusIcon className="w-2.5 h-2.5" />
+                                                        {config.label}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Package className="w-4 h-4 text-gray-400" />
-                                                    <div>
-                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Số lượng</p>
-                                                        <p className="text-sm font-semibold">{subscription.quantity}</p>
+                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3">
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <Calendar className="w-2.5 h-2.5" /> Chu kỳ
+                                                        </p>
+                                                        <p className="text-xs font-bold text-gray-800">{getFrequencyText(sub.frequency)}</p>
                                                     </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <TrendingUp className="w-4 h-4 text-emerald-400" />
-                                                    <div>
-                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Giảm giá</p>
-                                                        <p className="text-sm font-bold text-emerald-600">
-                                                            {subscription.discountPercent}%
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <Package className="w-2.5 h-2.5" /> Số lượng
+                                                        </p>
+                                                        <p className="text-xs font-bold text-gray-800">{sub.quantity} sp</p>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <TrendingUp className="w-2.5 h-2.5" /> Tiết kiệm
+                                                        </p>
+                                                        <p className="text-xs font-bold text-emerald-600">Giảm {sub.discountPercent}%</p>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <Clock className="w-2.5 h-2.5" /> Giao tiếp
+                                                        </p>
+                                                        <p className="text-xs font-bold text-gray-800">
+                                                            {new Date(sub.nextDeliveryDate).toLocaleDateString('vi-VN')}
                                                         </p>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                                    <div>
-                                                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Giao tiếp theo</p>
-                                                        <p className="text-sm font-semibold">
-                                                            {new Date(subscription.nextDeliveryDate).toLocaleDateString('vi-VN')}
-                                                        </p>
+                                                {sub.pauseUntil && (
+                                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold border border-amber-100 italic">
+                                                        <AlertCircle className="w-3 h-3" />
+                                                        Tạm dừng đến {new Date(sub.pauseUntil).toLocaleDateString('vi-VN')}
                                                     </div>
-                                                </div>
-                                            </div>
-
-                                            {subscription.pauseUntil && (
-                                                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                    <p className="text-sm text-yellow-800">
-                                                        ⏸️ Tạm dừng đến:{' '}
-                                                        {new Date(subscription.pauseUntil).toLocaleDateString('vi-VN')}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            {/* Actions */}
-                                            <div className="flex gap-2 mt-4">
-                                                {subscription.status === 'active' && (
-                                                    <button
-                                                        onClick={() => handlePauseSubscription(subscription.id)}
-                                                        className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition flex items-center gap-2"
-                                                    >
-                                                        <Pause className="w-4 h-4" />
-                                                        Tạm dừng
-                                                    </button>
-                                                )}
-
-                                                {subscription.status === 'paused' && (
-                                                    <button
-                                                        onClick={() => handleResumeSubscription(subscription.id)}
-                                                        className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition flex items-center gap-2"
-                                                    >
-                                                        <Play className="w-4 h-4" />
-                                                        Kích hoạt lại
-                                                    </button>
-                                                )}
-
-                                                {subscription.status !== 'cancelled' && (
-                                                    <button
-                                                        onClick={() => handleCancelSubscription(subscription.id)}
-                                                        className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center gap-2"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                        Hủy đăng ký
-                                                    </button>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Actions Section - Compact Buttons */}
+                                        <div className="flex shrink-0 w-full md:w-32 flex-row md:flex-col items-center justify-between gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-gray-50">
+                                            {sub.status === 'active' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handlePauseSubscription(sub.id)}
+                                                    className="flex-1 md:w-full h-8 text-[11px] font-bold border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg"
+                                                >
+                                                    {pauseMutation.isPending && pauseMutation.variables === sub.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Pause className="w-3 h-3 mr-1" />}
+                                                    Tạm dừng
+                                                </Button>
+                                            )}
+                                            {sub.status === 'paused' && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleResumeSubscription(sub.id)}
+                                                    className="btn-primary flex-1 md:w-full h-8 text-[11px] font-bold rounded-lg"
+                                                >
+                                                    {resumeMutation.isPending && resumeMutation.variables === sub.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Play className="w-3 h-3 mr-1 fill-white" />}
+                                                    Kích hoạt
+                                                </Button>
+                                            )}
+                                            {sub.status !== 'cancelled' ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => handleCancelSubscription(sub.id)}
+                                                    className="flex-1 md:w-full h-8 text-[11px] font-bold text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                >
+                                                    {cancelMutation.isPending && cancelMutation.variables === sub.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <X className="w-3 h-3 mr-1" />}
+                                                    Hủy bỏ
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => navigate(`/products/${sub.productId}`)}
+                                                    className="flex-1 md:w-full h-8 text-[11px] font-bold text-emerald-600 border-emerald-100 hover:bg-emerald-50 rounded-lg"
+                                                >
+                                                    Mua lại
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* Info Box */}
-                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex gap-3">
-                        <svg
-                            className="w-6 h-6 text-blue-600 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <div className="text-sm text-blue-800">
-                            <p className="font-semibold mb-1">Lưu ý về đơn định kỳ:</p>
-                            <ul className="list-disc list-inside space-y-1">
-                                <li>Bạn sẽ nhận email nhắc nhở 3 ngày trước mỗi lần giao hàng</li>
-                                <li>Có thể tạm dừng hoặc hủy đơn định kỳ bất kỳ lúc nào</li>
-                                <li>Giá và giảm giá sẽ được áp dụng theo thời điểm đặt hàng</li>
-                            </ul>
+                {/* Promotional Banner - Slimmer */}
+                <div className="mt-12 p-6 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="text-center md:text-left">
+                            <h4 className="text-xl font-bold mb-1">Tiết kiệm nhiều hơn với Food & Care</h4>
+                            <p className="text-emerald-50 text-xs max-w-lg font-medium">
+                                Đơn định kỳ giúp bạn tiết kiệm đến 15% chi phí và đảm bảo thực phẩm tươi ngon mỗi ngày. Bạn có toàn quyền quản lý bất kỳ lúc nào.
+                            </p>
                         </div>
+                        <Button
+                            onClick={() => navigate('/products')}
+                            className="bg-white text-emerald-600 hover:bg-emerald-50 h-10 px-6 font-bold rounded-lg shadow-md active:scale-95 transition-all shrink-0 text-xs"
+                        >
+                            Xem thêm sản phẩm
+                        </Button>
                     </div>
                 </div>
             </div>
         </div>
     );
+
 }

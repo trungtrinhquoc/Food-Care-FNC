@@ -327,7 +327,7 @@ export function ApprovalsTab() {
         {/* Products Tab */}
         <TabsContent value="products" className="mt-6">
           {loadingProducts ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
             </div>
           ) : filteredProducts.length === 0 ? (
@@ -419,7 +419,7 @@ export function ApprovalsTab() {
         {/* Suppliers Tab */}
         <TabsContent value="suppliers" className="mt-6">
           {loadingSuppliers ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
             </div>
           ) : filteredSuppliers.length === 0 ? (
