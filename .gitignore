@@ -165,3 +165,6 @@ food-care-frontend/.env.example
 *.md
 .skillsrc
 *.sql
+AI_CHATBOT_COMPLETE_DOCUMENTATION.md
+*.md
+*.md
