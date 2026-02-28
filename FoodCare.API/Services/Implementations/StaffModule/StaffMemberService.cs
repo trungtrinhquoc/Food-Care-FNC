@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.Staff;
+using FoodCare.API.Models.Enums;
 using FoodCare.API.Models.DTOs.Staff;
 using FoodCare.API.Services.Interfaces.StaffModule;
 
@@ -112,6 +113,7 @@ public class StaffMemberService : IStaffMemberService
             EmployeeCode = request.EmployeeCode,
             Department = request.Department,
             Position = request.Position,
+            StaffPositionEnum = request.StaffPositionEnum ?? StaffPosition.WarehouseStaff,
             WarehouseId = request.WarehouseId,
             CanApproveReceipts = request.CanApproveReceipts,
             CanAdjustInventory = request.CanAdjustInventory,
@@ -145,6 +147,12 @@ public class StaffMemberService : IStaffMemberService
 
         if (request.Department != null) staff.Department = request.Department;
         if (request.Position != null) staff.Position = request.Position;
+        if (request.StaffPositionEnum.HasValue)
+        {
+            staff.StaffPositionEnum = request.StaffPositionEnum.Value;
+            // Auto-sync the Position label
+            staff.Position = GetPositionLabel(request.StaffPositionEnum.Value);
+        }
         if (request.WarehouseId.HasValue) staff.WarehouseId = request.WarehouseId;
         if (request.CanApproveReceipts.HasValue) staff.CanApproveReceipts = request.CanApproveReceipts.Value;
         if (request.CanAdjustInventory.HasValue) staff.CanAdjustInventory = request.CanAdjustInventory.Value;
@@ -191,6 +199,31 @@ public class StaffMemberService : IStaffMemberService
         return true;
     }
 
+    // =====================================================
+    // POSITION HELPERS
+    // =====================================================
+
+    private static readonly StaffPosition[] SystemAccessPositions = new[]
+    {
+        StaffPosition.WarehouseManager,
+        StaffPosition.AssistantManager,
+        StaffPosition.Supervisor
+    };
+
+    private static string GetPositionLabel(StaffPosition? position) => position switch
+    {
+        StaffPosition.WarehouseManager => "Trưởng kho",
+        StaffPosition.AssistantManager => "Phó quản lý kho",
+        StaffPosition.Supervisor => "Giám sát viên",
+        StaffPosition.InventoryController => "Kiểm soát tồn kho",
+        StaffPosition.WarehouseStaff => "Nhân viên kho",
+        StaffPosition.Loader => "Nhân viên bốc xếp",
+        _ => "Nhân viên"
+    };
+
+    private static bool CanAccessSystem(StaffPosition? position) =>
+        position.HasValue && SystemAccessPositions.Contains(position.Value);
+
     private static StaffMemberDto MapToDto(StaffMember staff)
     {
         return new StaffMemberDto
@@ -200,6 +233,9 @@ public class StaffMemberService : IStaffMemberService
             EmployeeCode = staff.EmployeeCode,
             Department = staff.Department,
             Position = staff.Position,
+            StaffPositionEnum = staff.StaffPositionEnum,
+            StaffPositionLabel = GetPositionLabel(staff.StaffPositionEnum),
+            CanAccessSystem = CanAccessSystem(staff.StaffPositionEnum),
             WarehouseId = staff.WarehouseId,
             WarehouseName = staff.Warehouse?.Name,
             CanApproveReceipts = staff.CanApproveReceipts,

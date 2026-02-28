@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using FoodCare.API.Models.Enums;
 
 namespace FoodCare.API.Models.Staff;
 
@@ -34,6 +35,9 @@ public class StaffMember
     [StringLength(100)]
     [Column("position")]
     public string? Position { get; set; }
+
+    [Column("staff_position")]
+    public StaffPosition? StaffPositionEnum { get; set; }
 
     [Column("warehouse_id")]
     public Guid? WarehouseId { get; set; }

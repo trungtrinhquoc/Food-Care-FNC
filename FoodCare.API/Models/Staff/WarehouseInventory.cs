@@ -48,7 +48,8 @@ public class WarehouseInventory
     [Column("reserved_quantity")]
     public int ReservedQuantity { get; set; } = 0;
 
-    [Column("available_quantity", TypeName = "int")]
+    [Column("available_quantity")]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public int AvailableQuantity { get; set; }
 
     [Precision(15, 2)]

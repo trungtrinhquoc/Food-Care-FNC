@@ -27,6 +27,8 @@ export interface AdminProductDto {
   ratingCount?: number;
   isSubscriptionAvailable: boolean;
   isActive: boolean;
+  approvalStatus: string | null;
+  submittedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,7 +87,7 @@ const mapAdminProductToUi = (p: AdminProductDto): Product => {
 
 export const getAdminProducts = async (
   filter: AdminProductFilter = {}
-): Promise<{ items: (Product & { supplierId?: number | null; supplierName?: string | null })[]; totalItems: number; page: number; pageSize: number; totalPages: number; }> => {
+): Promise<{ items: (Product & { supplierId?: number | null; supplierName?: string | null; approvalStatus?: string | null; submittedAt?: string | null })[]; totalItems: number; page: number; pageSize: number; totalPages: number; }> => {
   const response = await api.get<PagedResult<AdminProductDto>>('/admin/products', {
     params: filter,
   });
@@ -95,6 +97,8 @@ export const getAdminProducts = async (
     return Object.assign(mapped, {
       supplierId: p.supplierId,
       supplierName: p.supplierName,
+      approvalStatus: p.approvalStatus,
+      submittedAt: p.submittedAt,
     });
   });
 

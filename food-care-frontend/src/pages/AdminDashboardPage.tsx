@@ -15,6 +15,7 @@ import {
   CheckCircle,
   Warehouse,
   Ticket,
+  HardHat,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -32,6 +33,7 @@ const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.U
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
 const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
 const WarehousesTab = lazy(() => import("./admin/WarehousesTab").then(m => ({ default: m.WarehousesTab })));
+const StaffManagementTab = lazy(() => import("./admin/StaffManagementTab").then(m => ({ default: m.StaffManagementTab })));
 const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
 const AdminCouponsPage = lazy(() => import("./admin/AdminCouponsPage"));
 
@@ -45,6 +47,7 @@ const TABS = [
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
   { value: "warehouses", label: "Kho hàng", icon: Warehouse },
+  { value: "staff-mgmt", label: "Nhân viên", icon: HardHat },
   { value: "subscriptions", label: "Gói Đăng ký", icon: CheckCircle },
   { value: "coupons", label: "Mã giảm giá", icon: Ticket },
   { value: "approvals", label: "Phê duyệt", icon: CheckCircle },
@@ -257,6 +260,13 @@ export default function AdminDashboardPage() {
                 {selectedTab === "warehouses" && (
                   <div>
                     <WarehousesTab />
+                  </div>
+                )}
+
+                {/* Staff Management Tab */}
+                {selectedTab === "staff-mgmt" && (
+                  <div>
+                    <StaffManagementTab />
                   </div>
                 )}
 

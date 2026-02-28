@@ -66,6 +66,7 @@ export interface SupplierProduct {
   minStock?: number;
   maxStock?: number;
   sku?: string;
+  categoryId?: string;
   category?: string;
   image?: string;
   images?: string[];

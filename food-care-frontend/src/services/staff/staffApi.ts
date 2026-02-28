@@ -24,6 +24,12 @@ import type {
   ReturnShipment,
   CreateReturnRequest,
   StaffDashboardStats,
+  InboundSession,
+  CreateInboundSessionRequest,
+  AddInboundItemRequest,
+  AddInboundItemsBatchRequest,
+  UpdateInboundDetailRequest,
+  CompleteInboundSessionRequest,
 } from '../../types/staff';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -578,6 +584,105 @@ export const staffDashboardApi = {
   },
 };
 
+// =====================================================
+// INBOUND SESSION API (Phiên nhập kho)
+// =====================================================
+
+export const inboundSessionApi = {
+  // Get all sessions
+  getAll: async (
+    page = 1,
+    pageSize = 20,
+    warehouseId?: string,
+    status?: string
+  ): Promise<PagedResponse<InboundSession>> => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('pageSize', pageSize.toString());
+    if (warehouseId) params.append('warehouseId', warehouseId);
+    if (status) params.append('status', status);
+
+    const response = await staffApi.get<PagedResponse<InboundSession>>(
+      `/inbound-sessions?${params}`
+    );
+    return response.data;
+  },
+
+  // Get session by ID
+  getById: async (id: string): Promise<InboundSession> => {
+    const response = await staffApi.get<InboundSession>(`/inbound-sessions/${id}`);
+    return response.data;
+  },
+
+  // Create new session
+  create: async (request: CreateInboundSessionRequest): Promise<InboundSession> => {
+    const response = await staffApi.post<InboundSession>('/inbound-sessions', request);
+    return response.data;
+  },
+
+  // Add single item (auto-groups by supplier)
+  addItem: async (sessionId: string, request: AddInboundItemRequest): Promise<InboundSession> => {
+    const response = await staffApi.post<InboundSession>(
+      `/inbound-sessions/${sessionId}/items`,
+      request
+    );
+    return response.data;
+  },
+
+  // Add items batch
+  addItemsBatch: async (
+    sessionId: string,
+    request: AddInboundItemsBatchRequest
+  ): Promise<InboundSession> => {
+    const response = await staffApi.post<InboundSession>(
+      `/inbound-sessions/${sessionId}/items/batch`,
+      request
+    );
+    return response.data;
+  },
+
+  // Update detail line
+  updateDetail: async (
+    sessionId: string,
+    detailId: string,
+    request: UpdateInboundDetailRequest
+  ): Promise<InboundSession> => {
+    const response = await staffApi.put<InboundSession>(
+      `/inbound-sessions/${sessionId}/details/${detailId}`,
+      request
+    );
+    return response.data;
+  },
+
+  // Remove detail line
+  removeDetail: async (sessionId: string, detailId: string): Promise<InboundSession> => {
+    const response = await staffApi.delete<InboundSession>(
+      `/inbound-sessions/${sessionId}/details/${detailId}`
+    );
+    return response.data;
+  },
+
+  // Complete session
+  complete: async (
+    sessionId: string,
+    request: CompleteInboundSessionRequest
+  ): Promise<InboundSession> => {
+    const response = await staffApi.post<InboundSession>(
+      `/inbound-sessions/${sessionId}/complete`,
+      request
+    );
+    return response.data;
+  },
+
+  // Cancel session
+  cancel: async (sessionId: string): Promise<InboundSession> => {
+    const response = await staffApi.post<InboundSession>(
+      `/inbound-sessions/${sessionId}/cancel`
+    );
+    return response.data;
+  },
+};
+
 export default {
   staffMember: staffMemberApi,
   warehouse: warehouseApi,
@@ -587,4 +692,5 @@ export default {
   discrepancy: discrepancyApi,
   return: returnApi,
   dashboard: staffDashboardApi,
+  inboundSession: inboundSessionApi,
 };

@@ -67,6 +67,11 @@ public partial class FoodCareDbContext : DbContext {
     public DbSet<ChatFaq> ChatFaqs { get; set; }
     public DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
 
+    // Inbound Session Module DbSets (Phiên nhập kho)
+    public DbSet<InboundSession> InboundSessions { get; set; }
+    public DbSet<InboundReceipt> InboundReceipts { get; set; }
+    public DbSet<InboundReceiptDetail> InboundReceiptDetails { get; set; }
+
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
 
@@ -87,6 +92,10 @@ public partial class FoodCareDbContext : DbContext {
         modelBuilder.HasPostgresEnum<MovementType>("public", "movement_type");
         modelBuilder.HasPostgresEnum<DiscrepancyType>("public", "discrepancy_type");
         modelBuilder.HasPostgresEnum<InventoryType>("public", "inventory_type");
+
+        // Inbound Session Enums
+        modelBuilder.HasPostgresEnum<InboundSessionStatus>("public", "inbound_session_status");
+        modelBuilder.HasPostgresEnum<InboundReceiptStatus>("public", "inbound_receipt_status");
 
         // =========================================================
         // 2. ENUM HỆ THỐNG SUPABASE (GIỮ NGUYÊN)

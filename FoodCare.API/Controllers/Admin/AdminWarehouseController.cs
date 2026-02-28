@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.Staff;
 using FoodCare.API.Models.DTOs.Staff;
+using FoodCare.API.Models.Enums;
 
 namespace FoodCare.API.Controllers.Admin;
 
@@ -14,9 +15,62 @@ public class AdminWarehouseController : ControllerBase
 {
     private readonly FoodCareDbContext _context;
 
+    // Positions that can access the staff system (frontend login)
+    private static readonly StaffPosition[] SystemAccessPositions = {
+        StaffPosition.WarehouseManager,
+        StaffPosition.AssistantManager,
+        StaffPosition.Supervisor
+    };
+
     public AdminWarehouseController(FoodCareDbContext context)
     {
         _context = context;
+    }
+
+    private static string GetPositionLabel(StaffPosition? pos)
+    {
+        return pos switch
+        {
+            StaffPosition.WarehouseManager => "Trưởng phòng kho",
+            StaffPosition.AssistantManager => "Phó quản lý kho",
+            StaffPosition.Supervisor => "Tổ trưởng / Giám sát kho",
+            StaffPosition.InventoryController => "Nhân viên kiểm soát tồn kho",
+            StaffPosition.WarehouseStaff => "Nhân viên kho",
+            StaffPosition.Loader => "Nhân viên bốc xếp",
+            _ => "Chưa xác định"
+        };
+    }
+
+    private static bool CanAccessSystem(StaffPosition? pos)
+    {
+        return pos.HasValue && SystemAccessPositions.Contains(pos.Value);
+    }
+
+    /// <summary>
+    /// Get available staff positions with descriptions
+    /// </summary>
+    [HttpGet("staff/positions")]
+    public IActionResult GetStaffPositions()
+    {
+        var positions = Enum.GetValues<StaffPosition>().Select(p => new
+        {
+            value = p.ToString(),
+            numericValue = (int)p,
+            label = GetPositionLabel(p),
+            canAccessSystem = SystemAccessPositions.Contains(p),
+            description = p switch
+            {
+                StaffPosition.WarehouseManager => "Quản lý toàn bộ hoạt động kho, lập kế hoạch nhập/xuất/tồn, quản lý nhân sự kho, kiểm soát KPI",
+                StaffPosition.AssistantManager => "Hỗ trợ Warehouse Manager, giám sát từng khu vực, điều phối ca làm việc",
+                StaffPosition.Supervisor => "Quản lý trực tiếp nhân viên kho, phân công công việc, giám sát quy trình, báo cáo cấp trên",
+                StaffPosition.InventoryController => "Theo dõi số lượng tồn, kiểm kê định kỳ, đối chiếu dữ liệu hệ thống với thực tế",
+                StaffPosition.WarehouseStaff => "Nhập hàng, xuất hàng, sắp xếp hàng hóa, đóng gói, dán nhãn",
+                StaffPosition.Loader => "Vận hành xe nâng, bốc dỡ hàng hóa, hỗ trợ nhập/xuất",
+                _ => ""
+            }
+        });
+
+        return Ok(positions);
     }
 
     /// <summary>
@@ -132,6 +186,9 @@ public class AdminWarehouseController : ControllerBase
                 Phone = s.User?.PhoneNumber,
                 Department = s.Department,
                 Position = s.Position,
+                StaffPositionEnum = s.StaffPositionEnum,
+                StaffPositionLabel = GetPositionLabel(s.StaffPositionEnum),
+                CanAccessSystem = CanAccessSystem(s.StaffPositionEnum),
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 HireDate = s.HireDate,
@@ -337,6 +394,7 @@ public class AdminWarehouseController : ControllerBase
                 AvatarUrl = s.User.AvatarUrl,
                 Department = s.Department,
                 Position = s.Position,
+                StaffPositionEnum = s.StaffPositionEnum,
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 CanOverrideFifo = s.CanOverrideFifo,
@@ -345,6 +403,13 @@ public class AdminWarehouseController : ControllerBase
                 CreatedAt = s.CreatedAt
             })
             .ToListAsync();
+
+        // Compute labels after materialization
+        foreach (var s in staffList)
+        {
+            s.StaffPositionLabel = GetPositionLabel(s.StaffPositionEnum);
+            s.CanAccessSystem = CanAccessSystem(s.StaffPositionEnum);
+        }
 
         return Ok(new
         {
@@ -390,6 +455,7 @@ public class AdminWarehouseController : ControllerBase
                 AvatarUrl = s.User.AvatarUrl,
                 Department = s.Department,
                 Position = s.Position,
+                StaffPositionEnum = s.StaffPositionEnum,
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 CanOverrideFifo = s.CanOverrideFifo,
@@ -398,6 +464,12 @@ public class AdminWarehouseController : ControllerBase
                 CreatedAt = s.CreatedAt
             })
             .ToListAsync();
+
+        foreach (var s in staffList)
+        {
+            s.StaffPositionLabel = GetPositionLabel(s.StaffPositionEnum);
+            s.CanAccessSystem = CanAccessSystem(s.StaffPositionEnum);
+        }
 
         return Ok(staffList);
     }
@@ -441,6 +513,7 @@ public class AdminWarehouseController : ControllerBase
                 AvatarUrl = s.User.AvatarUrl,
                 Department = s.Department,
                 Position = s.Position,
+                StaffPositionEnum = s.StaffPositionEnum,
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 CanOverrideFifo = s.CanOverrideFifo,
@@ -451,6 +524,12 @@ public class AdminWarehouseController : ControllerBase
                 CurrentWarehouseName = s.Warehouse != null ? s.Warehouse.Name : null
             })
             .ToListAsync();
+
+        foreach (var s in staffList)
+        {
+            s.StaffPositionLabel = GetPositionLabel(s.StaffPositionEnum);
+            s.CanAccessSystem = CanAccessSystem(s.StaffPositionEnum);
+        }
 
         return Ok(staffList);
     }
@@ -612,7 +691,8 @@ public class AdminWarehouseController : ControllerBase
             UserId = supabaseUserId,
             EmployeeCode = employeeCode,
             Department = request.Department ?? "General",
-            Position = request.Position ?? "Staff",
+            Position = request.Position ?? GetPositionLabel(request.StaffPositionEnum),
+            StaffPositionEnum = request.StaffPositionEnum ?? StaffPosition.WarehouseStaff,
             WarehouseId = warehouseId,
             CanApproveReceipts = request.CanApproveReceipts,
             CanAdjustInventory = request.CanAdjustInventory,
@@ -674,6 +754,12 @@ public class AdminWarehouseController : ControllerBase
 
         if (request.Department != null) staff.Department = request.Department;
         if (request.Position != null) staff.Position = request.Position;
+        if (request.StaffPositionEnum.HasValue)
+        {
+            staff.StaffPositionEnum = request.StaffPositionEnum.Value;
+            // Auto-sync the display position label
+            staff.Position = GetPositionLabel(request.StaffPositionEnum.Value);
+        }
         if (request.CanApproveReceipts.HasValue) staff.CanApproveReceipts = request.CanApproveReceipts.Value;
         if (request.CanAdjustInventory.HasValue) staff.CanAdjustInventory = request.CanAdjustInventory.Value;
         if (request.CanOverrideFifo.HasValue) staff.CanOverrideFifo = request.CanOverrideFifo.Value;
@@ -754,6 +840,9 @@ public class WarehouseStaffDto
     public string? Phone { get; set; }
     public string? Department { get; set; }
     public string? Position { get; set; }
+    public StaffPosition? StaffPositionEnum { get; set; }
+    public string? StaffPositionLabel { get; set; }
+    public bool CanAccessSystem { get; set; }
     public bool CanApproveReceipts { get; set; }
     public bool CanAdjustInventory { get; set; }
     public DateTime? HireDate { get; set; }
@@ -795,6 +884,7 @@ public class CreateWarehouseStaffRequest
     public string? EmployeeCode { get; set; }
     public string? Department { get; set; }
     public string? Position { get; set; }
+    public StaffPosition? StaffPositionEnum { get; set; }
     public bool CanApproveReceipts { get; set; } = false;
     public bool CanAdjustInventory { get; set; } = false;
     public bool CanOverrideFifo { get; set; } = false;
@@ -804,6 +894,7 @@ public class UpdateWarehouseStaffRequest
 {
     public string? Department { get; set; }
     public string? Position { get; set; }
+    public StaffPosition? StaffPositionEnum { get; set; }
     public bool? CanApproveReceipts { get; set; }
     public bool? CanAdjustInventory { get; set; }
     public bool? CanOverrideFifo { get; set; }

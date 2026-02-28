@@ -6,6 +6,43 @@ import api from '../api';
 
 // ==================== TYPES ====================
 
+// Staff position enum values matching backend
+export type StaffPositionEnum =
+  | 'WarehouseManager'
+  | 'AssistantManager'
+  | 'Supervisor'
+  | 'InventoryController'
+  | 'WarehouseStaff'
+  | 'Loader';
+
+export interface StaffPositionInfo {
+  value: StaffPositionEnum;
+  numericValue: number;
+  label: string;
+  canAccessSystem: boolean;
+  description: string;
+}
+
+// Position labels for frontend display
+export const STAFF_POSITION_LABELS: Record<StaffPositionEnum, string> = {
+  WarehouseManager: 'Trưởng phòng kho',
+  AssistantManager: 'Phó quản lý kho',
+  Supervisor: 'Tổ trưởng / Giám sát kho',
+  InventoryController: 'NV kiểm soát tồn kho',
+  WarehouseStaff: 'Nhân viên kho',
+  Loader: 'NV bốc xếp',
+};
+
+// Which positions can login to the staff system
+export const SYSTEM_ACCESS_POSITIONS: StaffPositionEnum[] = [
+  'WarehouseManager',
+  'AssistantManager',
+  'Supervisor',
+];
+
+export const canAccessSystem = (pos?: StaffPositionEnum | null): boolean =>
+  !!pos && SYSTEM_ACCESS_POSITIONS.includes(pos);
+
 export interface AdminWarehouse {
   id: string;
   code: string;
@@ -41,6 +78,9 @@ export interface WarehouseStaff {
   phone?: string;
   department?: string;
   position?: string;
+  staffPositionEnum?: StaffPositionEnum;
+  staffPositionLabel?: string;
+  canAccessSystem: boolean;
   canApproveReceipts: boolean;
   canAdjustInventory: boolean;
   hireDate?: string;
@@ -72,6 +112,7 @@ export interface CreateWarehouseStaffDto {
   employeeCode?: string;
   department?: string;
   position?: string;
+  staffPositionEnum?: StaffPositionEnum;
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
   canOverrideFifo?: boolean;
@@ -85,6 +126,7 @@ export interface TransferStaffDto {
 export interface UpdateWarehouseStaffDto {
   department?: string;
   position?: string;
+  staffPositionEnum?: StaffPositionEnum;
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
   canOverrideFifo?: boolean;
@@ -201,6 +243,11 @@ export const getWarehouseStats = async (): Promise<WarehouseStats> => {
 
 // ==================== WAREHOUSE STAFF MANAGEMENT ====================
 
+export const getStaffPositions = async (): Promise<StaffPositionInfo[]> => {
+  const response = await api.get<StaffPositionInfo[]>('/admin/warehouses/staff/positions');
+  return response.data;
+};
+
 export const getWarehouseStaff = async (
   warehouseId: string,
   params?: { page?: number; pageSize?: number; search?: string; isActive?: boolean }
@@ -284,6 +331,7 @@ export const warehouseService = {
   deleteWarehouse,
   getWarehouseStats,
   // Staff management
+  getStaffPositions,
   getWarehouseStaff,
   getUnassignedStaff,
   getAllStaffWithWarehouse,

@@ -18,6 +18,7 @@ import {
     Settings,
     Building2,
     Box,
+    ArrowDownToLine,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
     { id: 'shipping', label: 'Vận chuyển', icon: Truck },
     { id: 'warehouses', label: 'Kho hàng', icon: Building2 },
     { id: 'receipts', label: 'Nhập kho', icon: ClipboardList },
+    { id: 'inbound-sessions', label: 'Phiên nhập', icon: ArrowDownToLine },
     { id: 'inventory', label: 'Tồn kho', icon: Box },
     { id: 'discrepancies', label: 'Sai lệch', icon: FileWarning },
     { id: 'returns', label: 'Trả hàng', icon: RotateCcw },
@@ -164,7 +166,7 @@ export function StaffLayout({
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white truncate">{staffName}</p>
-                            <p className="text-xs text-white/50">{employeeCode || staffPosition}</p>
+                            <p className="text-xs text-white/50">{employeeCode ? `${employeeCode} • ${staffPosition}` : staffPosition}</p>
                         </div>
                     </div>
                     <button

@@ -89,6 +89,8 @@ public class AdminProductService : IAdminProductService
                 SupplierName = p.Supplier != null ? p.Supplier.ContactName : null,
                 IsSubscriptionAvailable = p.IsSubscriptionAvailable ?? false,
                 IsActive = p.IsActive ?? false,
+                ApprovalStatus = p.ApprovalStatus,
+                SubmittedAt = p.SubmittedAt,
                 CreatedAt = p.CreatedAt ?? DateTime.UtcNow,
                 UpdatedAt = p.UpdatedAt ?? DateTime.UtcNow
             })
@@ -129,6 +131,8 @@ public class AdminProductService : IAdminProductService
                 SupplierName = p.Supplier != null ? p.Supplier.ContactName : null,
                 IsSubscriptionAvailable = p.IsSubscriptionAvailable ?? false,
                 IsActive = p.IsActive ?? false,
+                ApprovalStatus = p.ApprovalStatus,
+                SubmittedAt = p.SubmittedAt,
                 CreatedAt = p.CreatedAt ?? DateTime.UtcNow,
                 UpdatedAt = p.UpdatedAt ?? DateTime.UtcNow
             })

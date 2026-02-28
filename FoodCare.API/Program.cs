@@ -47,6 +47,10 @@ dataSourceBuilder.MapEnum<MovementType>("movement_type");
 dataSourceBuilder.MapEnum<DiscrepancyType>("discrepancy_type");
 dataSourceBuilder.MapEnum<InventoryType>("inventory_type");
 
+// Inbound Session Enums
+dataSourceBuilder.MapEnum<InboundSessionStatus>("inbound_session_status");
+dataSourceBuilder.MapEnum<InboundReceiptStatus>("inbound_receipt_status");
+
 dataSourceBuilder.EnableDynamicJson();
 
 var dataSource = dataSourceBuilder.Build();
@@ -154,6 +158,7 @@ builder.Services.AddScoped<IReceiptService, ReceiptService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IDiscrepancyService, DiscrepancyService>();
 builder.Services.AddScoped<IReturnService, ReturnService>();
+builder.Services.AddScoped<IInboundSessionService, InboundSessionService>();
 
 // Register Shipping Flow Service (Supplier → Staff → User)
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
