@@ -326,29 +326,53 @@ public partial class FoodCareDbContext : DbContext {
         });
 
         modelBuilder.Entity<Transaction>(entity => {
-            entity.ToTable("transactions", t => {
-                t.HasCheckConstraint(
-                    "check_attempt_number",
-                    "\"AttemptNumber\" >= 1"
-                );
-            });
+            entity.HasKey(e => e.Id).HasName("transactions_pkey");
+            entity.ToTable("transactions");
 
+            // Column name mappings (snake_case)
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Provider).HasMaxLength(50).HasColumnName("provider");
+            entity.Property(e => e.Amount).HasPrecision(15, 2).HasColumnName("amount");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasDefaultValue("VND").HasColumnName("currency");
+            entity.Property(e => e.AttemptNumber).HasDefaultValue(1).HasColumnName("attempt_number");
+            entity.Property(e => e.ProviderTransactionId).HasMaxLength(100).HasColumnName("provider_transaction_id");
+            entity.Property(e => e.ProviderResponse).HasColumnType("jsonb").HasColumnName("provider_response");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+
+            // Enum → string conversion + column name
             entity.Property(e => e.TransactionType)
-                  .HasConversion<string>();
+                  .HasConversion<string>()
+                  .HasColumnName("transaction_type");
 
             entity.Property(e => e.Status)
-                  .HasConversion<string>();
+                  .HasConversion<string>()
+                  .HasColumnName("status");
 
-            entity.HasIndex(e => e.OrderId);
-            entity.HasIndex(e => e.SubscriptionId);
-            entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.CreatedAt);
+            // Indexes
+            entity.HasIndex(e => e.OrderId).HasDatabaseName("idx_transactions_order_id");
+            entity.HasIndex(e => e.SubscriptionId).HasDatabaseName("idx_transactions_subscription_id");
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_transactions_user_id");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_transactions_created_at");
 
-            //entity.HasCheckConstraint(
-            //    "check_attempt_number",
-            //    "\"AttemptNumber\" >= 1"
-            //);
+            // Foreign Keys
+            entity.HasOne(d => d.Order)
+                  .WithMany()
+                  .HasForeignKey(d => d.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("transactions_order_id_fkey");
+
+            entity.HasOne(d => d.User)
+                  .WithMany()
+                  .HasForeignKey(d => d.UserId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("transactions_user_id_fkey");
         });
+
+
 
         modelBuilder.Entity<Product>(entity => {
             entity.HasKey(e => e.Id).HasName("products_pkey");

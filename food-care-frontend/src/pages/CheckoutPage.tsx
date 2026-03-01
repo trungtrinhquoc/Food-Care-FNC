@@ -51,6 +51,11 @@ export default function CheckoutPage() {
     const [selectedAddressId, setSelectedAddressId] = useState<string>('');
     const [showNewAddressForm, setShowNewAddressForm] = useState(false);
 
+    // Chỉ giao hàng Đà Nẵng
+    const DA_NANG_NAMES = ['Thành phố Đà Nẵng', 'Đà Nẵng', 'Da Nang', 'TP. Đà Nẵng', 'TP Đà Nẵng'];
+    const isDaNangAddress = (addr: Address) =>
+        DA_NANG_NAMES.some(n => addr.city?.toLowerCase().includes('đà nẵng') || addr.city?.toLowerCase().includes('da nang'));
+
     // Coupon state
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<CouponDto | null>(null);
@@ -75,15 +80,20 @@ export default function CheckoutPage() {
 
         const fetchAddresses = async () => {
             try {
-                const saved = await profileApi.getAddresses();
-                setSavedAddresses(saved);
+                const all = await profileApi.getAddresses();
+                // Chỉ giữ địa chỉ Đà Nẵng
+                const daNangAddrs = all.filter(a =>
+                    a.city?.toLowerCase().includes('đà nẵng') ||
+                    a.city?.toLowerCase().includes('da nang')
+                );
+                setSavedAddresses(daNangAddrs);
 
-                // If there's a default address, select it
-                const defaultAddr = saved.find(a => a.isDefault);
+                // Ưu tiên default address Đà Nẵng
+                const defaultAddr = daNangAddrs.find(a => a.isDefault) || daNangAddrs[0];
                 if (defaultAddr) {
                     handleSelectAddress(defaultAddr);
                     setShowNewAddressForm(false);
-                } else if (saved.length === 0) {
+                } else {
                     setShowNewAddressForm(true);
                     // FALLBACK: If no saved addresses, look at the last order
                     try {
@@ -210,6 +220,13 @@ export default function CheckoutPage() {
             return;
         }
 
+        // Kiểm tra địa chỉ phải ở Đà Nẵng
+        const cityLower = (address.province || formData.city || '').toLowerCase();
+        if (!cityLower.includes('đà nẵng') && !cityLower.includes('da nang')) {
+            toast.error('⚠️ Hiện tại chúng tôi chỉ giao hàng trong khu vực Thành phố Đà Nẵng.');
+            return;
+        }
+
         if (!user) return;
 
         try {
@@ -269,16 +286,16 @@ export default function CheckoutPage() {
                         window.location.href = paymentResponse.checkoutUrl;
                         return; // Stop here, browser will redirect
                     }
-                } catch (payError) {
+                } catch (payError: any) {
+                    const serverMsg = payError?.response?.data?.message || payError?.response?.data?.detail || payError?.message || 'Unknown error';
                     console.error('Payment redirect error:', payError);
-                    toast.error('Không thể tạo liên kết thanh toán. Vui lòng thử lại hoặc chọn COD.');
-                    // Don't navigate away, let user try another method
+                    console.error('Server error message:', serverMsg);
+                    toast.error(`❌ Lỗi tạo link thanh toán: ${serverMsg}`);
                     return;
                 }
             }
 
             toast.success('Đặt hàng thành công 🎉');
-
             clearSelectedItems();
             navigate('/');
         } catch (error: any) {
@@ -318,9 +335,20 @@ export default function CheckoutPage() {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container mx-auto px-4">
-                <h1 className="mb-8">Thanh Toán</h1>
+                <h1 className="mb-4">Thanh Toán</h1>
+
+                {/* Banner khu vực giao hàng */}
+                <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800 font-medium">
+                    <span className="text-lg">🗺️</span>
+                    <span>
+                        <strong>Khu vực giao hàng:</strong> Hiện tại Food &amp; Care chỉ phục vụ giao hàng trong{' '}
+                        <strong className="text-blue-900">Thành phố Đà Nẵng</strong>.
+                        Chúng tôi sẽ mở rộng sang các tỉnh thành khác sớm nhất có thể.
+                    </span>
+                </div>
 
                 <form onSubmit={handleSubmit}>
+
                     <div className="grid lg:grid-cols-3 gap-8">
                         {/* ================= LEFT ================= */}
                         <div className="lg:col-span-2 space-y-6">
@@ -335,7 +363,12 @@ export default function CheckoutPage() {
                                 <CardContent className="space-y-6">
                                     {savedAddresses.length > 0 && (
                                         <div className="space-y-3">
-                                            <Label>Chọn địa chỉ đã lưu</Label>
+                                            <Label className="flex items-center gap-2">
+                                                Địa chỉ đã lưu tại Đà Nẵng
+                                                <span className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                    {savedAddresses.length} địa chỉ
+                                                </span>
+                                            </Label>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 {savedAddresses.map(addr => (
                                                     <div
@@ -394,7 +427,7 @@ export default function CheckoutPage() {
                                                     <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${showNewAddressForm && !selectedAddressId ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-200 group-hover:border-emerald-400'}`}>
                                                         <Plus className="w-4 h-4" />
                                                     </div>
-                                                    <span className="text-sm font-medium">+ Sử dụng địa chỉ mới</span>
+                                                    <span className="text-sm font-medium">+ Sử dụng địa chỉ mới (Đà Nẵng)</span>
                                                 </div>
                                             </div>
                                             <Separator className="my-4" />

@@ -197,10 +197,31 @@ using (var scope = app.Services.CreateScope())
                 order_id    UUID,
                 created_at  TIMESTAMPTZ DEFAULT now()
             );
+
+            CREATE TABLE IF NOT EXISTS transactions (
+                id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                order_id                UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+                subscription_id         UUID REFERENCES subscriptions(id) ON DELETE SET NULL,
+                user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                provider                VARCHAR(50) NOT NULL,
+                transaction_type        VARCHAR(30) NOT NULL,
+                amount                  NUMERIC(15,2) NOT NULL,
+                currency                VARCHAR(10) DEFAULT 'VND',
+                status                  VARCHAR(30) NOT NULL,
+                attempt_number          INT NOT NULL DEFAULT 1 CHECK (attempt_number >= 1),
+                provider_transaction_id VARCHAR(100),
+                provider_response       JSONB,
+                paid_at                 TIMESTAMPTZ,
+                created_at              TIMESTAMPTZ DEFAULT now()
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_transactions_order_id   ON transactions(order_id);
+            CREATE INDEX IF NOT EXISTS idx_transactions_user_id    ON transactions(user_id);
+            CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
         ";
         await cmd.ExecuteNonQueryAsync();
         await conn.CloseAsync();
-        Console.WriteLine("✅ Tables coupons/coupon_usage ensured.");
+        Console.WriteLine("✅ Tables coupons/coupon_usage/transactions ensured.");
     }
     catch (Exception ex)
     {
