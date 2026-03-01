@@ -41,7 +41,7 @@ namespace FoodCare.API.Services.Implementations
             var body = new
             {
                 orderCode,
-                amount,
+                amount = (long)amount, // PayOS yêu cầu amount là integer (VND không có phần thập phân)
                 description,
                 returnUrl,
                 cancelUrl,

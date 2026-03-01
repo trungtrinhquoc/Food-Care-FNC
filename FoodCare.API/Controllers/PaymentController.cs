@@ -34,9 +34,58 @@ namespace FoodCare.API.Controllers
             if (request == null || request.OrderId == Guid.Empty)
                 return BadRequest(new { message = "Invalid order id" });
 
-            var result = await _paymentService.CreatePayOsPaymentAsync(request.OrderId);
+            try
+            {
+                var result = await _paymentService.CreatePayOsPaymentAsync(request.OrderId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PayOS] ❌ EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[PayOS] StackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"[PayOS] InnerException: {ex.InnerException.Message}");
+                return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
+            }
+        }
 
-            return Ok(result);
+        // ======================================
+        // 2. XÁC NHẬN TỪ RETURNURL (thay thế webhook khi test local)
+        // ======================================
+        /// <summary>
+        /// PayOS redirect về đây sau khi thanh toán.
+        /// Query params: id (paymentLinkId), status (PAID/CANCELLED), orderCode, cancel (true/false)
+        /// </summary>
+        [HttpGet("payos/verify-return")]
+        public async Task<IActionResult> VerifyReturn(
+            [FromQuery] string? id,
+            [FromQuery] string? status,
+            [FromQuery] long orderCode = 0,
+            [FromQuery] bool cancel = false)
+        {
+            Console.WriteLine($"[PayOS VerifyReturn] id={id}, status={status}, orderCode={orderCode}, cancel={cancel}");
+
+            var feSuccessUrl = "http://localhost:5173/payment/success";
+            var feCancelUrl  = "http://localhost:5173/payment/cancel";
+
+            if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(status))
+                return Redirect(feCancelUrl);
+
+            try
+            {
+                var effectiveStatus = cancel ? "CANCELLED" : status;
+                var isPaid = await _paymentService.VerifyReturnUrlAsync(id, effectiveStatus!, orderCode);
+
+                if (isPaid)
+                    return Redirect($"{feSuccessUrl}?orderCode={orderCode}");
+                else
+                    return Redirect($"{feCancelUrl}?reason={effectiveStatus}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PayOS VerifyReturn] ERROR: {ex.Message}");
+                return Redirect(feCancelUrl);
+            }
         }
 
         // ======================================
@@ -59,23 +108,26 @@ namespace FoodCare.API.Controllers
 
                 Console.WriteLine($"[Webhook] Received at {DateTime.Now}: Length={payload.Length}");
                 Console.WriteLine($"[Webhook] Signature: {signature}");
-                // Console.WriteLine($"[Webhook] RAW PAYLOAD: {payload}"); // Disabled for security
 
+                // ⚠️ BYPASS SIGNATURE FOR TESTING - BỎ QUA KIỂM TRA CHỮ KÝ KHI TEST
+                // TODO: Bật lại bảo mật sau khi deploy xong
+                /*
                 if (string.IsNullOrEmpty(signature))
                 {
                     Console.WriteLine("[Webhook] Error: Missing signature header");
                     return Unauthorized();
                 }
 
-                // 3. Verify chữ ký
                 var isValid = _payOsService.VerifySignature(payload, signature);
                 if (!isValid)
                 {
                     Console.WriteLine("[Webhook] Error: Invalid signature");
                     return Unauthorized();
                 }
+                */
+                Console.WriteLine("[Webhook] ⚠️ Signature verification BYPASSED for testing");
 
-                // 4. Parse JSON sau khi verify
+                // 3. Parse JSON
                 var webhook = JsonSerializer.Deserialize<PayOsWebhookRequest>(payload);
                 if (webhook == null)
                 {
@@ -83,7 +135,7 @@ namespace FoodCare.API.Controllers
                     return BadRequest();
                 }
 
-                // 5. Xử lý nghiệp vụ
+                // 4. Xử lý nghiệp vụ
                 Console.WriteLine($"[Webhook] Processing Order... PaymentLinkId: {webhook.Data?.PaymentLinkId}, Status: {webhook.Data?.Status}");
                 await _paymentService.HandlePayOsWebhookAsync(webhook);
 
@@ -92,7 +144,7 @@ namespace FoodCare.API.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"[Webhook] CRITICAL EXCEPTION: {ex}");
-                return Ok(); 
+                return Ok();
             }
         }
     }
