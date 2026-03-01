@@ -126,7 +126,7 @@ public class StaffController : ControllerBase
     // =====================================================
 
     /// <summary>
-    /// Get warehouses — Staff only sees their assigned warehouse, Admin sees all
+    /// Get warehouses — Staff can view all warehouses (read-only), Admin sees all
     /// </summary>
     [HttpGet("warehouses")]
     public async Task<ActionResult<PagedResponse<WarehouseDto>>> GetWarehouses(
@@ -134,32 +134,9 @@ public class StaffController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] bool? isActive = null)
     {
-        // Admin sees all warehouses
-        if (User.IsInRole("admin"))
-        {
-            var result = await _warehouseService.GetWarehousesAsync(page, pageSize, isActive);
-            return Ok(result);
-        }
-
-        // Staff: only return their assigned warehouse
-        var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
-
-        var staff = await _staffMemberService.GetStaffMemberByUserIdAsync(userId.Value);
-        if (staff?.WarehouseId == null)
-            return Ok(new PagedResponse<WarehouseDto> { Items = new List<WarehouseDto>(), TotalCount = 0, Page = 1, PageSize = 20 });
-
-        var warehouse = await _warehouseService.GetWarehouseByIdAsync(staff.WarehouseId.Value);
-        if (warehouse == null)
-            return Ok(new PagedResponse<WarehouseDto> { Items = new List<WarehouseDto>(), TotalCount = 0, Page = 1, PageSize = 20 });
-
-        return Ok(new PagedResponse<WarehouseDto>
-        {
-            Items = new List<WarehouseDto> { warehouse },
-            TotalCount = 1,
-            Page = 1,
-            PageSize = 20
-        });
+        // Both Admin and Staff can view all warehouses (read-only for Staff)
+        var result = await _warehouseService.GetWarehousesAsync(page, pageSize, isActive);
+        return Ok(result);
     }
 
     /// <summary>
