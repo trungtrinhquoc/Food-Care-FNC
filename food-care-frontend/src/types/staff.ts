@@ -87,6 +87,7 @@ export interface StaffMember {
   canApproveReceipts: boolean;
   canAdjustInventory: boolean;
   canOverrideFifo: boolean;
+  canCreateInboundSession: boolean;
   hireDate?: string;
   isActive: boolean;
   createdAt: string;
@@ -106,6 +107,7 @@ export interface CreateStaffMemberRequest {
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
   canOverrideFifo?: boolean;
+  canCreateInboundSession?: boolean;
   hireDate?: string;
 }
 
@@ -117,6 +119,7 @@ export interface UpdateStaffMemberRequest {
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
   canOverrideFifo?: boolean;
+  canCreateInboundSession?: boolean;
   isActive?: boolean;
 }
 

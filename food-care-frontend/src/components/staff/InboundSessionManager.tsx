@@ -15,7 +15,6 @@ import {
 import { toast } from 'sonner';
 import {
   Plus,
-  Eye,
   CheckCircle,
   XCircle,
   RefreshCw,
@@ -31,6 +30,7 @@ import {
 
 import { inboundSessionApi } from '../../services/staff/staffApi';
 import { warehouseApi } from '../../services/staff/staffApi';
+import { staffMemberApi } from '../../services/staff/staffApi';
 import type {
   InboundSession,
   InboundReceipt,
@@ -39,6 +39,7 @@ import type {
   AddInboundItemRequest,
   UpdateInboundDetailRequest,
   Warehouse,
+  StaffMember,
 } from '../../types/staff';
 
 // Colors
@@ -76,6 +77,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   const [sessions, setSessions] = useState<InboundSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<InboundSession | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [staffProfile, setStaffProfile] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -129,6 +131,19 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
     }
   }, [page, filterStatus]);
 
+  const fetchStaffProfile = useCallback(async () => {
+    try {
+      const profile = await staffMemberApi.getMe();
+      setStaffProfile(profile);
+      // Auto-set warehouse for create form if staff is assigned to a warehouse
+      if (profile.warehouseId) {
+        setCreateForm(prev => ({ ...prev, warehouseId: profile.warehouseId! }));
+      }
+    } catch (err) {
+      console.error('Error fetching staff profile:', err);
+    }
+  }, []);
+
   const fetchWarehouses = useCallback(async () => {
     try {
       const result = await warehouseApi.getAll(1, 100);
@@ -160,8 +175,9 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   useEffect(() => {
     fetchSessions();
     fetchWarehouses();
+    fetchStaffProfile();
     fetchProducts();
-  }, [fetchSessions, fetchWarehouses, fetchProducts]);
+  }, [fetchSessions, fetchWarehouses, fetchStaffProfile, fetchProducts]);
 
   const refreshSession = async (sessionId: string) => {
     try {
@@ -179,16 +195,27 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   // =====================================================
 
   const handleCreateSession = async () => {
-    if (!createForm.warehouseId) {
-      toast.error('Vui lòng chọn kho');
+    // Staff must have canCreateInboundSession permission
+    if (staffProfile && !staffProfile.canCreateInboundSession) {
+      toast.error('Bạn không có quyền tạo phiên nhập kho. Vui lòng liên hệ quản trị viên.');
       return;
     }
+
+    // Staff must be assigned to a warehouse
+    if (!staffProfile?.warehouseId) {
+      toast.error('Bạn chưa được phân bổ vào kho nào. Vui lòng liên hệ quản trị viên.');
+      return;
+    }
+
     setActionLoading(true);
     try {
-      const session = await inboundSessionApi.create(createForm);
+      const session = await inboundSessionApi.create({
+        warehouseId: staffProfile.warehouseId,
+        note: createForm.note,
+      });
       toast.success(`Tạo phiên nhập thành công: ${session.sessionCode}`);
       setCreateDialogOpen(false);
-      setCreateForm({ warehouseId: '', note: '' });
+      setCreateForm({ warehouseId: staffProfile.warehouseId, note: '' });
       setSelectedSession(session);
       setViewMode('detail');
       fetchSessions();
@@ -367,14 +394,16 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
             Làm mới
           </Button>
-          <Button
-            size="sm"
-            onClick={() => setCreateDialogOpen(true)}
-            style={{ backgroundColor: colors.accent, color: colors.primary }}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Tạo phiên nhập
-          </Button>
+          {staffProfile?.canCreateInboundSession && staffProfile?.warehouseId && (
+            <Button
+              size="sm"
+              onClick={() => setCreateDialogOpen(true)}
+              style={{ backgroundColor: colors.accent, color: colors.primary }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Tạo phiên nhập
+            </Button>
+          )}
         </div>
       </div>
 
@@ -402,15 +431,21 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Chưa có phiên nhập kho nào</p>
-            <Button
-              className="mt-4"
-              onClick={() => setCreateDialogOpen(true)}
-              style={{ backgroundColor: colors.accent, color: colors.primary }}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Tạo phiên nhập đầu tiên
-            </Button>
+            <p className="text-gray-500">
+              {staffProfile?.canCreateInboundSession
+                ? 'Chưa có phiên nhập kho nào'
+                : 'Chưa có phiên nhập kho nào. Bạn không có quyền tạo phiên nhập.'}
+            </p>
+            {staffProfile?.canCreateInboundSession && staffProfile?.warehouseId && (
+              <Button
+                className="mt-4"
+                onClick={() => setCreateDialogOpen(true)}
+                style={{ backgroundColor: colors.accent, color: colors.primary }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Tạo phiên nhập đầu tiên
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -457,7 +492,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
                           setViewMode('detail');
                         }}
                       >
-                        <Eye className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -733,18 +768,25 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
         <div className="space-y-4 py-4">
           <div>
             <label className="text-sm font-medium">Kho nhận hàng *</label>
-            <select
-              className="w-full mt-1 p-2 border rounded-md"
-              value={createForm.warehouseId}
-              onChange={(e) => setCreateForm({ ...createForm, warehouseId: e.target.value })}
-            >
-              <option value="">-- Chọn kho --</option>
-              {warehouses.map((wh) => (
-                <option key={wh.id} value={wh.id}>
-                  {wh.name} ({wh.code})
-                </option>
-              ))}
-            </select>
+            {staffProfile?.warehouseId ? (
+              <div className="w-full mt-1 p-2 border rounded-md bg-gray-50 text-gray-700">
+                {staffProfile.warehouseName || warehouses.find(w => w.id === staffProfile.warehouseId)?.name || staffProfile.warehouseId}
+                <p className="text-xs text-gray-400 mt-1">Kho được phân bổ cho bạn — không thể thay đổi</p>
+              </div>
+            ) : (
+              <select
+                className="w-full mt-1 p-2 border rounded-md"
+                value={createForm.warehouseId}
+                onChange={(e) => setCreateForm({ ...createForm, warehouseId: e.target.value })}
+              >
+                <option value="">-- Chọn kho --</option>
+                {warehouses.map((wh) => (
+                  <option key={wh.id} value={wh.id}>
+                    {wh.name} ({wh.code})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium">Ghi chú</label>
@@ -763,7 +805,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
           </Button>
           <Button
             onClick={handleCreateSession}
-            disabled={actionLoading || !createForm.warehouseId}
+            disabled={actionLoading || (!staffProfile?.warehouseId && !createForm.warehouseId)}
             style={{ backgroundColor: colors.accent, color: colors.primary }}
           >
             {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}

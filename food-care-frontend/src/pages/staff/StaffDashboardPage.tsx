@@ -37,12 +37,6 @@ import {
   ArrowRight,
   Target,
   Loader2,
-  MapPin,
-  Mail,
-  Phone,
-  Info,
-  Star,
-  Globe,
 } from 'lucide-react';
 
 // Import API services
@@ -778,158 +772,71 @@ export default function StaffDashboardPage() {
   );
 
   // Render Warehouses Section
-  const getRegionLabel = (region?: string) => {
-    switch (region) {
-      case 'North': return 'Miền Bắc';
-      case 'Central': return 'Miền Trung';
-      case 'South': return 'Miền Nam';
-      default: return region || '—';
-    }
-  };
-
-  const getRegionColor = (region?: string) => {
-    switch (region) {
-      case 'North': return 'bg-blue-100 text-blue-800';
-      case 'Central': return 'bg-yellow-100 text-yellow-800';
-      case 'South': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const isMyWarehouse = (warehouseId: string) => staffProfile?.warehouseId === warehouseId;
-
-  const renderWarehouses = () => {
-    // Sort: staff's own warehouse first, then by name
-    const sortedWarehouses = [...warehouses].sort((a, b) => {
-      if (isMyWarehouse(a.id) && !isMyWarehouse(b.id)) return -1;
-      if (!isMyWarehouse(a.id) && isMyWarehouse(b.id)) return 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    return (
-      <div className="space-y-4">
-        {/* Header Card */}
-        <Card className="border-0" style={{ backgroundColor: colors.white }}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2" style={{ color: colors.primary }}>
-                  <Building2 className="size-5" style={{ color: colors.accent }} />
-                  Danh sách kho hàng
-                </CardTitle>
-                <CardDescription>Xem thông tin các kho hàng trong hệ thống (chỉ xem)</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs flex items-center gap-1">
-                  <Eye className="size-3" />
-                  Chỉ xem
-                </Badge>
-                <Badge
-                  className="text-xs"
-                  style={{ backgroundColor: `${colors.accent}30`, color: colors.primary }}
-                >
-                  {warehouses.length} kho
-                </Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Staff's warehouse info */}
-            {staffProfile?.warehouseId && (
-              <Alert className="mb-4 border" style={{ borderColor: colors.accent, backgroundColor: `${colors.accent}15` }}>
-                <Info className="size-4" style={{ color: colors.primary }} />
-                <AlertDescription className="text-sm" style={{ color: colors.primary }}>
-                  Kho được phân công của bạn: <strong>{staffProfile.warehouseName}</strong>. Bạn có thể xem thông tin cơ bản của các kho hàng khác.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {loading ? (
-              <div className="flex items-center justify-center py-8 text-gray-500">
-                <Loader2 className="size-5 mr-2 animate-spin" /> Đang tải...
-              </div>
-            ) : warehouses.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">Chưa có kho hàng nào</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow style={{ backgroundColor: colors.background }}>
-                    <TableHead></TableHead>
-                    <TableHead>Mã kho</TableHead>
-                    <TableHead>Tên kho</TableHead>
-                    <TableHead>Khu vực</TableHead>
-                    <TableHead>Địa chỉ</TableHead>
-                    <TableHead>SĐT</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead className="text-center">Xem</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedWarehouses.map((warehouse) => {
-                    const isMine = isMyWarehouse(warehouse.id);
-                    return (
-                      <TableRow
-                        key={warehouse.id}
-                        className={`hover:bg-gray-50 ${isMine ? 'bg-green-50/50' : ''}`}
-                        style={isMine ? { borderLeft: `3px solid ${colors.accent}` } : {}}
-                      >
-                        <TableCell className="w-8">
-                          {isMine && (
-                            <Star className="size-4 fill-current" style={{ color: colors.accent }} />
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium" style={{ color: colors.primary }}>
-                          {warehouse.code}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            {warehouse.name}
-                            {warehouse.isDefault && (
-                              <Badge variant="outline" className="text-[10px] px-1.5" style={{ borderColor: colors.accent }}>Mặc định</Badge>
-                            )}
-                            {isMine && (
-                              <Badge className="text-[10px] px-1.5" style={{ backgroundColor: colors.accent, color: colors.primary }}>Kho của tôi</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {warehouse.region ? (
-                            <Badge variant="outline" className={`text-xs ${getRegionColor(warehouse.region)}`}>
-                              <Globe className="size-3 mr-1" />
-                              {getRegionLabel(warehouse.region)}
-                            </Badge>
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-gray-600">
-                          {[warehouse.addressDistrict, warehouse.addressCity]
-                            .filter(Boolean)
-                            .join(', ') || '—'}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">{warehouse.phone || '—'}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={warehouse.isActive ? 'default' : 'secondary'}
-                            style={warehouse.isActive ? { backgroundColor: colors.accent, color: colors.primary } : {}}
-                          >
-                            {warehouse.isActive ? 'Hoạt động' : 'Tạm ngưng'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button size="sm" variant="ghost" onClick={() => handleViewWarehouse(warehouse)}>
-                            <Eye className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+  const renderWarehouses = () => (
+    <Card className="border-0" style={{ backgroundColor: colors.white }}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle style={{ color: colors.primary }}>Danh sách kho hàng</CardTitle>
+            <CardDescription>Quản lý các kho hàng trong hệ thống</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">Đang tải...</div>
+        ) : warehouses.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">Chưa có kho hàng nào</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow style={{ backgroundColor: colors.background }}>
+                <TableHead>Mã kho</TableHead>
+                <TableHead>Tên kho</TableHead>
+                <TableHead>Địa chỉ</TableHead>
+                <TableHead>SĐT</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Hành động</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {warehouses.map((warehouse) => (
+                <TableRow key={warehouse.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium" style={{ color: colors.primary }}>{warehouse.code}</TableCell>
+                  <TableCell>
+                    {warehouse.name}
+                    {warehouse.isDefault && (
+                      <Badge variant="outline" className="ml-2" style={{ borderColor: colors.accent }}>Mặc định</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {[warehouse.addressStreet, warehouse.addressDistrict, warehouse.addressCity]
+                      .filter(Boolean)
+                      .join(', ') || '-'}
+                  </TableCell>
+                  <TableCell>{warehouse.phone || '-'}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={warehouse.isActive ? 'default' : 'secondary'}
+                      style={warehouse.isActive ? { backgroundColor: colors.accent, color: colors.primary } : {}}
+                    >
+                      {warehouse.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" onClick={() => handleViewWarehouse(warehouse)}>
+                      <Eye className="size-4 mr-1" />
+                      Chi tiết
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   // Render Receipts Section
   const renderReceipts = () => (
@@ -1267,124 +1174,43 @@ export default function StaffDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Warehouse Detail Dialog (Read-only) */}
+      {/* Warehouse Detail Dialog */}
       <Dialog open={warehouseDetailOpen} onOpenChange={setWarehouseDetailOpen}>
-        <DialogContent className="sm:max-w-[650px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="size-5" style={{ color: colors.accent }} />
-              Chi tiết kho hàng
-              {selectedWarehouseDetail && isMyWarehouse(selectedWarehouseDetail.id) && (
-                <Badge className="text-xs ml-2" style={{ backgroundColor: colors.accent, color: colors.primary }}>Kho của tôi</Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription className="flex items-center gap-2">
-              Mã kho: {selectedWarehouseDetail?.code}
-              <Badge variant="outline" className="text-[10px] flex items-center gap-1">
-                <Eye className="size-3" />
-                Chỉ xem
-              </Badge>
-            </DialogDescription>
+            <DialogTitle>Chi tiết kho hàng</DialogTitle>
+            <DialogDescription>{selectedWarehouseDetail?.code}</DialogDescription>
           </DialogHeader>
           {selectedWarehouseDetail && (
             <div className="space-y-4">
-              {/* Basic info */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Building2 className="size-3" /> Tên kho
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.name}</p>
+                  <p className="text-xs text-gray-500">Tên kho</p>
+                  <p className="font-medium">{selectedWarehouseDetail.name}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-500">Trạng thái</p>
-                  <div className="mt-1">
-                    <Badge
-                      variant={selectedWarehouseDetail.isActive ? 'default' : 'secondary'}
-                      style={selectedWarehouseDetail.isActive ? { backgroundColor: colors.accent, color: colors.primary } : {}}
-                    >
-                      {selectedWarehouseDetail.isActive ? 'Hoạt động' : 'Tạm ngưng'}
-                    </Badge>
-                  </div>
+                  <Badge variant={selectedWarehouseDetail.isActive ? 'default' : 'secondary'}>
+                    {selectedWarehouseDetail.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                  </Badge>
                 </div>
-              </div>
-
-              {/* Region & Capacity */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Globe className="size-3" /> Khu vực
+                <div className="p-3 bg-gray-50 rounded-lg col-span-2">
+                  <p className="text-xs text-gray-500">Địa chỉ</p>
+                  <p className="font-medium">
+                    {[
+                      selectedWarehouseDetail.addressStreet,
+                      selectedWarehouseDetail.addressDistrict,
+                      selectedWarehouseDetail.addressCity
+                    ].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
                   </p>
-                  <div className="mt-1">
-                    {selectedWarehouseDetail.region ? (
-                      <Badge variant="outline" className={`text-xs ${getRegionColor(selectedWarehouseDetail.region)}`}>
-                        {getRegionLabel(selectedWarehouseDetail.region)}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
-                    )}
-                  </div>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Package className="size-3" /> Sức chứa
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.capacity ? `${selectedWarehouseDetail.capacity.toLocaleString()} đơn vị` : '—'}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedWarehouseDetail.description && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Info className="size-3" /> Mô tả
-                  </p>
-                  <p className="text-sm mt-1">{selectedWarehouseDetail.description}</p>
-                </div>
-              )}
-
-              {/* Address */}
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <MapPin className="size-3" /> Địa chỉ
-                </p>
-                <p className="font-medium mt-1">
-                  {[
-                    selectedWarehouseDetail.addressStreet,
-                    selectedWarehouseDetail.addressWard,
-                    selectedWarehouseDetail.addressDistrict,
-                    selectedWarehouseDetail.addressCity
-                  ].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
-                </p>
-              </div>
-
-              {/* Contact */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Phone className="size-3" /> Điện thoại
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.phone || '—'}</p>
+                  <p className="text-xs text-gray-500">Điện thoại</p>
+                  <p className="font-medium">{selectedWarehouseDetail.phone || '-'}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Mail className="size-3" /> Email
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.email || '—'}</p>
-                </div>
-              </div>
-
-              {/* Default & Created */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500">Kho mặc định</p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.isDefault ? 'Có' : 'Không'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Calendar className="size-3" /> Ngày tạo
-                  </p>
-                  <p className="font-medium mt-1">{new Date(selectedWarehouseDetail.createdAt).toLocaleDateString('vi-VN')}</p>
+                  <p className="text-xs text-gray-500">Sức chứa</p>
+                  <p className="font-medium">{selectedWarehouseDetail.capacity || '-'}</p>
                 </div>
               </div>
             </div>

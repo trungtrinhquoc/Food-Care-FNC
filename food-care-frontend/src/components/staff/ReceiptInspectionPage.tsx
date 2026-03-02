@@ -43,7 +43,7 @@ import {
   Calendar,
   ShieldCheck,
   XCircle,
-  Eye,
+  Edit,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
@@ -598,7 +598,7 @@ export const ReceiptInspectionPage: React.FC = () => {
                       >
                         {item.acceptedQuantity > 0 || item.damagedQuantity > 0 ? (
                           <>
-                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            <Edit className="h-3.5 w-3.5 mr-1" />
                             Sửa
                           </>
                         ) : (

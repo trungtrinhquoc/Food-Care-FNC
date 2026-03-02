@@ -168,3 +168,4 @@ food-care-frontend/.env.example
 AI_CHATBOT_COMPLETE_DOCUMENTATION.md
 *.md
 *.md
+/.agent

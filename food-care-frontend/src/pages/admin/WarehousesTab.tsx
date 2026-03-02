@@ -26,7 +26,7 @@ import { Switch } from "../../components/ui/switch";
 import {
   Plus, Search, Edit, Trash2, Warehouse, Users, MapPin, BarChart3,
   Phone, Mail, Eye, Building2, UserPlus, ArrowRightLeft, UserMinus,
-  Shield, ClipboardCheck, Settings, ChevronLeft
+  Shield, ClipboardCheck, Settings, ChevronLeft, PackagePlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { warehouseService } from "../../services/admin";
@@ -322,7 +322,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
   const [createForm, setCreateForm] = useState({
     email: "", password: "", fullName: "", phoneNumber: "",
     employeeCode: "", department: "", staffPositionEnum: "WarehouseStaff" as StaffPositionEnum,
-    canApproveReceipts: false, canAdjustInventory: false, canOverrideFifo: false,
+    canApproveReceipts: false, canAdjustInventory: false, canOverrideFifo: false, canCreateInboundSession: false,
   });
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -473,13 +473,14 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
         canApproveReceipts: createForm.canApproveReceipts,
         canAdjustInventory: createForm.canAdjustInventory,
         canOverrideFifo: createForm.canOverrideFifo,
+        canCreateInboundSession: createForm.canCreateInboundSession,
       };
       await warehouseService.createWarehouseStaff(warehouseId, data);
       toast.success("Tạo tài khoản nhân viên thành công");
       setCreateForm({
         email: "", password: "", fullName: "", phoneNumber: "",
         employeeCode: "", department: "", staffPositionEnum: "WarehouseStaff",
-        canApproveReceipts: false, canAdjustInventory: false, canOverrideFifo: false,
+        canApproveReceipts: false, canAdjustInventory: false, canOverrideFifo: false, canCreateInboundSession: false,
       });
       fetchStaff();
       onStaffChanged?.();
@@ -500,6 +501,7 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
       canApproveReceipts: staff.canApproveReceipts,
       canAdjustInventory: staff.canAdjustInventory,
       canOverrideFifo: staff.canOverrideFifo,
+      canCreateInboundSession: staff.canCreateInboundSession,
       isActive: staff.isActive,
     });
     setView("edit-staff");
@@ -692,6 +694,9 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
                     )}
                     {staff.canOverrideFifo && (
                       <Badge variant="outline" className="text-xs py-0"><Shield className="w-3 h-3 mr-0.5" />FIFO</Badge>
+                    )}
+                    {staff.canCreateInboundSession && (
+                      <Badge variant="outline" className="text-xs py-0"><PackagePlus className="w-3 h-3 mr-0.5" />Nhập</Badge>
                     )}
                     {!staff.isActive && (
                       <Badge variant="destructive" className="text-xs py-0">Vô hiệu</Badge>
@@ -944,6 +949,16 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
             onCheckedChange={(v) => setCreateForm(f => ({ ...f, canOverrideFifo: v }))}
           />
         </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PackagePlus className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">Tạo phiên nhập kho</span>
+          </div>
+          <Switch
+            checked={createForm.canCreateInboundSession}
+            onCheckedChange={(v) => setCreateForm(f => ({ ...f, canCreateInboundSession: v }))}
+          />
+        </div>
       </div>
 
       <DialogFooter>
@@ -1027,6 +1042,16 @@ function WarehouseDetailDialog({ open, onOpenChange, warehouseId, onStaffChanged
           <Switch
             checked={editForm.canOverrideFifo ?? false}
             onCheckedChange={(v) => setEditForm(f => ({ ...f, canOverrideFifo: v }))}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PackagePlus className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">Tạo phiên nhập kho</span>
+          </div>
+          <Switch
+            checked={editForm.canCreateInboundSession ?? false}
+            onCheckedChange={(v) => setEditForm(f => ({ ...f, canCreateInboundSession: v }))}
           />
         </div>
         <div className="flex items-center justify-between border-t pt-3">
