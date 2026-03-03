@@ -30,6 +30,7 @@ import type {
   AddInboundItemsBatchRequest,
   UpdateInboundDetailRequest,
   CompleteInboundSessionRequest,
+  AreaMatchedProduct,
 } from '../../types/staff';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5022/api';
@@ -662,6 +663,14 @@ export const inboundSessionApi = {
     return response.data;
   },
 
+  // Start processing session (Draft → Processing)
+  startProcessing: async (sessionId: string): Promise<InboundSession> => {
+    const response = await staffApi.post<InboundSession>(
+      `/inbound-sessions/${sessionId}/start-processing`
+    );
+    return response.data;
+  },
+
   // Complete session
   complete: async (
     sessionId: string,
@@ -678,6 +687,15 @@ export const inboundSessionApi = {
   cancel: async (sessionId: string): Promise<InboundSession> => {
     const response = await staffApi.post<InboundSession>(
       `/inbound-sessions/${sessionId}/cancel`
+    );
+    return response.data;
+  },
+
+  // Get area-matched products for inbound session
+  getAreaProducts: async (warehouseId: string): Promise<AreaMatchedProduct[]> => {
+    const response = await staffApi.get<AreaMatchedProduct[]>(
+      `/inbound-sessions/area-products`,
+      { params: { warehouseId } }
     );
     return response.data;
   },

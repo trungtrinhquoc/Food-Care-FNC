@@ -90,6 +90,7 @@ export interface WarehouseStaff {
 export interface WarehouseStaffDetail extends WarehouseStaff {
   avatarUrl?: string;
   canOverrideFifo: boolean;
+  canCreateInboundSession: boolean;
   createdAt: string;
   currentWarehouseId?: string;
   currentWarehouseName?: string;
@@ -116,6 +117,7 @@ export interface CreateWarehouseStaffDto {
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
   canOverrideFifo?: boolean;
+  canCreateInboundSession?: boolean;
 }
 
 export interface TransferStaffDto {
@@ -130,6 +132,7 @@ export interface UpdateWarehouseStaffDto {
   canApproveReceipts?: boolean;
   canAdjustInventory?: boolean;
   canOverrideFifo?: boolean;
+  canCreateInboundSession?: boolean;
   isActive?: boolean;
 }
 

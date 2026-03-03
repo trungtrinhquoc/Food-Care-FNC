@@ -62,6 +62,10 @@ public class InboundSession
     [Column("completed_at")]
     public DateTime? CompletedAt { get; set; }
 
+    /// <summary>Expected end date - session auto-closes (cancelled) when this date passes</summary>
+    [Column("expected_end_date")]
+    public DateTime? ExpectedEndDate { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -79,4 +83,6 @@ public class InboundSession
     public virtual StaffMember? ApprovedByStaff { get; set; }
 
     public virtual ICollection<InboundReceipt> Receipts { get; set; } = new List<InboundReceipt>();
+
+    public virtual ICollection<InboundSessionSupplier> SessionSuppliers { get; set; } = new List<InboundSessionSupplier>();
 }

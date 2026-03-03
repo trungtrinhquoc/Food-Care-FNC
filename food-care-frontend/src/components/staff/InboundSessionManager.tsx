@@ -4,6 +4,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -15,22 +16,21 @@ import {
 import { toast } from 'sonner';
 import {
   Plus,
-  Eye,
-  CheckCircle,
-  XCircle,
   RefreshCw,
   Loader2,
   Package,
   Trash2,
   Edit,
+  Eye,
   ArrowLeft,
   FileText,
   Building2,
   ShoppingCart,
+  CalendarClock,
+  AlertTriangle,
 } from 'lucide-react';
 
-import { inboundSessionApi } from '../../services/staff/staffApi';
-import { warehouseApi } from '../../services/staff/staffApi';
+import { inboundSessionApi, staffMemberApi } from '../../services/staff/staffApi';
 import type {
   InboundSession,
   InboundReceipt,
@@ -38,7 +38,8 @@ import type {
   CreateInboundSessionRequest,
   AddInboundItemRequest,
   UpdateInboundDetailRequest,
-  Warehouse,
+  StaffMember,
+  AreaMatchedProduct,
 } from '../../types/staff';
 
 // Colors
@@ -75,7 +76,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sessions, setSessions] = useState<InboundSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<InboundSession | null>(null);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [staffProfile, setStaffProfile] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -89,6 +90,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   const [createForm, setCreateForm] = useState<CreateInboundSessionRequest>({
     warehouseId: '',
     note: '',
+    expectedEndDate: '',
   });
 
   // Add item dialog
@@ -108,8 +110,9 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   const [editingDetail, setEditingDetail] = useState<InboundReceiptDetail | null>(null);
   const [editForm, setEditForm] = useState<UpdateInboundDetailRequest>({});
 
-  // Products for selection (fetched from API)
-  const [products, setProducts] = useState<Array<{ id: string; name: string; basePrice: number; supplierId?: number }>>([]);
+// Products for selection (area-matched from warehouse)
+  const [products, setProducts] = useState<AreaMatchedProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
 
   // =====================================================
   // DATA FETCHING
@@ -129,39 +132,41 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
     }
   }, [page, filterStatus]);
 
-  const fetchWarehouses = useCallback(async () => {
+  const fetchStaffProfile = useCallback(async () => {
     try {
-      const result = await warehouseApi.getAll(1, 100);
-      setWarehouses(result.items || []);
+      const profile = await staffMemberApi.getMe();
+      setStaffProfile(profile);
+      // Auto-set warehouse for create form if staff is assigned to a warehouse
+      if (profile.warehouseId) {
+        setCreateForm(prev => ({ ...prev, warehouseId: profile.warehouseId! }));
+      }
     } catch (err) {
-      console.error('Error fetching warehouses:', err);
+      console.error('Error fetching staff profile:', err);
     }
   }, []);
 
   const fetchProducts = useCallback(async () => {
+    // Need warehouseId to fetch area-matched products
+    const warehouseId = staffProfile?.warehouseId || createForm.warehouseId;
+    if (!warehouseId) return;
+
+    setProductsLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5022/api'}/products?page=1&pageSize=200`
-      );
-      const data = await response.json();
-      setProducts(
-        (data.items || data || []).map((p: { id: string; name: string; basePrice: number; supplierId?: number }) => ({
-          id: p.id,
-          name: p.name,
-          basePrice: p.basePrice,
-          supplierId: p.supplierId,
-        }))
-      );
+      const areaProducts = await inboundSessionApi.getAreaProducts(warehouseId);
+      setProducts(areaProducts);
     } catch (err) {
-      console.error('Error fetching products:', err);
+      console.error('Error fetching area-matched products:', err);
+      toast.error('Lỗi tải danh sách sản phẩm khu vực');
+    } finally {
+      setProductsLoading(false);
     }
-  }, []);
+  }, [staffProfile?.warehouseId, createForm.warehouseId]);
 
   useEffect(() => {
     fetchSessions();
-    fetchWarehouses();
+    fetchStaffProfile();
     fetchProducts();
-  }, [fetchSessions, fetchWarehouses, fetchProducts]);
+  }, [fetchSessions, fetchStaffProfile, fetchProducts]);
 
   const refreshSession = async (sessionId: string) => {
     try {
@@ -179,16 +184,28 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   // =====================================================
 
   const handleCreateSession = async () => {
-    if (!createForm.warehouseId) {
-      toast.error('Vui lòng chọn kho');
+    // Staff must have canCreateInboundSession permission
+    if (staffProfile && !staffProfile.canCreateInboundSession) {
+      toast.error('Bạn không có quyền tạo phiên nhập kho. Vui lòng liên hệ quản trị viên.');
       return;
     }
+
+    // Staff must be assigned to a warehouse
+    if (!staffProfile?.warehouseId) {
+      toast.error('Bạn chưa được phân bổ vào kho nào. Vui lòng liên hệ quản trị viên.');
+      return;
+    }
+
     setActionLoading(true);
     try {
-      const session = await inboundSessionApi.create(createForm);
+      const session = await inboundSessionApi.create({
+        warehouseId: staffProfile.warehouseId,
+        note: createForm.note,
+        expectedEndDate: createForm.expectedEndDate || undefined,
+      });
       toast.success(`Tạo phiên nhập thành công: ${session.sessionCode}`);
       setCreateDialogOpen(false);
-      setCreateForm({ warehouseId: '', note: '' });
+      setCreateForm({ warehouseId: staffProfile.warehouseId, note: '', expectedEndDate: '' });
       setSelectedSession(session);
       setViewMode('detail');
       fetchSessions();
@@ -275,39 +292,62 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
     }
   };
 
-  const handleCompleteSession = async () => {
-    if (!selectedSession) return;
-    if (!confirm('Hoàn thành phiên nhập? Hàng sẽ được nhập vào kho.')) return;
-    setActionLoading(true);
-    try {
-      const updated = await inboundSessionApi.complete(selectedSession.id, {});
-      setSelectedSession(updated);
-      setSessions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
-      toast.success('Phiên nhập đã hoàn thành! Hàng đã nhập kho.');
-      onRefreshStats?.();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Lỗi hoàn thành';
-      toast.error(message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const handleStatusChange = async (sessionId: string, newStatus: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const isTerminal = session.status === 'Completed' || session.status === 'Cancelled';
+    if (isTerminal) return;
 
-  const handleCancelSession = async () => {
-    if (!selectedSession) return;
-    if (!confirm('Bạn có chắc muốn huỷ phiên nhập này?')) return;
-    setActionLoading(true);
-    try {
-      const updated = await inboundSessionApi.cancel(selectedSession.id);
-      setSelectedSession(updated);
-      setSessions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
-      toast.success('Phiên nhập đã bị huỷ');
-      onRefreshStats?.();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Lỗi huỷ phiên';
-      toast.error(message);
-    } finally {
-      setActionLoading(false);
+    const extractError = (err: unknown): string => {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string } } };
+        if (axiosErr.response?.data?.message) return axiosErr.response.data.message;
+      }
+      return err instanceof Error ? err.message : 'Lỗi không xác định';
+    };
+
+    if (newStatus === 'Processing') {
+      if (!confirm('Chuyển phiên nhập sang Đang xử lý?')) return;
+      setActionLoading(true);
+      try {
+        const updated = await inboundSessionApi.startProcessing(sessionId);
+        setSessions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+        if (selectedSession?.id === sessionId) setSelectedSession(updated);
+        toast.success('Phiên nhập đang được xử lý');
+        onRefreshStats?.();
+      } catch (err: unknown) {
+        toast.error(extractError(err));
+      } finally {
+        setActionLoading(false);
+      }
+    } else if (newStatus === 'Completed') {
+      if (!confirm('Hoàn thành phiên nhập? Hàng sẽ được nhập vào kho.')) return;
+      setActionLoading(true);
+      try {
+        const updated = await inboundSessionApi.complete(sessionId, {});
+        setSessions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+        if (selectedSession?.id === sessionId) setSelectedSession(updated);
+        toast.success('Phiên nhập đã hoàn thành!');
+        onRefreshStats?.();
+      } catch (err: unknown) {
+        toast.error(extractError(err));
+      } finally {
+        setActionLoading(false);
+      }
+    } else if (newStatus === 'Cancelled') {
+      if (!confirm('Bạn có chắc muốn huỷ phiên nhập này?')) return;
+      setActionLoading(true);
+      try {
+        const updated = await inboundSessionApi.cancel(sessionId);
+        setSessions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+        if (selectedSession?.id === sessionId) setSelectedSession(updated);
+        toast.success('Phiên nhập đã bị huỷ');
+        onRefreshStats?.();
+      } catch (err: unknown) {
+        toast.error(extractError(err));
+      } finally {
+        setActionLoading(false);
+      }
     }
   };
 
@@ -327,6 +367,30 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getEndDateInfo = (session: InboundSession) => {
+    if (!session.expectedEndDate) return null;
+    const endDate = new Date(session.expectedEndDate);
+    const now = new Date();
+    const diffMs = endDate.getTime() - now.getTime();
+    const isExpired = diffMs <= 0;
+    const isTerminal = session.status === 'Completed' || session.status === 'Cancelled';
+
+    if (isTerminal) {
+      return { text: formatDate(session.expectedEndDate), color: 'text-gray-400', expired: false };
+    }
+    if (isExpired) {
+      return { text: 'Đã hết hạn', color: 'text-red-600', expired: true };
+    }
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    const remainingHours = diffHours % 24;
+
+    if (diffDays > 0) {
+      return { text: `Còn ${diffDays}d ${remainingHours}h`, color: diffDays <= 1 ? 'text-amber-600' : 'text-green-600', expired: false };
+    }
+    return { text: `Còn ${diffHours}h`, color: 'text-amber-600', expired: false };
   };
 
   const openEditDetail = (detail: InboundReceiptDetail) => {
@@ -367,14 +431,16 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
             Làm mới
           </Button>
-          <Button
-            size="sm"
-            onClick={() => setCreateDialogOpen(true)}
-            style={{ backgroundColor: colors.accent, color: colors.primary }}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Tạo phiên nhập
-          </Button>
+          {staffProfile?.canCreateInboundSession && staffProfile?.warehouseId && (
+            <Button
+              size="sm"
+              onClick={() => setCreateDialogOpen(true)}
+              style={{ backgroundColor: colors.accent, color: colors.primary }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Tạo phiên nhập
+            </Button>
+          )}
         </div>
       </div>
 
@@ -402,15 +468,21 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Chưa có phiên nhập kho nào</p>
-            <Button
-              className="mt-4"
-              onClick={() => setCreateDialogOpen(true)}
-              style={{ backgroundColor: colors.accent, color: colors.primary }}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Tạo phiên nhập đầu tiên
-            </Button>
+            <p className="text-gray-500">
+              {staffProfile?.canCreateInboundSession
+                ? 'Chưa có phiên nhập kho nào'
+                : 'Chưa có phiên nhập kho nào. Bạn không có quyền tạo phiên nhập.'}
+            </p>
+            {staffProfile?.canCreateInboundSession && staffProfile?.warehouseId && (
+              <Button
+                className="mt-4"
+                onClick={() => setCreateDialogOpen(true)}
+                style={{ backgroundColor: colors.accent, color: colors.primary }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Tạo phiên nhập đầu tiên
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -425,6 +497,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
                 <TableHead>Sản phẩm</TableHead>
                 <TableHead>Tổng tiền</TableHead>
                 <TableHead>Trạng thái</TableHead>
+                <TableHead>Hạn kết thúc</TableHead>
                 <TableHead>Ngày tạo</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -432,8 +505,9 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
             <TableBody>
               {sessions.map((session) => {
                 const statusCfg = sessionStatusConfig[session.status] || sessionStatusConfig.Draft;
+                const isInactive = session.status === 'Completed' || session.status === 'Cancelled';
                 return (
-                  <TableRow key={session.id} className="cursor-pointer hover:bg-gray-50">
+                  <TableRow key={session.id} className={`cursor-pointer hover:bg-gray-50 ${isInactive ? 'opacity-50' : ''}`}>
                     <TableCell className="font-mono font-medium">{session.sessionCode}</TableCell>
                     <TableCell>{session.warehouseName || '—'}</TableCell>
                     <TableCell>{session.createdByName || '—'}</TableCell>
@@ -443,9 +517,58 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
                     <TableCell>{session.totalItems} SP / {session.totalQuantity} đơn vị</TableCell>
                     <TableCell className="font-medium">{formatCurrency(session.totalAmount)}</TableCell>
                     <TableCell>
-                      <Badge style={{ backgroundColor: statusCfg.bgColor, color: statusCfg.color, border: 'none' }}>
-                        {statusCfg.label}
-                      </Badge>
+                      {session.status === 'Completed' || session.status === 'Cancelled' ? (
+                        <Badge style={{ backgroundColor: statusCfg.bgColor, color: statusCfg.color, border: 'none' }}>
+                          {statusCfg.label}
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={session.status}
+                          onValueChange={(val) => handleStatusChange(session.id, val)}
+                          disabled={actionLoading}
+                        >
+                          <SelectTrigger
+                            className="h-7 w-[130px] text-xs font-medium border-none shadow-none"
+                            style={{ backgroundColor: statusCfg.bgColor, color: statusCfg.color }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(() => {
+                              const transitions: Record<string, string[]> = {
+                                Draft: ['Draft', 'Processing', 'Cancelled'],
+                                Processing: ['Processing', 'Completed', 'Cancelled'],
+                              };
+                              const allowed = transitions[session.status] || Object.keys(sessionStatusConfig);
+                              return allowed.map((key) => {
+                                const cfg = sessionStatusConfig[key];
+                                if (!cfg) return null;
+                                return (
+                                  <SelectItem key={key} value={key}>
+                                    <span style={{ color: cfg.color }}>{cfg.label}</span>
+                                  </SelectItem>
+                                );
+                              });
+                            })()}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const info = getEndDateInfo(session);
+                        if (!info) return <span className="text-gray-400 text-sm">—</span>;
+                        return (
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500">{formatDate(session.expectedEndDate)}</span>
+                            <span className={`text-xs font-medium ${info.color}`}>
+                              {info.expired && <AlertTriangle className="w-3 h-3 inline mr-0.5" />}
+                              {info.text}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDate(session.createdAt)}</TableCell>
                     <TableCell>
@@ -456,8 +579,9 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
                           setSelectedSession(session);
                           setViewMode('detail');
                         }}
+                        title={isInactive ? 'Xem chi tiết' : 'Chỉnh sửa'}
                       >
-                        <Eye className="w-4 h-4" />
+                        {isInactive ? <Eye className="w-4 h-4 text-gray-400" /> : <Edit className="w-4 h-4" />}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -503,6 +627,8 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
     if (!selectedSession) return null;
     const statusCfg = sessionStatusConfig[selectedSession.status] || sessionStatusConfig.Draft;
     const isDraft = selectedSession.status === 'Draft';
+    const isInactive = selectedSession.status === 'Completed' || selectedSession.status === 'Cancelled';
+    const endDateInfo = getEndDateInfo(selectedSession);
 
     return (
       <div className="space-y-4">
@@ -519,11 +645,51 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
               </h2>
               <p className="text-sm text-gray-500">
                 {selectedSession.warehouseName} — {formatDate(selectedSession.createdAt)}
+                {endDateInfo && (
+                  <span className={`ml-2 ${endDateInfo.color}`}>
+                    • Hạn: {formatDate(selectedSession.expectedEndDate)}
+                    {!endDateInfo.expired && ` (${endDateInfo.text})`}
+                    {endDateInfo.expired && ' — Đã hết hạn'}
+                  </span>
+                )}
               </p>
             </div>
-            <Badge style={{ backgroundColor: statusCfg.bgColor, color: statusCfg.color, border: 'none' }}>
-              {statusCfg.label}
-            </Badge>
+            {selectedSession.status === 'Completed' || selectedSession.status === 'Cancelled' ? (
+              <Badge style={{ backgroundColor: statusCfg.bgColor, color: statusCfg.color, border: 'none' }}>
+                {statusCfg.label}
+              </Badge>
+            ) : (
+              <Select
+                value={selectedSession.status}
+                onValueChange={(val) => handleStatusChange(selectedSession.id, val)}
+                disabled={actionLoading}
+              >
+                <SelectTrigger
+                  className="h-7 w-[140px] text-xs font-medium border-none shadow-none"
+                  style={{ backgroundColor: statusCfg.bgColor, color: statusCfg.color }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(() => {
+                    const transitions: Record<string, string[]> = {
+                      Draft: ['Draft', 'Processing', 'Cancelled'],
+                      Processing: ['Processing', 'Completed', 'Cancelled'],
+                    };
+                    const allowed = transitions[selectedSession.status] || Object.keys(sessionStatusConfig);
+                    return allowed.map((key) => {
+                      const cfg = sessionStatusConfig[key];
+                      if (!cfg) return null;
+                      return (
+                        <SelectItem key={key} value={key}>
+                          <span style={{ color: cfg.color }}>{cfg.label}</span>
+                        </SelectItem>
+                      );
+                    });
+                  })()}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="flex gap-2">
             <Button
@@ -535,37 +701,27 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
               Làm mới
             </Button>
             {isDraft && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => setAddItemDialogOpen(true)}
-                  style={{ backgroundColor: colors.accent, color: colors.primary }}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Thêm hàng
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleCompleteSession}
-                  disabled={actionLoading || selectedSession.totalItems === 0}
-                  className="bg-green-600 text-white hover:bg-green-700"
-                >
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  {actionLoading ? 'Đang xử lý...' : 'Hoàn thành nhập kho'}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleCancelSession}
-                  disabled={actionLoading}
-                >
-                  <XCircle className="w-4 h-4 mr-1" />
-                  Huỷ
-                </Button>
-              </>
+              <Button
+                size="sm"
+                onClick={() => setAddItemDialogOpen(true)}
+                style={{ backgroundColor: colors.accent, color: colors.primary }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Thêm hàng
+              </Button>
             )}
           </div>
         </div>
+
+        {/* Inactive banner */}
+        {isInactive && (
+          <Alert className="border-gray-300 bg-gray-50">
+            <AlertDescription className="text-gray-500 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Phiên nhập đã {selectedSession.status === 'Completed' ? 'hoàn thành' : 'bị huỷ'} — không thể chỉnh sửa.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-4 gap-4">
@@ -723,56 +879,90 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
   // RENDER: DIALOGS
   // =====================================================
 
-  const renderCreateDialog = () => (
-    <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Tạo phiên nhập kho mới</DialogTitle>
-          <DialogDescription>Chọn kho và ghi chú (tuỳ chọn)</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div>
-            <label className="text-sm font-medium">Kho nhận hàng *</label>
-            <select
-              className="w-full mt-1 p-2 border rounded-md"
-              value={createForm.warehouseId}
-              onChange={(e) => setCreateForm({ ...createForm, warehouseId: e.target.value })}
+  const renderCreateDialog = () => {
+    // Compute minimum date for the date picker (tomorrow)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const minDate = tomorrow.toISOString().slice(0, 16);
+
+    return (
+      <Dialog open={createDialogOpen} onOpenChange={(open) => {
+        setCreateDialogOpen(open);
+        if (!open) setCreateForm({ warehouseId: staffProfile?.warehouseId || '', note: '', expectedEndDate: '' });
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Tạo phiên nhập kho mới</DialogTitle>
+            <DialogDescription>Phiên nhập sẽ được tạo cho kho bạn được phân bổ</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Warehouse — read-only */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Kho nhận hàng</label>
+              <div className="mt-1 flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md">
+                <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+                {staffProfile?.warehouseId ? (
+                  <span className="text-sm font-medium text-gray-800">
+                    {staffProfile.warehouseName || staffProfile.warehouseId}
+                  </span>
+                ) : (
+                  <span className="text-sm text-red-500">
+                    Chưa được phân bổ kho. Liên hệ quản trị viên.
+                  </span>
+                )}
+                <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Cố định</span>
+              </div>
+            </div>
+
+            {/* Expected End Date */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                <CalendarClock className="w-4 h-4" />
+                Ngày kết thúc <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full mt-1 p-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                min={minDate}
+                value={createForm.expectedEndDate || ''}
+                onChange={(e) => setCreateForm({ ...createForm, expectedEndDate: e.target.value })}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Phiên nhập sẽ tự động đóng khi đến thời gian này
+              </p>
+            </div>
+
+            {/* Note */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Ghi chú <span className="text-gray-400 font-normal">(tuỳ chọn)</span>
+              </label>
+              <textarea
+                className="w-full mt-1 p-2 border border-gray-200 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
+                rows={3}
+                placeholder="Thêm ghi chú cho phiên nhập..."
+                value={createForm.note || ''}
+                onChange={(e) => setCreateForm({ ...createForm, note: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCreateDialogOpen(false); setCreateForm({ warehouseId: staffProfile?.warehouseId || '', note: '', expectedEndDate: '' }); }}>
+              Huỷ
+            </Button>
+            <Button
+              onClick={handleCreateSession}
+              disabled={actionLoading || !staffProfile?.warehouseId || !createForm.expectedEndDate}
+              style={staffProfile?.warehouseId && createForm.expectedEndDate ? { backgroundColor: colors.accent, color: colors.primary } : {}}
             >
-              <option value="">-- Chọn kho --</option>
-              {warehouses.map((wh) => (
-                <option key={wh.id} value={wh.id}>
-                  {wh.name} ({wh.code})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium">Ghi chú</label>
-            <textarea
-              className="w-full mt-1 p-2 border rounded-md"
-              rows={3}
-              placeholder="Ghi chú phiên nhập..."
-              value={createForm.note || ''}
-              onChange={(e) => setCreateForm({ ...createForm, note: e.target.value })}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-            Huỷ
-          </Button>
-          <Button
-            onClick={handleCreateSession}
-            disabled={actionLoading || !createForm.warehouseId}
-            style={{ backgroundColor: colors.accent, color: colors.primary }}
-          >
-            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-            Tạo phiên nhập
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+              {actionLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              Tạo phiên nhập
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   const renderAddItemDialog = () => (
     <Dialog open={addItemDialogOpen} onOpenChange={setAddItemDialogOpen}>
@@ -790,7 +980,7 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
               className="w-full mt-1 p-2 border rounded-md"
               value={addItemForm.productId}
               onChange={(e) => {
-                const product = products.find(p => p.id === e.target.value);
+                const product = products.find(p => p.productId === e.target.value);
                 setAddItemForm({
                   ...addItemForm,
                   productId: e.target.value,
@@ -800,11 +990,18 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
               }}
             >
               <option value="">-- Chọn sản phẩm --</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {formatCurrency(p.basePrice)}
-                </option>
-              ))}
+              {productsLoading ? (
+                <option disabled>Đang tải...</option>
+              ) : products.length === 0 ? (
+                <option disabled>Không có sản phẩm khu vực này</option>
+              ) : (
+                products.map((p) => (
+                  <option key={p.productId} value={p.productId}>
+                    {p.name} — {p.supplierName || `NCC #${p.supplierId}`} — {formatCurrency(p.basePrice)}
+                    {p.distanceKm != null ? ` (${p.distanceKm} km)` : ''}
+                  </option>
+                ))
+              )}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -832,18 +1029,18 @@ export function InboundSessionManager({ onRefreshStats }: InboundSessionManagerP
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">Mã NCC (tuỳ chọn)</label>
+              <label className="text-sm font-medium">Nhà cung cấp</label>
               <input
-                type="number"
-                className="w-full mt-1 p-2 border rounded-md"
-                placeholder="Để trống = NCC mặc định"
-                value={addItemForm.supplierId || ''}
-                onChange={(e) =>
-                  setAddItemForm({
-                    ...addItemForm,
-                    supplierId: e.target.value ? parseInt(e.target.value) : undefined,
-                  })
+                type="text"
+                className="w-full mt-1 p-2 border rounded-md bg-gray-50 text-gray-700"
+                readOnly
+                value={
+                  addItemForm.productId
+                    ? (products.find(p => p.productId === addItemForm.productId)?.supplierName ||
+                       (addItemForm.supplierId ? `NCC #${addItemForm.supplierId}` : ''))
+                    : ''
                 }
+                placeholder="Tự động điền khi chọn sản phẩm"
               />
             </div>
             <div>

@@ -5,7 +5,6 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import {
     Dialog,
     DialogContent,
@@ -42,6 +41,8 @@ import {
     CheckCircle2,
     Send,
 } from 'lucide-react';
+import { InboundSessionManager } from './InboundSessionManager';
+import { InboundHistoryManager } from './InboundHistoryManager';
 import type {
     SupplierShipmentResponse,
     StaffInboundSummary,
@@ -1055,44 +1056,29 @@ function OutboundSection({ onRefresh }: OutboundSectionProps) {
 
 interface StaffShippingManagerProps {
     onRefreshStats?: () => void;
+    activeView?: string;
 }
 
-export function StaffShippingManager({ onRefreshStats }: StaffShippingManagerProps) {
-    const [activeTab, setActiveTab] = useState('inbound');
+export function StaffShippingManager({ onRefreshStats, activeView = 'inbound' }: StaffShippingManagerProps) {
+
+    const renderActiveView = () => {
+        switch (activeView) {
+            case 'inbound':
+                return <InboundSection onRefresh={onRefreshStats} />;
+            case 'outbound':
+                return <OutboundSection onRefresh={onRefreshStats} />;
+            case 'inbound-sessions':
+                return <InboundSessionManager onRefreshStats={onRefreshStats} />;
+            case 'inbound-history':
+                return <InboundHistoryManager />;
+            default:
+                return <InboundSection onRefresh={onRefreshStats} />;
+        }
+    };
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-green-500 to-indigo-500 bg-clip-text text-transparent">
-                        Quản lý vận chuyển
-                    </h2>
-                    <p className="text-gray-600">
-                        Xử lý luồng hàng nhập kho và xuất kho
-                    </p>
-                </div>
-            </div>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="inbound" className="gap-2">
-                        <ArrowDownToLine className="h-4 w-4" />
-                        Nhập kho (Supplier)
-                    </TabsTrigger>
-                    <TabsTrigger value="outbound" className="gap-2">
-                        <ArrowUpFromLine className="h-4 w-4" />
-                        Xuất kho (User)
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="inbound" className="mt-6">
-                    <InboundSection onRefresh={onRefreshStats} />
-                </TabsContent>
-
-                <TabsContent value="outbound" className="mt-6">
-                    <OutboundSection onRefresh={onRefreshStats} />
-                </TabsContent>
-            </Tabs>
+            {renderActiveView()}
         </div>
     );
 }

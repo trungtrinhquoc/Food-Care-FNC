@@ -15,6 +15,7 @@ import { SettingsSection } from '../../components/supplier/SettingsSection';
 import { ReportsSection } from '../../components/supplier/ReportsSection';
 import { SupplierShipmentManager } from '../../components/supplier/SupplierShipmentManager';
 import { RegistrationSection } from '../../components/supplier/RegistrationSection';
+import { SupplierInboundSection } from '../../components/supplier/SupplierInboundSection';
 
 // APIs
 import {
@@ -22,6 +23,7 @@ import {
   productsApi,
   ordersApi,
   statsApi,
+  registrationApi,
   type SupplierProfile,
   type SupplierProduct,
   type SupplierOrder,
@@ -51,6 +53,9 @@ export default function SupplierDashboardPage() {
 
   // Profile form state
   const [profileForm, setProfileForm] = useState<UpdateProfileRequest>({});
+
+  // Registration status
+  const [isRegistrationApproved, setIsRegistrationApproved] = useState(false);
 
   // Sync URL query params with activeTab state
   useEffect(() => {
@@ -87,6 +92,16 @@ export default function SupplierDashboardPage() {
     loadStats();
     loadOrders();
     loadProducts();
+    loadRegistrationStatus();
+  };
+
+  const loadRegistrationStatus = async () => {
+    try {
+      const data = await registrationApi.getStatus();
+      setIsRegistrationApproved(data.registrationStatus === 'approved');
+    } catch {
+      setIsRegistrationApproved(false);
+    }
   };
 
   const loadProfile = async () => {
@@ -200,8 +215,34 @@ export default function SupplierDashboardPage() {
     );
   }
 
+  // Tabs that require approved registration
+  const gatedTabs = ['products', 'orders', 'inbound', 'revenue', 'reviews', 'delivery', 'reports'];
+
   // Render active section
   const renderSection = () => {
+    // Gate: if tab requires approval and supplier is not approved
+    if (gatedTabs.includes(activeTab) && !isRegistrationApproved) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Chưa được mở khóa</h2>
+          <p className="text-gray-600 text-center max-w-md mb-6">
+            Bạn cần hoàn tất <strong>đăng ký kinh doanh</strong> và được admin <strong>phê duyệt</strong> trước khi sử dụng tính năng này.
+          </p>
+          <button
+            onClick={() => handleTabChange('registration')}
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Đi đến Đăng ký kinh doanh
+          </button>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'overview':
         return (
@@ -240,6 +281,9 @@ export default function SupplierDashboardPage() {
       case 'registration':
         return <RegistrationSection />;
 
+      case 'inbound':
+        return <SupplierInboundSection />;
+
       case 'revenue':
         return <RevenueSection loading={loadingStats} />;
 
@@ -277,6 +321,7 @@ export default function SupplierDashboardPage() {
       activeTab={activeTab}
       onTabChange={handleTabChange}
       badges={badges}
+      isRegistrationApproved={isRegistrationApproved}
     >
       <div className="p-6 lg:p-8">
         {renderSection()}

@@ -6,7 +6,6 @@ import {
     LayoutDashboard,
     Truck,
     Package,
-    ClipboardList,
     FileWarning,
     RotateCcw,
     Bell,
@@ -14,11 +13,15 @@ import {
     Menu,
     X,
     ChevronDown,
+    ChevronRight,
     User,
     Settings,
     Building2,
     Box,
     ArrowDownToLine,
+    ArrowUpFromLine,
+    FileText,
+    ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -35,14 +38,21 @@ interface NavItem {
     id: string;
     label: string;
     icon: React.ElementType;
+    children?: NavItem[];
 }
 
 const navItems: NavItem[] = [
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'shipping', label: 'Vận chuyển', icon: Truck },
+    {
+        id: 'shipping', label: 'Vận chuyển', icon: Truck,
+        children: [
+            { id: 'shipping-inbound', label: 'Nhập kho', icon: ArrowDownToLine },
+            { id: 'shipping-outbound', label: 'Xuất kho', icon: ArrowUpFromLine },
+            { id: 'shipping-sessions', label: 'Phiên nhập kho', icon: FileText },
+            { id: 'shipping-history', label: 'Lịch sử nhập', icon: ClipboardCheck },
+        ],
+    },
     { id: 'warehouses', label: 'Kho hàng', icon: Building2 },
-    { id: 'receipts', label: 'Nhập kho', icon: ClipboardList },
-    { id: 'inbound-sessions', label: 'Phiên nhập', icon: ArrowDownToLine },
     { id: 'inventory', label: 'Tồn kho', icon: Box },
     { id: 'discrepancies', label: 'Sai lệch', icon: FileWarning },
     { id: 'returns', label: 'Trả hàng', icon: RotateCcw },
@@ -75,7 +85,14 @@ export function StaffLayout({
     const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [expandedMenus, setExpandedMenus] = useState<string[]>(['shipping']);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const toggleMenu = (menuId: string) => {
+        setExpandedMenus(prev =>
+            prev.includes(menuId) ? prev.filter(id => id !== menuId) : [...prev, menuId]
+        );
+    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -96,6 +113,94 @@ export function StaffLayout({
     const handleNavClick = (tabId: string) => {
         onTabChange(tabId);
         setSidebarOpen(false);
+    };
+
+    const isChildActive = (item: NavItem) =>
+        item.children?.some(child => currentTab === child.id) ?? false;
+
+    const renderNavItem = (item: NavItem) => {
+        const Icon = item.icon;
+        const hasChildren = item.children && item.children.length > 0;
+        const isExpanded = expandedMenus.includes(item.id);
+        const isActive = currentTab === item.id || isChildActive(item);
+
+        if (hasChildren) {
+            return (
+                <li key={item.id}>
+                    <button
+                        onClick={() => toggleMenu(item.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                        style={{
+                            backgroundColor: isActive ? 'rgba(192, 235, 106, 0.15)' : 'transparent',
+                            color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.7)',
+                        }}
+                    >
+                        <Icon
+                            className="w-5 h-5"
+                            style={{ color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.5)' }}
+                        />
+                        {item.label}
+                        <ChevronDown
+                            className={`w-4 h-4 ml-auto transition-transform duration-200 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+                            style={{ color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.4)' }}
+                        />
+                    </button>
+                    {isExpanded && (
+                        <ul className="mt-1 ml-4 space-y-0.5 border-l border-white/10 pl-3">
+                            {item.children!.map(child => {
+                                const ChildIcon = child.icon;
+                                const isChildItemActive = currentTab === child.id;
+                                return (
+                                    <li key={child.id}>
+                                        <button
+                                            onClick={() => handleNavClick(child.id)}
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+                                            style={{
+                                                backgroundColor: isChildItemActive ? 'rgba(192, 235, 106, 0.15)' : 'transparent',
+                                                color: isChildItemActive ? colors.accent : 'rgba(255, 255, 255, 0.6)',
+                                            }}
+                                        >
+                                            <ChildIcon
+                                                className="w-4 h-4"
+                                                style={{ color: isChildItemActive ? colors.accent : 'rgba(255, 255, 255, 0.4)' }}
+                                            />
+                                            {child.label}
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </li>
+            );
+        }
+
+        return (
+            <li key={item.id}>
+                <button
+                    onClick={() => handleNavClick(item.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                    style={{
+                        backgroundColor: isActive ? 'rgba(192, 235, 106, 0.15)' : 'transparent',
+                        color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.7)',
+                    }}
+                >
+                    <Icon
+                        className="w-5 h-5"
+                        style={{ color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.5)' }}
+                    />
+                    {item.label}
+                    {item.id === 'discrepancies' && notificationCount > 0 && (
+                        <span
+                            className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                            style={{ backgroundColor: '#EF4444', color: 'white' }}
+                        >
+                            {notificationCount}
+                        </span>
+                    )}
+                </button>
+            </li>
+        );
     };
 
     return (
@@ -122,36 +227,7 @@ export function StaffLayout({
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-3">
                     <ul className="space-y-1">
-                        {navItems.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = currentTab === item.id;
-                            return (
-                                <li key={item.id}>
-                                    <button
-                                        onClick={() => handleNavClick(item.id)}
-                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-                                        style={{
-                                            backgroundColor: isActive ? 'rgba(192, 235, 106, 0.15)' : 'transparent',
-                                            color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.7)',
-                                        }}
-                                    >
-                                        <Icon
-                                            className="w-5 h-5"
-                                            style={{ color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.5)' }}
-                                        />
-                                        {item.label}
-                                        {item.id === 'discrepancies' && notificationCount > 0 && (
-                                            <span
-                                                className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                                                style={{ backgroundColor: '#EF4444', color: 'white' }}
-                                            >
-                                                {notificationCount}
-                                            </span>
-                                        )}
-                                    </button>
-                                </li>
-                            );
-                        })}
+                        {navItems.map(renderNavItem)}
                     </ul>
                 </nav>
 
@@ -221,28 +297,7 @@ export function StaffLayout({
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-6 px-3">
                     <ul className="space-y-1">
-                        {navItems.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = currentTab === item.id;
-                            return (
-                                <li key={item.id}>
-                                    <button
-                                        onClick={() => handleNavClick(item.id)}
-                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-                                        style={{
-                                            backgroundColor: isActive ? 'rgba(192, 235, 106, 0.15)' : 'transparent',
-                                            color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.7)',
-                                        }}
-                                    >
-                                        <Icon
-                                            className="w-5 h-5"
-                                            style={{ color: isActive ? colors.accent : 'rgba(255, 255, 255, 0.5)' }}
-                                        />
-                                        {item.label}
-                                    </button>
-                                </li>
-                            );
-                        })}
+                        {navItems.map(renderNavItem)}
                     </ul>
                 </nav>
 

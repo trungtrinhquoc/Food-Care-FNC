@@ -7,6 +7,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.Staff;
 using FoodCare.API.Models.Enums;
 using FoodCare.API.Models.DTOs.Staff;
+using FoodCare.API.Helpers;
 using FoodCare.API.Services.Interfaces.StaffModule;
 
 namespace FoodCare.API.Services.Implementations.StaffModule;
@@ -53,6 +54,33 @@ public class InboundSessionService : IInboundSessionService
             .Take(pageSize)
             .ToListAsync();
 
+        // Auto-close expired sessions on-the-fly
+        var now = DateTime.UtcNow;
+        var expiredSessions = items.Where(s =>
+            s.ExpectedEndDate.HasValue
+            && s.ExpectedEndDate.Value <= now
+            && s.Status != InboundSessionStatus.Completed
+            && s.Status != InboundSessionStatus.Cancelled).ToList();
+
+        if (expiredSessions.Any())
+        {
+            foreach (var s in expiredSessions)
+            {
+                s.Status = InboundSessionStatus.Cancelled;
+                s.Note = (s.Note ?? "") + "\n[Tự động] Phiên đã hết hạn và bị đóng tự động.";
+                s.UpdatedAt = now;
+                foreach (var r in s.Receipts)
+                {
+                    if (r.Status != InboundReceiptStatus.Completed && r.Status != InboundReceiptStatus.Cancelled)
+                    {
+                        r.Status = InboundReceiptStatus.Cancelled;
+                        r.UpdatedAt = now;
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
         return new PagedResponse<InboundSessionDto>
         {
             Items = items.Select(MapSessionToDto).ToList(),
@@ -87,6 +115,7 @@ public class InboundSessionService : IInboundSessionService
             CreatedBy = staffId,
             Status = InboundSessionStatus.Draft,
             Note = request.Note,
+            ExpectedEndDate = request.ExpectedEndDate,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -237,8 +266,25 @@ public class InboundSessionService : IInboundSessionService
     }
 
     // =====================================================
-    // WORKFLOW: Complete / Cancel
+    // WORKFLOW: Start Processing / Complete / Cancel
     // =====================================================
+
+    public async Task<InboundSessionDto> StartProcessingAsync(Guid sessionId, Guid staffId)
+    {
+        var session = await _context.InboundSessions
+            .FirstOrDefaultAsync(s => s.Id == sessionId)
+            ?? throw new KeyNotFoundException($"Session {sessionId} not found");
+
+        if (session.Status != InboundSessionStatus.Draft)
+            throw new InvalidOperationException("Chỉ có thể chuyển phiên ở trạng thái Nháp sang Đang xử lý");
+
+        session.Status = InboundSessionStatus.Processing;
+        session.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await GetSessionByIdAsync(sessionId)
+            ?? throw new InvalidOperationException("Session not found after update");
+    }
 
     public async Task<InboundSessionDto> CompleteSessionAsync(
         Guid sessionId, CompleteInboundSessionRequest request, Guid staffId)
@@ -428,6 +474,169 @@ public class InboundSessionService : IInboundSessionService
         }
     }
 
+    // =====================================================
+    // AREA-MATCHED PRODUCT LOOKUP
+    // =====================================================
+
+    /// <summary>
+    /// Get approved products from suppliers matching the warehouse area.
+    /// Primary: same Ward + City. Fallback: nearest suppliers within 10km radius.
+    /// </summary>
+    public async Task<List<AreaMatchedProductDto>> GetAreaMatchedProductsAsync(Guid warehouseId)
+    {
+        const double MaxDistanceKm = 10.0;
+
+        var warehouse = await _context.Warehouses.FindAsync(warehouseId)
+            ?? throw new KeyNotFoundException($"Warehouse {warehouseId} not found");
+
+        // Base query: approved + active products with supplier loaded
+        var productsQuery = _context.Products
+            .Include(p => p.Supplier)
+            .Include(p => p.Category)
+            .Where(p => p.IsActive == true
+                && (p.ApprovalStatus == "approved" || p.ApprovalStatus == null)
+                && p.Supplier != null
+                && p.Supplier.IsDeleted == false);
+
+        // === PRIMARY: Same Ward + City ===
+        var wardMatchedProducts = new List<AreaMatchedProductDto>();
+
+        if (!string.IsNullOrWhiteSpace(warehouse.AddressWard) &&
+            !string.IsNullOrWhiteSpace(warehouse.AddressCity))
+        {
+            var wardLower = warehouse.AddressWard.ToLower();
+            var cityLower = warehouse.AddressCity.ToLower();
+
+            wardMatchedProducts = await productsQuery
+                .Where(p => p.Supplier!.AddressWard != null
+                    && p.Supplier.AddressCity != null
+                    && p.Supplier.AddressWard.ToLower() == wardLower
+                    && p.Supplier.AddressCity.ToLower() == cityLower)
+                .Select(p => new AreaMatchedProductDto
+                {
+                    ProductId = p.Id,
+                    Name = p.Name,
+                    BasePrice = p.BasePrice,
+                    SupplierId = p.SupplierId ?? 0,
+                    SupplierName = p.Supplier!.BusinessName ?? p.Supplier.ContactName,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    ImageUrl = p.Images,
+                    Unit = null,
+                    Sku = p.Sku,
+                    DistanceKm = null,
+                    MatchType = "ward"
+                })
+                .OrderBy(p => p.SupplierName)
+                .ThenBy(p => p.Name)
+                .ToListAsync();
+        }
+
+        if (wardMatchedProducts.Count > 0)
+            return wardMatchedProducts;
+
+        // === FALLBACK: Nearest suppliers within 10km radius ===
+        if (!warehouse.Latitude.HasValue || !warehouse.Longitude.HasValue)
+        {
+            // No coordinates on warehouse — cannot do distance-based fallback
+            // Return all approved products as a last resort (no area filter)
+            return await productsQuery
+                .Select(p => new AreaMatchedProductDto
+                {
+                    ProductId = p.Id,
+                    Name = p.Name,
+                    BasePrice = p.BasePrice,
+                    SupplierId = p.SupplierId ?? 0,
+                    SupplierName = p.Supplier!.BusinessName ?? p.Supplier.ContactName,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    ImageUrl = p.Images,
+                    Unit = null,
+                    Sku = p.Sku,
+                    DistanceKm = null,
+                    MatchType = "all"
+                })
+                .OrderBy(p => p.SupplierName)
+                .ThenBy(p => p.Name)
+                .Take(200)
+                .ToListAsync();
+        }
+
+        // Load suppliers with coordinates for distance calculation
+        var suppliersWithCoords = await _context.Suppliers
+            .Where(s => s.IsDeleted == false
+                && s.Latitude.HasValue
+                && s.Longitude.HasValue)
+            .Select(s => new
+            {
+                s.Id,
+                s.BusinessName,
+                s.ContactName,
+                Latitude = s.Latitude!.Value,
+                Longitude = s.Longitude!.Value
+            })
+            .ToListAsync();
+
+        // Calculate distance and filter within radius
+        var nearbySupplierIds = suppliersWithCoords
+            .Select(s => new
+            {
+                s.Id,
+                s.BusinessName,
+                s.ContactName,
+                Distance = GeoHelper.CalculateDistanceKm(
+                    warehouse.Latitude.Value, warehouse.Longitude.Value,
+                    s.Latitude, s.Longitude)
+            })
+            .Where(s => s.Distance <= MaxDistanceKm)
+            .OrderBy(s => s.Distance)
+            .ToList();
+
+        if (nearbySupplierIds.Count == 0)
+        {
+            // No nearby suppliers found — return empty
+            return new List<AreaMatchedProductDto>();
+        }
+
+        var supplierIdSet = nearbySupplierIds.Select(s => s.Id).ToHashSet();
+        var distanceLookup = nearbySupplierIds.ToDictionary(s => s.Id, s => s.Distance);
+
+        var nearbyProducts = await productsQuery
+            .Where(p => p.SupplierId.HasValue && supplierIdSet.Contains(p.SupplierId.Value))
+            .Select(p => new AreaMatchedProductDto
+            {
+                ProductId = p.Id,
+                Name = p.Name,
+                BasePrice = p.BasePrice,
+                SupplierId = p.SupplierId ?? 0,
+                SupplierName = p.Supplier!.BusinessName ?? p.Supplier.ContactName,
+                CategoryName = p.Category != null ? p.Category.Name : null,
+                ImageUrl = p.Images,
+                Unit = null,
+                Sku = p.Sku,
+                DistanceKm = null, // Will be set below
+                MatchType = "nearby"
+            })
+            .ToListAsync();
+
+        // Set distance values from in-memory lookup
+        foreach (var product in nearbyProducts)
+        {
+            if (distanceLookup.TryGetValue(product.SupplierId, out var dist))
+            {
+                product.DistanceKm = Math.Round(dist, 1);
+            }
+        }
+
+        return nearbyProducts
+            .OrderBy(p => p.DistanceKm)
+            .ThenBy(p => p.SupplierName)
+            .ThenBy(p => p.Name)
+            .ToList();
+    }
+
+    // =====================================================
+    // PRIVATE HELPERS
+    // =====================================================
+
     private void RecalculateReceiptTotals(InboundReceipt receipt)
     {
         receipt.TotalItems = receipt.Details.Count;
@@ -494,6 +703,7 @@ public class InboundSessionService : IInboundSessionService
         TotalQuantity = session.TotalQuantity,
         TotalAmount = session.TotalAmount,
         CompletedAt = session.CompletedAt,
+        ExpectedEndDate = session.ExpectedEndDate,
         CreatedAt = session.CreatedAt,
         UpdatedAt = session.UpdatedAt,
         Receipts = session.Receipts.Select(MapReceiptToDto).ToList()

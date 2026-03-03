@@ -24,6 +24,14 @@ public interface IInboundSessionService
     Task<InboundSessionDto> RemoveDetailAsync(Guid sessionId, Guid detailId);
 
     // Session workflow
+    Task<InboundSessionDto> StartProcessingAsync(Guid sessionId, Guid staffId);
     Task<InboundSessionDto> CompleteSessionAsync(Guid sessionId, CompleteInboundSessionRequest request, Guid staffId);
     Task<InboundSessionDto> CancelSessionAsync(Guid sessionId, Guid staffId);
+
+    // Area-matched product lookup
+    /// <summary>
+    /// Get approved products from suppliers in the same Ward/City as the warehouse.
+    /// Falls back to nearest suppliers within 10km radius using Haversine distance.
+    /// </summary>
+    Task<List<AreaMatchedProductDto>> GetAreaMatchedProductsAsync(Guid warehouseId);
 }

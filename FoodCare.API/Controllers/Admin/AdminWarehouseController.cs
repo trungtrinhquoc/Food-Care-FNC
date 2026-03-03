@@ -398,6 +398,7 @@ public class AdminWarehouseController : ControllerBase
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 CanOverrideFifo = s.CanOverrideFifo,
+                CanCreateInboundSession = s.CanCreateInboundSession,
                 HireDate = s.HireDate,
                 IsActive = s.IsActive,
                 CreatedAt = s.CreatedAt
@@ -459,6 +460,7 @@ public class AdminWarehouseController : ControllerBase
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 CanOverrideFifo = s.CanOverrideFifo,
+                CanCreateInboundSession = s.CanCreateInboundSession,
                 HireDate = s.HireDate,
                 IsActive = s.IsActive,
                 CreatedAt = s.CreatedAt
@@ -517,6 +519,7 @@ public class AdminWarehouseController : ControllerBase
                 CanApproveReceipts = s.CanApproveReceipts,
                 CanAdjustInventory = s.CanAdjustInventory,
                 CanOverrideFifo = s.CanOverrideFifo,
+                CanCreateInboundSession = s.CanCreateInboundSession,
                 HireDate = s.HireDate,
                 IsActive = s.IsActive,
                 CreatedAt = s.CreatedAt,
@@ -697,6 +700,7 @@ public class AdminWarehouseController : ControllerBase
             CanApproveReceipts = request.CanApproveReceipts,
             CanAdjustInventory = request.CanAdjustInventory,
             CanOverrideFifo = request.CanOverrideFifo,
+            CanCreateInboundSession = request.CanCreateInboundSession,
             HireDate = DateTime.UtcNow,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -763,6 +767,7 @@ public class AdminWarehouseController : ControllerBase
         if (request.CanApproveReceipts.HasValue) staff.CanApproveReceipts = request.CanApproveReceipts.Value;
         if (request.CanAdjustInventory.HasValue) staff.CanAdjustInventory = request.CanAdjustInventory.Value;
         if (request.CanOverrideFifo.HasValue) staff.CanOverrideFifo = request.CanOverrideFifo.Value;
+        if (request.CanCreateInboundSession.HasValue) staff.CanCreateInboundSession = request.CanCreateInboundSession.Value;
         if (request.IsActive.HasValue) staff.IsActive = request.IsActive.Value;
 
         staff.UpdatedAt = DateTime.UtcNow;
@@ -853,6 +858,7 @@ public class WarehouseStaffDetailDto : WarehouseStaffDto
 {
     public string? AvatarUrl { get; set; }
     public bool CanOverrideFifo { get; set; }
+    public bool CanCreateInboundSession { get; set; }
     public DateTime CreatedAt { get; set; }
     public Guid? CurrentWarehouseId { get; set; }
     public string? CurrentWarehouseName { get; set; }
@@ -888,6 +894,7 @@ public class CreateWarehouseStaffRequest
     public bool CanApproveReceipts { get; set; } = false;
     public bool CanAdjustInventory { get; set; } = false;
     public bool CanOverrideFifo { get; set; } = false;
+    public bool CanCreateInboundSession { get; set; } = false;
 }
 
 public class UpdateWarehouseStaffRequest
@@ -898,5 +905,6 @@ public class UpdateWarehouseStaffRequest
     public bool? CanApproveReceipts { get; set; }
     public bool? CanAdjustInventory { get; set; }
     public bool? CanOverrideFifo { get; set; }
+    public bool? CanCreateInboundSession { get; set; }
     public bool? IsActive { get; set; }
 }

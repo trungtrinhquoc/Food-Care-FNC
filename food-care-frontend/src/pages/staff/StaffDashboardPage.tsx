@@ -38,11 +38,10 @@ import {
   Target,
   Loader2,
   MapPin,
-  Mail,
   Phone,
-  Info,
-  Star,
+  Mail,
   Globe,
+  Navigation,
 } from 'lucide-react';
 
 // Import API services
@@ -58,7 +57,7 @@ import {
 // Import Layout and Shipping Manager
 import { StaffLayout } from '../../components/staff/StaffLayout';
 import { StaffShippingManager } from '../../components/staff/StaffShippingManager';
-import { InboundSessionManager } from '../../components/staff/InboundSessionManager';
+
 
 // Import types
 import type {
@@ -605,7 +604,7 @@ export default function StaffDashboardPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectedTab('receipts')}
+              onClick={() => setSelectedTab('inbound-sessions')}
             >
               Xem tất cả <ArrowRight className="size-3 ml-1" />
             </Button>
@@ -778,221 +777,232 @@ export default function StaffDashboardPage() {
   );
 
   // Render Warehouses Section
-  const getRegionLabel = (region?: string) => {
-    switch (region) {
-      case 'North': return 'Miền Bắc';
-      case 'Central': return 'Miền Trung';
-      case 'South': return 'Miền Nam';
-      default: return region || '—';
-    }
-  };
-
-  const getRegionColor = (region?: string) => {
-    switch (region) {
-      case 'North': return 'bg-blue-100 text-blue-800';
-      case 'Central': return 'bg-yellow-100 text-yellow-800';
-      case 'South': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const isMyWarehouse = (warehouseId: string) => staffProfile?.warehouseId === warehouseId;
-
   const renderWarehouses = () => {
-    // Sort: staff's own warehouse first, then by name
-    const sortedWarehouses = [...warehouses].sort((a, b) => {
-      if (isMyWarehouse(a.id) && !isMyWarehouse(b.id)) return -1;
-      if (!isMyWarehouse(a.id) && isMyWarehouse(b.id)) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    const myWarehouse = warehouses.find(w => w.id === staffProfile?.warehouseId);
+    const fullAddress = myWarehouse
+      ? [myWarehouse.addressStreet, myWarehouse.addressWard, myWarehouse.addressDistrict, myWarehouse.addressCity]
+          .filter(Boolean).join(', ')
+      : null;
+    const mapsUrl = myWarehouse?.latitude && myWarehouse?.longitude
+      ? `https://www.google.com/maps?q=${myWarehouse.latitude},${myWarehouse.longitude}`
+      : fullAddress
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
+        : null;
 
     return (
-      <div className="space-y-4">
-        {/* Header Card */}
-        <Card className="border-0" style={{ backgroundColor: colors.white }}>
-          <CardHeader>
+    <div className="space-y-6">
+
+      {/* My Warehouse Location Card */}
+      {myWarehouse ? (
+        <Card className="border-0 overflow-hidden" style={{ backgroundColor: colors.white }}>
+          <div className="h-1.5" style={{ backgroundColor: colors.accent }} />
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2" style={{ color: colors.primary }}>
-                  <Building2 className="size-5" style={{ color: colors.accent }} />
-                  Danh sách kho hàng
-                </CardTitle>
-                <CardDescription>Xem thông tin các kho hàng trong hệ thống (chỉ xem)</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs flex items-center gap-1">
-                  <Eye className="size-3" />
-                  Chỉ xem
-                </Badge>
-                <Badge
-                  className="text-xs"
-                  style={{ backgroundColor: `${colors.accent}30`, color: colors.primary }}
+              <CardTitle className="flex items-center gap-2" style={{ color: colors.primary }}>
+                <div className="p-2 rounded-lg" style={{ backgroundColor: `${colors.accent}30` }}>
+                  <Building2 className="size-5" style={{ color: colors.primary }} />
+                </div>
+                Kho của bạn
+              </CardTitle>
+              {mapsUrl && (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
+                  style={{ backgroundColor: colors.accent, color: colors.primary }}
                 >
-                  {warehouses.length} kho
-                </Badge>
-              </div>
+                  <Navigation className="size-4" />
+                  Xem trên bản đồ
+                </a>
+              )}
             </div>
+            <CardDescription>
+              Thông tin vị trí kho hàng do quản trị viên quy định
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Staff's warehouse info */}
-            {staffProfile?.warehouseId && (
-              <Alert className="mb-4 border" style={{ borderColor: colors.accent, backgroundColor: `${colors.accent}15` }}>
-                <Info className="size-4" style={{ color: colors.primary }} />
-                <AlertDescription className="text-sm" style={{ color: colors.primary }}>
-                  Kho được phân công của bạn: <strong>{staffProfile.warehouseName}</strong>. Bạn có thể xem thông tin cơ bản của các kho hàng khác.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {loading ? (
-              <div className="flex items-center justify-center py-8 text-gray-500">
-                <Loader2 className="size-5 mr-2 animate-spin" /> Đang tải...
-              </div>
-            ) : warehouses.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">Chưa có kho hàng nào</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow style={{ backgroundColor: colors.background }}>
-                    <TableHead></TableHead>
-                    <TableHead>Mã kho</TableHead>
-                    <TableHead>Tên kho</TableHead>
-                    <TableHead>Khu vực</TableHead>
-                    <TableHead>Địa chỉ</TableHead>
-                    <TableHead>SĐT</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead className="text-center">Xem</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedWarehouses.map((warehouse) => {
-                    const isMine = isMyWarehouse(warehouse.id);
-                    return (
-                      <TableRow
-                        key={warehouse.id}
-                        className={`hover:bg-gray-50 ${isMine ? 'bg-green-50/50' : ''}`}
-                        style={isMine ? { borderLeft: `3px solid ${colors.accent}` } : {}}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name & Code */}
+              <div className="md:col-span-2 p-4 rounded-xl" style={{ backgroundColor: colors.background }}>
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-lg" style={{ backgroundColor: `${colors.accent}25` }}>
+                    <Building2 className="size-5" style={{ color: colors.primary }} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Tên kho</p>
+                    <p className="text-lg font-bold" style={{ color: colors.primary }}>{myWarehouse.name}</p>
+                    <p className="text-sm text-gray-500">Mã kho: <span className="font-mono font-semibold">{myWarehouse.code}</span></p>
+                    {myWarehouse.isDefault && (
+                      <span
+                        className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: `${colors.accent}30`, color: colors.primary }}
                       >
-                        <TableCell className="w-8">
-                          {isMine && (
-                            <Star className="size-4 fill-current" style={{ color: colors.accent }} />
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium" style={{ color: colors.primary }}>
-                          {warehouse.code}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            {warehouse.name}
-                            {warehouse.isDefault && (
-                              <Badge variant="outline" className="text-[10px] px-1.5" style={{ borderColor: colors.accent }}>Mặc định</Badge>
-                            )}
-                            {isMine && (
-                              <Badge className="text-[10px] px-1.5" style={{ backgroundColor: colors.accent, color: colors.primary }}>Kho của tôi</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {warehouse.region ? (
-                            <Badge variant="outline" className={`text-xs ${getRegionColor(warehouse.region)}`}>
-                              <Globe className="size-3 mr-1" />
-                              {getRegionLabel(warehouse.region)}
-                            </Badge>
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-gray-600">
-                          {[warehouse.addressDistrict, warehouse.addressCity]
-                            .filter(Boolean)
-                            .join(', ') || '—'}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">{warehouse.phone || '—'}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={warehouse.isActive ? 'default' : 'secondary'}
-                            style={warehouse.isActive ? { backgroundColor: colors.accent, color: colors.primary } : {}}
-                          >
-                            {warehouse.isActive ? 'Hoạt động' : 'Tạm ngưng'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button size="sm" variant="ghost" onClick={() => handleViewWarehouse(warehouse)}>
-                            <Eye className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
+                        Kho mặc định
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="p-4 rounded-xl" style={{ backgroundColor: colors.background }}>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <MapPin className="size-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Địa chỉ</p>
+                    {fullAddress ? (
+                      <p className="text-sm font-medium" style={{ color: colors.primary }}>{fullAddress}</p>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">Chưa có địa chỉ</p>
+                    )}
+                    {myWarehouse.addressWard && (
+                      <p className="text-xs text-gray-500 mt-0.5">Phường/Xã: {myWarehouse.addressWard}</p>
+                    )}
+                    {myWarehouse.addressDistrict && (
+                      <p className="text-xs text-gray-500">Quận/Huyện: {myWarehouse.addressDistrict}</p>
+                    )}
+                    {myWarehouse.addressCity && (
+                      <p className="text-xs text-gray-500">Tỉnh/Thành: {myWarehouse.addressCity}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Region */}
+              {myWarehouse.region && (
+                <div className="p-4 rounded-xl" style={{ backgroundColor: colors.background }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-purple-100">
+                      <Globe className="size-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Khu vực</p>
+                      <p className="text-sm font-medium" style={{ color: colors.primary }}>{myWarehouse.region}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Phone */}
+              {myWarehouse.phone && (
+                <div className="p-4 rounded-xl" style={{ backgroundColor: colors.background }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-green-100">
+                      <Phone className="size-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Số điện thoại</p>
+                      <p className="text-sm font-medium" style={{ color: colors.primary }}>{myWarehouse.phone}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Email */}
+              {myWarehouse.email && (
+                <div className="p-4 rounded-xl" style={{ backgroundColor: colors.background }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-orange-100">
+                      <Mail className="size-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Email</p>
+                      <p className="text-sm font-medium" style={{ color: colors.primary }}>{myWarehouse.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Coordinates */}
+              {myWarehouse.latitude && myWarehouse.longitude && (
+                <div className="p-4 rounded-xl" style={{ backgroundColor: colors.background }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-teal-100">
+                      <Navigation className="size-4 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Tọa độ GPS</p>
+                      <p className="text-sm font-mono" style={{ color: colors.primary }}>
+                        {myWarehouse.latitude.toFixed(6)}, {myWarehouse.longitude.toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
-      </div>
-    );
-  };
+      ) : staffProfile && !staffProfile.warehouseId ? (
+        <Card className="border-0" style={{ backgroundColor: colors.white }}>
+          <CardContent className="py-10 text-center">
+            <div className="p-4 bg-gray-100 rounded-full inline-flex mb-3">
+              <Building2 className="size-8 text-gray-400" />
+            </div>
+            <p className="font-medium text-gray-600">Bạn chưa được gán vào kho nào</p>
+            <p className="text-sm text-gray-400 mt-1">Vui lòng liên hệ quản trị viên để được phân công kho</p>
+          </CardContent>
+        </Card>
+      ) : null}
 
-  // Render Receipts Section
-  const renderReceipts = () => (
+      {/* All Warehouses Table */}
     <Card className="border-0" style={{ backgroundColor: colors.white }}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle style={{ color: colors.primary }}>Phiếu nhập kho</CardTitle>
-            <CardDescription>Quản lý các phiếu nhập kho từ nhà cung cấp</CardDescription>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md text-sm font-medium">
-            <Building2 className="h-4 w-4 text-gray-500" />
-            <span>Kho: {staffProfile?.warehouseName || 'Chưa gán kho'}</span>
+            <CardTitle style={{ color: colors.primary }}>Danh sách kho hàng</CardTitle>
+            <CardDescription>Quản lý các kho hàng trong hệ thống</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="text-center py-8 text-gray-500">Đang tải...</div>
-        ) : receipts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">Chưa có phiếu nhập nào</div>
+        ) : warehouses.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">Chưa có kho hàng nào</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow style={{ backgroundColor: colors.background }}>
-                <TableHead>Số phiếu</TableHead>
-                <TableHead>Mã vận đơn</TableHead>
-                <TableHead>Kho nhận</TableHead>
-                <TableHead>Ngày đến</TableHead>
-                <TableHead>SL dự kiến</TableHead>
-                <TableHead>SL nhận</TableHead>
+                <TableHead>Mã kho</TableHead>
+                <TableHead>Tên kho</TableHead>
+                <TableHead>Địa chỉ</TableHead>
+                <TableHead>SĐT</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {receipts.map((receipt) => (
-                <TableRow key={receipt.id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium" style={{ color: colors.primary }}>{receipt.receiptNumber}</TableCell>
-                  <TableCell>{receipt.shipmentReference || '-'}</TableCell>
-                  <TableCell>{receipt.warehouseName}</TableCell>
+              {warehouses.map((warehouse) => (
+                <TableRow key={warehouse.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium" style={{ color: colors.primary }}>{warehouse.code}</TableCell>
                   <TableCell>
-                    {new Date(receipt.arrivalDate).toLocaleDateString('vi-VN')}
+                    {warehouse.name}
+                    {warehouse.isDefault && (
+                      <Badge variant="outline" className="ml-2" style={{ borderColor: colors.accent }}>Mặc định</Badge>
+                    )}
                   </TableCell>
-                  <TableCell>{receipt.totalExpected}</TableCell>
-                  <TableCell>{receipt.totalAccepted}</TableCell>
-                  <TableCell>{getStatusBadge(receipt.status)}</TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleViewReceipt(receipt)}>
-                        <Eye className="size-4" />
-                      </Button>
-                      {receipt.status === 'Pending' && (
-                        <Button
-                          size="sm"
-                          style={{ backgroundColor: colors.accent, color: colors.primary }}
-                          onClick={() => handleStartInspection(receipt)}
-                        >
-                          <ClipboardList className="size-4 mr-1" />
-                          Kiểm tra
-                        </Button>
-                      )}
-                    </div>
+                    {[warehouse.addressStreet, warehouse.addressDistrict, warehouse.addressCity]
+                      .filter(Boolean)
+                      .join(', ') || '-'}
+                  </TableCell>
+                  <TableCell>{warehouse.phone || '-'}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={warehouse.isActive ? 'default' : 'secondary'}
+                      style={warehouse.isActive ? { backgroundColor: colors.accent, color: colors.primary } : {}}
+                    >
+                      {warehouse.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" onClick={() => handleViewWarehouse(warehouse)}>
+                      <Eye className="size-4 mr-1" />
+                      Chi tiết
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -1001,8 +1011,11 @@ export default function StaffDashboardPage() {
         )}
       </CardContent>
     </Card>
+    </div>
   );
+  };
 
+  // Render Receipts Section
   // Render Inventory Section
   const renderInventory = () => (
     <div className="space-y-6">
@@ -1151,17 +1164,25 @@ export default function StaffDashboardPage() {
 
   // Render content based on selected tab
   const renderContent = () => {
+    // Map shipping sub-tabs to StaffShippingManager views
+    const shippingViewMap: Record<string, string> = {
+      'shipping-inbound': 'inbound',
+      'shipping-outbound': 'outbound',
+      'shipping-sessions': 'inbound-sessions',
+      'shipping-history': 'inbound-history',
+    };
+
+    if (shippingViewMap[selectedTab]) {
+      return <StaffShippingManager onRefreshStats={fetchDashboardData} activeView={shippingViewMap[selectedTab]} />;
+    }
+
     switch (selectedTab) {
       case 'overview':
         return renderOverview();
       case 'shipping':
         return <StaffShippingManager onRefreshStats={fetchDashboardData} />;
-      case 'inbound-sessions':
-        return <InboundSessionManager onRefreshStats={fetchDashboardData} />;
       case 'warehouses':
         return renderWarehouses();
-      case 'receipts':
-        return renderReceipts();
       case 'inventory':
         return renderInventory();
       case 'discrepancies':
@@ -1267,129 +1288,98 @@ export default function StaffDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Warehouse Detail Dialog (Read-only) */}
+      {/* Warehouse Detail Dialog */}
       <Dialog open={warehouseDetailOpen} onOpenChange={setWarehouseDetailOpen}>
-        <DialogContent className="sm:max-w-[650px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="size-5" style={{ color: colors.accent }} />
-              Chi tiết kho hàng
-              {selectedWarehouseDetail && isMyWarehouse(selectedWarehouseDetail.id) && (
-                <Badge className="text-xs ml-2" style={{ backgroundColor: colors.accent, color: colors.primary }}>Kho của tôi</Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription className="flex items-center gap-2">
-              Mã kho: {selectedWarehouseDetail?.code}
-              <Badge variant="outline" className="text-[10px] flex items-center gap-1">
-                <Eye className="size-3" />
-                Chỉ xem
-              </Badge>
-            </DialogDescription>
+            <DialogTitle>Chi tiết kho hàng</DialogTitle>
+            <DialogDescription>{selectedWarehouseDetail?.code}</DialogDescription>
           </DialogHeader>
-          {selectedWarehouseDetail && (
+          {selectedWarehouseDetail && (() => {
+            const dlAddr = [
+              selectedWarehouseDetail.addressStreet,
+              selectedWarehouseDetail.addressWard,
+              selectedWarehouseDetail.addressDistrict,
+              selectedWarehouseDetail.addressCity,
+            ].filter(Boolean).join(', ');
+            return (
             <div className="space-y-4">
-              {/* Basic info */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Building2 className="size-3" /> Tên kho
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.name}</p>
+                  <p className="text-xs text-gray-500">Tên kho</p>
+                  <p className="font-medium">{selectedWarehouseDetail.name}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-500">Trạng thái</p>
-                  <div className="mt-1">
-                    <Badge
-                      variant={selectedWarehouseDetail.isActive ? 'default' : 'secondary'}
-                      style={selectedWarehouseDetail.isActive ? { backgroundColor: colors.accent, color: colors.primary } : {}}
-                    >
-                      {selectedWarehouseDetail.isActive ? 'Hoạt động' : 'Tạm ngưng'}
-                    </Badge>
+                  <Badge variant={selectedWarehouseDetail.isActive ? 'default' : 'secondary'}>
+                    {selectedWarehouseDetail.isActive ? 'Hoạt động' : 'Tạm ngưng'}
+                  </Badge>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg col-span-2">
+                  <p className="text-xs text-gray-500 mb-1">Địa chỉ đầy đủ</p>
+                  <p className="font-medium">
+                    {dlAddr || 'Chưa có địa chỉ'}
+                  </p>
+                  {selectedWarehouseDetail.addressWard && (
+                    <p className="text-xs text-gray-500 mt-1">Phường/Xã: {selectedWarehouseDetail.addressWard}</p>
+                  )}
+                  {selectedWarehouseDetail.addressDistrict && (
+                    <p className="text-xs text-gray-500">Quận/Huyện: {selectedWarehouseDetail.addressDistrict}</p>
+                  )}
+                  {selectedWarehouseDetail.addressCity && (
+                    <p className="text-xs text-gray-500">Tỉnh/Thành: {selectedWarehouseDetail.addressCity}</p>
+                  )}
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500">Điện thoại</p>
+                  <p className="font-medium">{selectedWarehouseDetail.phone || '-'}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="font-medium">{selectedWarehouseDetail.email || '-'}</p>
+                </div>
+                {selectedWarehouseDetail.region && (
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Khu vực</p>
+                    <p className="font-medium">{selectedWarehouseDetail.region}</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Region & Capacity */}
-              <div className="grid grid-cols-2 gap-3">
+                )}
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Globe className="size-3" /> Khu vực
-                  </p>
-                  <div className="mt-1">
-                    {selectedWarehouseDetail.region ? (
-                      <Badge variant="outline" className={`text-xs ${getRegionColor(selectedWarehouseDetail.region)}`}>
-                        {getRegionLabel(selectedWarehouseDetail.region)}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
-                    )}
+                  <p className="text-xs text-gray-500">Sức chứa</p>
+                  <p className="font-medium">{selectedWarehouseDetail.capacity || '-'}</p>
+                </div>
+                {selectedWarehouseDetail.latitude && selectedWarehouseDetail.longitude && (
+                  <div className="p-3 bg-gray-50 rounded-lg col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">Tọa độ GPS</p>
+                    <p className="font-mono text-sm">{selectedWarehouseDetail.latitude.toFixed(6)}, {selectedWarehouseDetail.longitude.toFixed(6)}</p>
                   </div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Package className="size-3" /> Sức chứa
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.capacity ? `${selectedWarehouseDetail.capacity.toLocaleString()} đơn vị` : '—'}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedWarehouseDetail.description && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Info className="size-3" /> Mô tả
-                  </p>
-                  <p className="text-sm mt-1">{selectedWarehouseDetail.description}</p>
-                </div>
-              )}
-
-              {/* Address */}
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <MapPin className="size-3" /> Địa chỉ
-                </p>
-                <p className="font-medium mt-1">
-                  {[
-                    selectedWarehouseDetail.addressStreet,
-                    selectedWarehouseDetail.addressWard,
-                    selectedWarehouseDetail.addressDistrict,
-                    selectedWarehouseDetail.addressCity
-                  ].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
-                </p>
-              </div>
-
-              {/* Contact */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Phone className="size-3" /> Điện thoại
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.phone || '—'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Mail className="size-3" /> Email
-                  </p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.email || '—'}</p>
-                </div>
-              </div>
-
-              {/* Default & Created */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500">Kho mặc định</p>
-                  <p className="font-medium mt-1">{selectedWarehouseDetail.isDefault ? 'Có' : 'Không'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <Calendar className="size-3" /> Ngày tạo
-                  </p>
-                  <p className="font-medium mt-1">{new Date(selectedWarehouseDetail.createdAt).toLocaleDateString('vi-VN')}</p>
-                </div>
+                )}
               </div>
             </div>
-          )}
-          <DialogFooter>
+            );
+          })()}
+          <DialogFooter className="gap-2">
+            {(() => {
+              const dlAddr2 = [
+                selectedWarehouseDetail?.addressStreet,
+                selectedWarehouseDetail?.addressWard,
+                selectedWarehouseDetail?.addressDistrict,
+                selectedWarehouseDetail?.addressCity,
+              ].filter(Boolean).join(', ');
+              const mapsUrl2 = selectedWarehouseDetail?.latitude && selectedWarehouseDetail?.longitude
+                ? `https://www.google.com/maps?q=${selectedWarehouseDetail.latitude},${selectedWarehouseDetail.longitude}`
+                : dlAddr2
+                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dlAddr2)}`
+                  : null;
+              return mapsUrl2 ? (
+                <a href={mapsUrl2} target="_blank" rel="noopener noreferrer">
+                  <Button variant="default" className="gap-1.5" style={{ backgroundColor: colors.accent, color: colors.primary }}>
+                    <Navigation className="size-4" />
+                    Xem trên bản đồ
+                  </Button>
+                </a>
+              ) : null;
+            })()}
             <Button variant="outline" onClick={() => setWarehouseDetailOpen(false)}>Đóng</Button>
           </DialogFooter>
         </DialogContent>

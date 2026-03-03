@@ -71,6 +71,7 @@ public partial class FoodCareDbContext : DbContext {
     public DbSet<InboundSession> InboundSessions { get; set; }
     public DbSet<InboundReceipt> InboundReceipts { get; set; }
     public DbSet<InboundReceiptDetail> InboundReceiptDetails { get; set; }
+    public DbSet<InboundSessionSupplier> InboundSessionSuppliers { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");

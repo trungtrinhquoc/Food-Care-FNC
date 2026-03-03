@@ -1,7 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
+using FoodCare.API.Models.DTOs.Staff;
 using FoodCare.API.Services.Interfaces.SupplierModule;
+using FoodCare.API.Services.Interfaces.StaffModule;
+using System.Security.Claims;
 
 namespace FoodCare.API.Controllers.supplier;
 
@@ -11,10 +16,17 @@ namespace FoodCare.API.Controllers.supplier;
 public class SupplierController : ControllerBase
 {
     private readonly ISupplierAuthService _supplierAuthService;
+    private readonly ISupplierInboundService _supplierInboundService;
+    private readonly FoodCareDbContext _context;
 
-    public SupplierController(ISupplierAuthService supplierAuthService)
+    public SupplierController(
+        ISupplierAuthService supplierAuthService,
+        ISupplierInboundService supplierInboundService,
+        FoodCareDbContext context)
     {
         _supplierAuthService = supplierAuthService;
+        _supplierInboundService = supplierInboundService;
+        _context = context;
     }
 
     [HttpGet("profile")]
@@ -243,5 +255,87 @@ public class SupplierController : ControllerBase
 
         var warehouses = await _supplierAuthService.GetAvailableWarehousesAsync(userId);
         return Ok(warehouses);
+    }
+
+    // ===== INBOUND SESSIONS =====
+
+    /// <summary>
+    /// Get available inbound sessions (invited/registered) for current supplier
+    /// </summary>
+    [HttpGet("inbound-sessions")]
+    public async Task<ActionResult<List<SupplierInboundSessionDto>>> GetInboundSessions()
+    {
+        var supplierId = await GetSupplierIntIdAsync();
+        if (supplierId == null) return Unauthorized(new { message = "Supplier profile not found" });
+
+        var sessions = await _supplierInboundService.GetAvailableSessionsForSupplierAsync(supplierId.Value);
+        return Ok(sessions);
+    }
+
+    /// <summary>
+    /// Register for an inbound session
+    /// </summary>
+    [HttpPost("inbound-sessions/{sessionId}/register")]
+    public async Task<ActionResult<SupplierInboundSessionDto>> RegisterForSession(
+        Guid sessionId, [FromBody] SupplierRegisterInboundRequest request)
+    {
+        var supplierId = await GetSupplierIntIdAsync();
+        if (supplierId == null) return Unauthorized(new { message = "Supplier profile not found" });
+
+        try
+        {
+            var result = await _supplierInboundService.RegisterForSessionAsync(sessionId, supplierId.Value, request);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Decline an inbound session invitation
+    /// </summary>
+    [HttpPost("inbound-sessions/{sessionId}/decline")]
+    public async Task<ActionResult> DeclineSession(Guid sessionId)
+    {
+        var supplierId = await GetSupplierIntIdAsync();
+        if (supplierId == null) return Unauthorized(new { message = "Supplier profile not found" });
+
+        try
+        {
+            await _supplierInboundService.DeclineSessionAsync(sessionId, supplierId.Value);
+            return Ok(new { message = "Đã từ chối lời mời" });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // ===== HELPER METHODS =====
+
+    private Guid? GetCurrentUserGuid()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private async Task<int?> GetSupplierIntIdAsync()
+    {
+        var userId = GetCurrentUserGuid();
+        if (userId == null) return null;
+
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId.Value);
+        return supplier?.Id;
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
 using FoodCare.API.Models.Staff;
+using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Interfaces.SupplierModule;
 using System.Text.Json;
 
@@ -12,11 +13,13 @@ public class SupplierAuthService : ISupplierAuthService
 {
     private readonly FoodCareDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IGeocodingService _geocodingService;
 
-    public SupplierAuthService(FoodCareDbContext context, IMapper mapper)
+    public SupplierAuthService(FoodCareDbContext context, IMapper mapper, IGeocodingService geocodingService)
     {
         _context = context;
         _mapper = mapper;
+        _geocodingService = geocodingService;
     }
 
     public async Task<SupplierProfileDto?> GetSupplierProfileAsync(string userId)
@@ -558,8 +561,16 @@ public class SupplierAuthService : ISupplierAuthService
         // Validate required fields
         if (string.IsNullOrWhiteSpace(dto.BusinessLicense))
             throw new InvalidOperationException("Giấy phép kinh doanh là bắt buộc.");
+        if (string.IsNullOrWhiteSpace(dto.AddressCity))
+            throw new InvalidOperationException("Tỉnh/Thành phố là bắt buộc để phân bổ khu vực nhập kho.");
+        if (string.IsNullOrWhiteSpace(dto.AddressDistrict))
+            throw new InvalidOperationException("Quận/Huyện là bắt buộc để phân bổ khu vực nhập kho.");
+        if (string.IsNullOrWhiteSpace(dto.AddressWard))
+            throw new InvalidOperationException("Phường/Xã là bắt buộc để phân bổ khu vực nhập kho.");
+
+        // Auto-derive operating region from city if not provided
         if (string.IsNullOrWhiteSpace(dto.OperatingRegion))
-            throw new InvalidOperationException("Khu vực hoạt động là bắt buộc.");
+            dto.OperatingRegion = DeriveRegionFromCity(dto.AddressCity);
 
         // Update supplier with registration info
         supplier.BusinessName = dto.BusinessName;
@@ -578,6 +589,19 @@ public class SupplierAuthService : ISupplierAuthService
         supplier.RejectionReason = null;
         supplier.SubmittedAt = DateTime.UtcNow;
         supplier.UpdatedAt = DateTime.UtcNow;
+
+        // Auto-geocode supplier address for area-matching
+        try
+        {
+            var (lat, lng) = await _geocodingService.GeocodeAddressAsync(
+                dto.AddressWard, dto.AddressDistrict, dto.AddressCity);
+            if (lat.HasValue && lng.HasValue)
+            {
+                supplier.Latitude = lat.Value;
+                supplier.Longitude = lng.Value;
+            }
+        }
+        catch { /* Geocoding failure should not block registration */ }
 
         await _context.SaveChangesAsync();
 
@@ -634,5 +658,33 @@ public class SupplierAuthService : ISupplierAuthService
             // Fallback: legacy comma-separated format
             return images.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
+    }
+
+    /// <summary>
+    /// Auto-derive operating region (North/Central/South) from Vietnamese city name.
+    /// </summary>
+    private static string DeriveRegionFromCity(string city)
+    {
+        if (string.IsNullOrWhiteSpace(city)) return "Central";
+        var c = city.ToLower();
+
+        var north = new[] { "hà nội", "hải phòng", "bắc ninh", "hưng yên", "hải dương", "quảng ninh",
+            "nam định", "ninh bình", "thái bình", "hà nam", "vĩnh phúc", "phú thọ", "thái nguyên",
+            "bắc giang", "lạng sơn", "lào cai", "yên bái", "tuyên quang", "hà giang", "cao bằng",
+            "bắc kạn", "sơn la", "lai châu", "điện biên", "hòa bình" };
+
+        var central = new[] { "đà nẵng", "thừa thiên huế", "quảng nam", "quảng ngãi", "bình định",
+            "phú yên", "khánh hòa", "ninh thuận", "bình thuận", "thanh hóa", "nghệ an", "hà tĩnh",
+            "quảng bình", "quảng trị", "kon tum", "gia lai", "đắk lắk", "đắk nông", "lâm đồng" };
+
+        var south = new[] { "hồ chí minh", "bình dương", "đồng nai", "bà rịa", "vũng tàu", "long an",
+            "tây ninh", "bình phước", "tiền giang", "bến tre", "vĩnh long", "trà vinh", "cần thơ",
+            "sóc trăng", "bạc liêu", "cà mau", "an giang", "kiên giang", "đồng tháp", "hậu giang" };
+
+        if (north.Any(p => c.Contains(p))) return "North";
+        if (central.Any(p => c.Contains(p))) return "Central";
+        if (south.Any(p => c.Contains(p))) return "South";
+
+        return "Central"; // default
     }
 }

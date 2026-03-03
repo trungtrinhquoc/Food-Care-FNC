@@ -16,6 +16,8 @@ import {
   X,
   LogOut,
   ShieldCheck,
+  Warehouse,
+  Lock,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,21 +25,23 @@ interface SidebarProps {
   onTabChange: (tab: string) => void;
   badges?: Record<string, number>;
   onLogout?: () => void;
+  isRegistrationApproved?: boolean;
 }
 
-export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout }: SidebarProps) {
+export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout, isRegistrationApproved = false }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const menuItems = [
     { id: 'overview', label: 'Tổng quan', icon: Home },
     { id: 'registration', label: 'Đăng ký kinh doanh', icon: ShieldCheck },
-    { id: 'orders', label: 'Quản lý đơn hàng', icon: ShoppingCart, badge: badges.orders },
-    { id: 'products', label: 'Sản phẩm', icon: Package, badge: badges.products },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp },
-    { id: 'reviews', label: 'Đánh giá', icon: Star, badge: badges.reviews },
-    { id: 'delivery', label: 'Xác nhận giao hàng', icon: Truck },
-    { id: 'reports', label: 'Báo cáo vận hành', icon: FileText },
+    { id: 'inbound', label: 'Nhập kho', icon: Warehouse, badge: badges.inbound, requiresApproval: true },
+    { id: 'orders', label: 'Quản lý đơn hàng', icon: ShoppingCart, badge: badges.orders, requiresApproval: true },
+    { id: 'products', label: 'Sản phẩm', icon: Package, badge: badges.products, requiresApproval: true },
+    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, requiresApproval: true },
+    { id: 'reviews', label: 'Đánh giá', icon: Star, badge: badges.reviews, requiresApproval: true },
+    { id: 'delivery', label: 'Xác nhận giao hàng', icon: Truck, requiresApproval: true },
+    { id: 'reports', label: 'Báo cáo vận hành', icon: FileText, requiresApproval: true },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
   ];
 
@@ -79,6 +83,7 @@ export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout 
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
+          const isLocked = item.requiresApproval && !isRegistrationApproved;
 
           return (
             <button
@@ -90,20 +95,26 @@ export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout 
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  : isLocked
+                    ? 'text-gray-400 hover:bg-gray-50 cursor-pointer'
+                    : 'text-gray-700 hover:bg-gray-100'
               } ${collapsed ? 'justify-center' : ''}`}
-              title={collapsed ? item.label : ''}
+              title={collapsed ? (isLocked ? `${item.label} (Cần đăng ký kinh doanh)` : item.label) : ''}
             >
-              <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-600'}`} />
+              <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : isLocked ? 'text-gray-300' : 'text-gray-600'}`} />
               {!collapsed && (
                 <>
-                  <span className="flex-1 text-left font-medium">{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                      isActive ? 'bg-white text-blue-600' : 'bg-red-500 text-white'
-                    }`}>
-                      {item.badge > 99 ? '99+' : item.badge}
-                    </span>
+                  <span className={`flex-1 text-left font-medium ${isLocked ? 'text-gray-400' : ''}`}>{item.label}</span>
+                  {isLocked ? (
+                    <Lock className="w-3.5 h-3.5 text-gray-300" />
+                  ) : (
+                    item.badge !== undefined && item.badge > 0 && (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        isActive ? 'bg-white text-blue-600' : 'bg-red-500 text-white'
+                      }`}>
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )
                   )}
                 </>
               )}

@@ -1,4 +1,5 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ChartContainer } from './ChartContainer';
 
 export interface CategoryRevenue {
   categoryName: string;
@@ -44,8 +45,8 @@ export function CategoryRevenueChart({ data, isLoading = false }: CategoryRevenu
   const total = data.reduce((sum, item) => sum + item.revenue, 0);
 
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div>
+      <ChartContainer>
         <PieChart>
           <Pie
             data={data as unknown as Record<string, unknown>[]}
@@ -65,7 +66,7 @@ export function CategoryRevenueChart({ data, isLoading = false }: CategoryRevenu
           </Pie>
           <Tooltip content={<CustomTooltip />} />
         </PieChart>
-      </ResponsiveContainer>
+      </ChartContainer>
       <div className="mt-4 space-y-2">
         {data.map((category, index) => (
           <div key={index} className="flex items-center justify-between text-sm">

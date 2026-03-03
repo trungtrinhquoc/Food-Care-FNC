@@ -51,6 +51,9 @@ public class StaffMember
     [Column("can_override_fifo")]
     public bool CanOverrideFifo { get; set; } = false;
 
+    [Column("can_create_inbound_session")]
+    public bool CanCreateInboundSession { get; set; } = false;
+
     [Column("hire_date")]
     public DateTime? HireDate { get; set; }
 

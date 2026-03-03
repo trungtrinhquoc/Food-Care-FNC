@@ -99,6 +99,7 @@ public class StaffMemberDto
     public bool CanApproveReceipts { get; set; }
     public bool CanAdjustInventory { get; set; }
     public bool CanOverrideFifo { get; set; }
+    public bool CanCreateInboundSession { get; set; }
     public DateTime? HireDate { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -126,6 +127,7 @@ public class CreateStaffMemberRequest
     public bool CanApproveReceipts { get; set; } = false;
     public bool CanAdjustInventory { get; set; } = false;
     public bool CanOverrideFifo { get; set; } = false;
+    public bool CanCreateInboundSession { get; set; } = false;
     public DateTime? HireDate { get; set; }
 }
 
@@ -138,6 +140,7 @@ public class UpdateStaffMemberRequest
     public bool? CanApproveReceipts { get; set; }
     public bool? CanAdjustInventory { get; set; }
     public bool? CanOverrideFifo { get; set; }
+    public bool? CanCreateInboundSession { get; set; }
     public bool? IsActive { get; set; }
 }
 

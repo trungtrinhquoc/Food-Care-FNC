@@ -712,6 +712,57 @@ export const adminApprovalApi = {
   },
 };
 
+// =====================================================
+// SUPPLIER INBOUND SESSION TYPES
+// =====================================================
+
+export interface SupplierInboundSession {
+  sessionId: string;
+  sessionCode: string;
+  warehouseName?: string;
+  warehouseWard?: string;
+  warehouseDistrict?: string;
+  warehouseCity?: string;
+  warehouseAddress?: string;
+  sessionStatus: string;
+  expectedEndDate?: string;
+  createdAt: string;
+  registrationId: string;
+  registrationStatus: string;
+  registrationNote?: string;
+  estimatedDeliveryDate?: string;
+  registeredAt?: string;
+}
+
+export interface SupplierRegisterInboundRequest {
+  note?: string;
+  estimatedDeliveryDate?: string;
+}
+
+// =====================================================
+// SUPPLIER INBOUND SESSION API
+// =====================================================
+
+export const inboundSessionsApi = {
+  getSessions: async (): Promise<SupplierInboundSession[]> => {
+    const response = await supplierApi.get<SupplierInboundSession[]>('/inbound-sessions');
+    return response.data;
+  },
+  registerForSession: async (
+    sessionId: string,
+    request: SupplierRegisterInboundRequest
+  ): Promise<SupplierInboundSession> => {
+    const response = await supplierApi.post<SupplierInboundSession>(
+      `/inbound-sessions/${sessionId}/register`,
+      request
+    );
+    return response.data;
+  },
+  declineSession: async (sessionId: string): Promise<void> => {
+    await supplierApi.post(`/inbound-sessions/${sessionId}/decline`);
+  },
+};
+
 export default {
   profile: profileApi,
   products: productsApi,
@@ -722,4 +773,5 @@ export default {
   shipments: shipmentsApi,
   registration: registrationApi,
   warehouses: warehousesApi,
+  inboundSessions: inboundSessionsApi,
 };
