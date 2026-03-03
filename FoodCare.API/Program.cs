@@ -28,7 +28,10 @@ builder.Services.AddControllers()
     });
 builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.CustomSchemaIds(type => type.FullName);
+});
 
 // Configure Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -142,7 +145,7 @@ builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSingleton<MessageClassifier>(); // Singleton - no state
 builder.Services.AddScoped<FaqCacheService>();
-builder.Services.AddScoped<GeminiAiService>();
+builder.Services.AddScoped<IOpenRouterService, OpenRouterService>();
 
 
 

@@ -1254,9 +1254,10 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.LineTotal).HasColumnName("line_total").HasColumnType("decimal(18,2)");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasOne(e => e.ReturnShipment).WithMany(r => r.Items).HasForeignKey(e => e.ReturnShipmentId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.ShipmentItem).WithMany().HasForeignKey(e => e.ShipmentItemId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.ShipmentItem)
+                .WithMany()
+                .HasForeignKey(e => e.ShipmentItemId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
-
     }
 }

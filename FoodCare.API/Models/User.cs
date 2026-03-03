@@ -70,6 +70,4 @@ public partial class User
 
     public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Suppliers.Supplier>();
 
-
-    public virtual ICollection<ChatConversation> ChatConversations { get; set; } = new List<ChatConversation>();
 }

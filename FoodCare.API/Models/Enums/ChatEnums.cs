@@ -11,6 +11,7 @@ public enum MessageIntent
     FAQ_ReturnPolicy,
     MembershipInfo,
     CouponCheck,
+    Farewell,
     Complex // Needs AI reasoning
 }
 

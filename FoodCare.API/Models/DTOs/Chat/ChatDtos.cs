@@ -16,3 +16,9 @@ public class ChatResponseDto
     public string Answer { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
 }
+
+public class ChatMessageDto
+{
+    public string Role { get; set; } = null!;
+    public string Content { get; set; } = null!;
+}
