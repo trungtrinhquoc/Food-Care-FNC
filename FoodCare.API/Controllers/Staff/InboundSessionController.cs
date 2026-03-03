@@ -74,7 +74,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Get inbound session by ID with all receipts and details
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}")]
     public async Task<ActionResult<InboundSessionDto>> GetSession(Guid id)
     {
         var session = await _sessionService.GetSessionByIdAsync(id);
@@ -148,7 +148,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Add a single item to session. System auto-groups by supplier.
     /// </summary>
-    [HttpPost("{id}/items")]
+    [HttpPost("{id:guid}/items")]
     public async Task<ActionResult<InboundSessionDto>> AddItem(
         Guid id, [FromBody] AddInboundItemRequest request)
     {
@@ -176,7 +176,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Add multiple items at once (batch). System auto-groups by supplier.
     /// </summary>
-    [HttpPost("{id}/items/batch")]
+    [HttpPost("{id:guid}/items/batch")]
     public async Task<ActionResult<InboundSessionDto>> AddItemsBatch(
         Guid id, [FromBody] AddInboundItemsBatchRequest request)
     {
@@ -208,7 +208,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Update a detail line item in the session
     /// </summary>
-    [HttpPut("{id}/details/{detailId}")]
+    [HttpPut("{id:guid}/details/{detailId:guid}")]
     public async Task<ActionResult<InboundSessionDto>> UpdateDetail(
         Guid id, Guid detailId, [FromBody] UpdateInboundDetailRequest request)
     {
@@ -240,7 +240,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Remove a detail line from the session
     /// </summary>
-    [HttpDelete("{id}/details/{detailId}")]
+    [HttpDelete("{id:guid}/details/{detailId:guid}")]
     public async Task<ActionResult<InboundSessionDto>> RemoveDetail(Guid id, Guid detailId)
     {
         var staffId = await GetCurrentStaffIdAsync();
@@ -271,7 +271,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Move session from Draft → Processing
     /// </summary>
-    [HttpPost("{id}/start-processing")]
+    [HttpPost("{id:guid}/start-processing")]
     public async Task<ActionResult<InboundSessionDto>> StartProcessingSession(Guid id)
     {
         var staffId = await GetCurrentStaffIdAsync();
@@ -302,7 +302,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Complete session — all receipts confirmed, items added to inventory
     /// </summary>
-    [HttpPost("{id}/complete")]
+    [HttpPost("{id:guid}/complete")]
     public async Task<ActionResult<InboundSessionDto>> CompleteSession(
         Guid id, [FromBody] CompleteInboundSessionRequest request)
     {
@@ -334,7 +334,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Cancel an inbound session
     /// </summary>
-    [HttpPost("{id}/cancel")]
+    [HttpPost("{id:guid}/cancel")]
     public async Task<ActionResult<InboundSessionDto>> CancelSession(Guid id)
     {
         var staffId = await GetCurrentStaffIdAsync();
@@ -365,7 +365,7 @@ public class InboundSessionController : ControllerBase
     /// <summary>
     /// Get supplier registrations for a session
     /// </summary>
-    [HttpGet("{sessionId}/suppliers")]
+    [HttpGet("{sessionId:guid}/suppliers")]
     public async Task<ActionResult<List<InboundSessionSupplierDto>>> GetSessionSuppliers(Guid sessionId)
     {
         var suppliers = await _supplierInboundService.GetSessionSuppliersAsync(sessionId);

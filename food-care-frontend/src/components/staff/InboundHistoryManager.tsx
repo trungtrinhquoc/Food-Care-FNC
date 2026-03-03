@@ -50,7 +50,8 @@ export function InboundHistoryManager() {
       );
       setSessions(historySessions);
       setTotalPages(result.totalPages || 1);
-    } catch {
+    } catch (err) {
+      console.error('Error fetching inbound history:', err);
       setSessions([]);
     } finally {
       setLoading(false);
