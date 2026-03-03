@@ -8,13 +8,15 @@ interface SupplierLayoutProps {
     activeTab: string;
     onTabChange: (tab: string) => void;
     badges?: Record<string, number>;
+    isRegistrationApproved?: boolean;
 }
 
 export function SupplierLayout({
     children,
     activeTab,
     onTabChange,
-    badges = {}
+    badges = {},
+    isRegistrationApproved = false,
 }: SupplierLayoutProps) {
     const { logout } = useAuth();
 
@@ -26,6 +28,7 @@ export function SupplierLayout({
                 onTabChange={onTabChange}
                 badges={badges}
                 onLogout={logout}
+                isRegistrationApproved={isRegistrationApproved}
             />
 
             {/* Main Content */}

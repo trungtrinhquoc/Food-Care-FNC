@@ -598,6 +598,7 @@ export interface InboundSession {
   totalQuantity: number;
   totalAmount: number;
   completedAt?: string;
+  expectedEndDate?: string;
   createdAt: string;
   updatedAt?: string;
   receipts: InboundReceipt[];
@@ -638,6 +639,7 @@ export interface InboundReceiptDetail {
 export interface CreateInboundSessionRequest {
   warehouseId: string;
   note?: string;
+  expectedEndDate?: string;
 }
 
 export interface AddInboundItemRequest {
@@ -668,4 +670,21 @@ export interface UpdateInboundDetailRequest {
 
 export interface CompleteInboundSessionRequest {
   note?: string;
+}
+
+// Area-matched product for inbound sessions
+export interface AreaMatchedProduct {
+  productId: string;
+  name: string;
+  basePrice: number;
+  supplierId: number;
+  supplierName?: string;
+  categoryName?: string;
+  imageUrl?: string;
+  unit?: string;
+  sku?: string;
+  /** Distance in km. null = same Ward (exact match), >0 = nearby fallback */
+  distanceKm?: number | null;
+  /** Match type: "ward" = same Ward, "nearby" = within radius, "all" = no filter */
+  matchType: string;
 }

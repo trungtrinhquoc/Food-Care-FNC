@@ -1,17 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
 import { SectionHeader, SectionSkeleton } from './SupplierLayout';
+import { AddressSelector } from '../AddressSelector';
 import {
   FileText,
   CheckCircle2,
@@ -19,10 +13,14 @@ import {
   Clock,
   Building2,
   MapPin,
-  Upload,
-  AlertTriangle,
   Send,
   ShieldCheck,
+  Warehouse,
+  Info,
+  Upload,
+  Loader2,
+  ImageIcon,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -30,11 +28,27 @@ import {
   type SupplierRegistration,
   type SubmitRegistrationRequest,
 } from '../../services/supplier/supplierApi';
+import { uploadToCloudinary } from '../../utils/cloudinary';
+
+// Auto-derive operating region from Vietnamese city name
+function deriveRegionFromCity(city: string): string {
+  if (!city) return '';
+  const c = city.toLowerCase();
+  const north = ['hà nội', 'hải phòng', 'bắc ninh', 'hưng yên', 'hải dương', 'quảng ninh', 'nam định', 'ninh bình', 'thái bình', 'hà nam', 'vĩnh phúc', 'phú thọ', 'thái nguyên', 'bắc giang', 'lạng sơn', 'lào cai', 'yên bái', 'tuyên quang', 'hà giang', 'cao bằng', 'bắc kạn', 'sơn la', 'lai châu', 'điện biên', 'hòa bình'];
+  const central = ['đà nẵng', 'thừa thiên huế', 'quảng nam', 'quảng ngãi', 'bình định', 'phú yên', 'khánh hòa', 'ninh thuận', 'bình thuận', 'thanh hóa', 'nghệ an', 'hà tĩnh', 'quảng bình', 'quảng trị', 'kon tum', 'gia lai', 'đắk lắk', 'đắk nông', 'lâm đồng'];
+  const south = ['hồ chí minh', 'bình dương', 'đồng nai', 'bà rịa', 'vũng tàu', 'long an', 'tây ninh', 'bình phước', 'tiền giang', 'bến tre', 'vĩnh long', 'trà vinh', 'cần thơ', 'sóc trăng', 'bạc liêu', 'cà mau', 'an giang', 'kiên giang', 'đồng tháp', 'hậu giang'];
+  if (north.some(p => c.includes(p))) return 'North';
+  if (central.some(p => c.includes(p))) return 'Central';
+  if (south.some(p => c.includes(p))) return 'South';
+  return 'Central'; // default
+}
 
 export function RegistrationSection() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [registration, setRegistration] = useState<SupplierRegistration | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<SubmitRegistrationRequest>({
     businessName: '',
@@ -98,19 +112,32 @@ export function RegistrationSection() {
       toast.error('Vui lòng nhập mã số thuế');
       return;
     }
-    if (!form.operatingRegion) {
-      toast.error('Vui lòng chọn khu vực hoạt động');
+    if (!form.addressCity?.trim()) {
+      toast.error('Vui lòng chọn Tỉnh/Thành phố');
+      return;
+    }
+    if (!form.addressDistrict?.trim()) {
+      toast.error('Vui lòng chọn Quận/Huyện');
+      return;
+    }
+    if (!form.addressWard?.trim()) {
+      toast.error('Vui lòng chọn Phường/Xã');
       return;
     }
 
+    // Auto-derive operating region from city
+    const derivedRegion = deriveRegionFromCity(form.addressCity || '');
+
     try {
       setSubmitting(true);
-      const result = await registrationApi.submit(form);
+      const submitData = { ...form, operatingRegion: derivedRegion || form.operatingRegion };
+      const result = await registrationApi.submit(submitData);
       setRegistration(result);
       toast.success('Đã gửi đăng ký kinh doanh thành công!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Submit registration error:', error);
-      toast.error(error.response?.data?.message || 'Không thể gửi đăng ký');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Không thể gửi đăng ký');
     } finally {
       setSubmitting(false);
     }
@@ -118,6 +145,37 @@ export function RegistrationSection() {
 
   const updateField = (field: keyof SubmitRegistrationRequest, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLicenseUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast.error('Chỉ chấp nhận ảnh hoặc PDF');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ảnh không được vượt quá 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const result = await uploadToCloudinary(file);
+      setForm(prev => ({ ...prev, businessLicenseUrl: result.url }));
+      toast.success('Tải ảnh giấy phép thành công!');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Tải ảnh thất bại';
+      toast.error(message);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeLicenseImage = () => {
+    setForm(prev => ({ ...prev, businessLicenseUrl: '' }));
   };
 
   if (loading) return <SectionSkeleton />;
@@ -131,7 +189,7 @@ export function RegistrationSection() {
     <div className="space-y-6">
       <SectionHeader
         title="Đăng ký kinh doanh"
-        description="Đăng ký giấy phép kinh doanh và khu vực hoạt động để cung cấp hàng cho warehouse"
+        description="Đăng ký thông tin doanh nghiệp và địa chỉ chính xác để nhận lời mời nhập kho từ các cơ sở FoodCare"
       />
 
       {/* Status Banner */}
@@ -158,10 +216,16 @@ export function RegistrationSection() {
                 Đã duyệt
               </Badge>
             </div>
-            {registration?.operatingRegion && (
+            {(registration?.addressWard || registration?.addressDistrict || registration?.addressCity) && (
               <div className="mt-4 flex items-center gap-2 text-emerald-700">
                 <MapPin className="h-4 w-4" />
-                <span>Khu vực hoạt động: <strong>{registration.operatingRegion}</strong></span>
+                <span>Khu vực: <strong>{[registration.addressWard, registration.addressDistrict, registration.addressCity].filter(Boolean).join(' - ')}</strong></span>
+              </div>
+            )}
+            {registration?.operatingRegion && (
+              <div className="mt-1 flex items-center gap-2 text-emerald-600 text-sm">
+                <Warehouse className="h-3.5 w-3.5" />
+                <span>Miền: {registration.operatingRegion === 'North' ? 'Miền Bắc' : registration.operatingRegion === 'Central' ? 'Miền Trung' : registration.operatingRegion === 'South' ? 'Miền Nam' : registration.operatingRegion}</span>
               </div>
             )}
           </CardContent>
@@ -280,47 +344,72 @@ export function RegistrationSection() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Link giấy phép (ảnh/PDF)
+                  Ảnh giấy phép kinh doanh
                 </label>
-                <Input
-                  value={form.businessLicenseUrl}
-                  onChange={(e) => updateField('businessLicenseUrl', e.target.value)}
-                  placeholder="https://... (link ảnh hoặc PDF giấy phép)"
-                  disabled={!canEdit}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLicenseUpload}
+                  className="hidden"
+                  disabled={!canEdit || uploading}
                 />
+                {form.businessLicenseUrl ? (
+                  <div className="relative group">
+                    <div className="border rounded-lg overflow-hidden bg-gray-50">
+                      <img
+                        src={form.businessLicenseUrl}
+                        alt="Giấy phép kinh doanh"
+                        className="w-full h-40 object-contain"
+                      />
+                    </div>
+                    {canEdit && (
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 w-7 p-0 bg-white/90 hover:bg-white shadow"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 w-7 p-0 shadow"
+                          onClick={removeLicenseImage}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!canEdit || uploading}
+                    className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <span className="text-sm">Đang tải lên...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="h-8 w-8" />
+                        <span className="text-sm font-medium">Nhấn để chọn ảnh giấy phép</span>
+                        <span className="text-xs text-gray-400">PNG, JPG, JPEG (tối đa 5MB)</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Region */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Khu vực hoạt động
-            </h3>
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium">Khu vực hoạt động sẽ quyết định các warehouse bạn có thể cung cấp hàng.</p>
-                  <p className="mt-1">Chỉ các warehouse trong cùng khu vực mới hiển thị khi tạo lô hàng.</p>
-                </div>
-              </div>
-            </div>
-            <Select
-              value={form.operatingRegion}
-              onValueChange={(value) => updateField('operatingRegion', value)}
-              disabled={!canEdit}
-            >
-              <SelectTrigger className="w-full md:w-[300px]">
-                <SelectValue placeholder="Chọn khu vực hoạt động" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="North">Miền Bắc (North)</SelectItem>
-                <SelectItem value="Central">Miền Trung (Central)</SelectItem>
-                <SelectItem value="South">Miền Nam (South)</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Contact Info */}
@@ -348,47 +437,86 @@ export function RegistrationSection() {
             </div>
           </div>
 
-          {/* Address */}
+          {/* Address - Critical for inbound session matching */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Địa chỉ doanh nghiệp</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Tỉnh/Thành phố</label>
-                <Input
-                  value={form.addressCity}
-                  onChange={(e) => updateField('addressCity', e.target.value)}
-                  placeholder="VD: Hồ Chí Minh"
-                  disabled={!canEdit}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Quận/Huyện</label>
-                <Input
-                  value={form.addressDistrict}
-                  onChange={(e) => updateField('addressDistrict', e.target.value)}
-                  placeholder="VD: Quận 1"
-                  disabled={!canEdit}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Phường/Xã</label>
-                <Input
-                  value={form.addressWard}
-                  onChange={(e) => updateField('addressWard', e.target.value)}
-                  placeholder="VD: Phường Bến Nghé"
-                  disabled={!canEdit}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Địa chỉ chi tiết</label>
-                <Input
-                  value={form.addressStreet}
-                  onChange={(e) => updateField('addressStreet', e.target.value)}
-                  placeholder="Số nhà, tên đường"
-                  disabled={!canEdit}
-                />
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Địa chỉ doanh nghiệp <span className="text-red-500">*</span>
+            </h3>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Địa chỉ quyết định việc nhận lời mời nhập kho</p>
+                  <p className="mt-1">
+                    Khi cơ sở warehouse tạo phiên nhập kho, hệ thống sẽ tự động mời các supplier
+                    trong cùng <strong>phường/xã</strong> trước, sau đó mở rộng ra <strong>quận/huyện</strong> và <strong>tỉnh/thành phố</strong>.
+                    Vui lòng chọn chính xác để nhận được lời mời phù hợp.
+                  </p>
+                </div>
               </div>
             </div>
+
+            {canEdit ? (
+              <>
+                <AddressSelector
+                  value={{
+                    province: form.addressCity || undefined,
+                    district: form.addressDistrict || undefined,
+                    ward: form.addressWard || undefined,
+                  }}
+                  onChange={(addr) => {
+                    setForm(prev => ({
+                      ...prev,
+                      addressCity: addr.province ?? '',
+                      addressDistrict: addr.district ?? '',
+                      addressWard: addr.ward ?? '',
+                      operatingRegion: deriveRegionFromCity(addr.province ?? ''),
+                    }));
+                  }}
+                />
+                <div>
+                  <label className="block text-sm font-medium mb-1">Địa chỉ chi tiết (số nhà, tên đường)</label>
+                  <Input
+                    value={form.addressStreet}
+                    onChange={(e) => updateField('addressStreet', e.target.value)}
+                    placeholder="Số nhà, tên đường"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Tỉnh/Thành phố</label>
+                  <Input value={form.addressCity} disabled />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Quận/Huyện</label>
+                  <Input value={form.addressDistrict} disabled />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Phường/Xã</label>
+                  <Input value={form.addressWard} disabled />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Địa chỉ chi tiết</label>
+                  <Input value={form.addressStreet} disabled />
+                </div>
+              </div>
+            )}
+
+            {form.addressCity && (
+              <div className="text-sm text-gray-500 flex items-center gap-2">
+                <Warehouse className="h-4 w-4" />
+                <span>
+                  Miền tự động: <strong>
+                    {deriveRegionFromCity(form.addressCity) === 'North' ? 'Miền Bắc' :
+                     deriveRegionFromCity(form.addressCity) === 'Central' ? 'Miền Trung' :
+                     deriveRegionFromCity(form.addressCity) === 'South' ? 'Miền Nam' : '—'}
+                  </strong>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Notes */}

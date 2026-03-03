@@ -132,9 +132,14 @@ const StaffRoute = ({ children }: { children: React.ReactNode }) => {
 
 function AppRoutes() {
   const location = useLocation();
+  const isStaffRoute = location.pathname.startsWith('/staff');
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isSupplierRoute = location.pathname.startsWith('/supplier');
+  const isDashboardRoute = isStaffRoute || isAdminRoute || isSupplierRoute;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      {!isDashboardRoute && <Header />}
       <main className="min-h-screen">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -275,10 +280,10 @@ function AppRoutes() {
 
       </main>
 
-      {!location.pathname.startsWith('/admin') && <Footer />}
+      {!isDashboardRoute && <Footer />}
 
-      {/* Chat Widget - only show when logged in and not on admin routes */}
-      {!location.pathname.startsWith('/admin') && <ChatWidgetWrapper />}
+      {/* Chat Widget - only show when logged in and not on dashboard routes */}
+      {!isDashboardRoute && <ChatWidgetWrapper />}
     </div>
   );
 }

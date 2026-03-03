@@ -1,4 +1,5 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ChartContainer } from './ChartContainer';
 
 export interface OrderChartData {
   period: string;
@@ -48,9 +49,8 @@ export function OrdersChart({ data, isLoading = false }: OrdersChartProps) {
   }
 
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+    <ChartContainer>
+        <BarChart data={data as unknown as Record<string, unknown>[]} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
           <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
           <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} width={40} />
@@ -64,7 +64,6 @@ export function OrdersChart({ data, isLoading = false }: OrdersChartProps) {
           <Bar dataKey="delivered" name="Đã giao" fill="#10b981" radius={[4, 4, 0, 0]} />
           <Bar dataKey="cancelled" name="Đã hủy" fill="#ef4444" radius={[4, 4, 0, 0]} />
         </BarChart>
-      </ResponsiveContainer>
-    </div>
+    </ChartContainer>
   );
 }

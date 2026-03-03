@@ -26,6 +26,7 @@ public class InboundSessionDto
     public int TotalQuantity { get; set; }
     public decimal TotalAmount { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public DateTime? ExpectedEndDate { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<InboundReceiptDto> Receipts { get; set; } = new();
@@ -79,6 +80,9 @@ public class CreateInboundSessionRequest
 
     [StringLength(500)]
     public string? Note { get; set; }
+
+    /// <summary>Optional expected end date. If set, session will auto-close when this date passes.</summary>
+    public DateTime? ExpectedEndDate { get; set; }
 }
 
 /// <summary>Add item to an inbound session (system auto-groups by supplier)</summary>
@@ -147,4 +151,32 @@ public class CompleteInboundSessionRequest
 {
     [StringLength(500)]
     public string? Note { get; set; }
+}
+
+// =====================================================
+// AREA-MATCHED PRODUCT DTOs
+// =====================================================
+
+/// <summary>
+/// Product matched to warehouse area (Ward/City or nearest by distance).
+/// Used by staff when adding items to inbound sessions.
+/// </summary>
+public class AreaMatchedProductDto
+{
+    public Guid ProductId { get; set; }
+    public string Name { get; set; } = null!;
+    public decimal BasePrice { get; set; }
+    public int SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public string? CategoryName { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? Unit { get; set; }
+    public string? Sku { get; set; }
+    /// <summary>
+    /// Distance in km from warehouse to supplier. 
+    /// Null = same Ward (exact match), &gt;0 = distance-based fallback.
+    /// </summary>
+    public double? DistanceKm { get; set; }
+    /// <summary>Match type indicator: "ward" = same Ward, "nearby" = within radius</summary>
+    public string MatchType { get; set; } = "ward";
 }

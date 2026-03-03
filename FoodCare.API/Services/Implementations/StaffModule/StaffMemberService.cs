@@ -241,6 +241,7 @@ public class StaffMemberService : IStaffMemberService
             CanApproveReceipts = staff.CanApproveReceipts,
             CanAdjustInventory = staff.CanAdjustInventory,
             CanOverrideFifo = staff.CanOverrideFifo,
+            CanCreateInboundSession = staff.CanCreateInboundSession,
             HireDate = staff.HireDate,
             IsActive = staff.IsActive,
             CreatedAt = staff.CreatedAt,
@@ -262,6 +263,7 @@ public class StaffMemberService : IStaffMemberService
             "approve_receipts" or "can_approve_receipts" => staff.CanApproveReceipts,
             "adjust_inventory" or "can_adjust_inventory" => staff.CanAdjustInventory,
             "override_fifo" or "can_override_fifo" => staff.CanOverrideFifo,
+            "create_inbound_session" or "can_create_inbound_session" => staff.CanCreateInboundSession,
             _ => false
         };
     }

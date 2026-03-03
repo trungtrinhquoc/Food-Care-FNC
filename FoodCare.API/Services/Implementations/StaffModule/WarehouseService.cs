@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.Staff;
 using FoodCare.API.Models.DTOs.Staff;
+using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Interfaces.StaffModule;
 
 namespace FoodCare.API.Services.Implementations.StaffModule;
@@ -13,10 +14,12 @@ namespace FoodCare.API.Services.Implementations.StaffModule;
 public class WarehouseService : IWarehouseService
 {
     private readonly FoodCareDbContext _context;
+    private readonly IGeocodingService _geocodingService;
 
-    public WarehouseService(FoodCareDbContext context)
+    public WarehouseService(FoodCareDbContext context, IGeocodingService geocodingService)
     {
         _context = context;
+        _geocodingService = geocodingService;
     }
 
     public async Task<PagedResponse<WarehouseDto>> GetWarehousesAsync(int page = 1, int pageSize = 20, bool? isActive = null)
@@ -80,6 +83,22 @@ public class WarehouseService : IWarehouseService
             CreatedAt = DateTime.UtcNow
         };
 
+        // Auto-geocode if lat/lng not provided but address is available
+        if (!warehouse.Latitude.HasValue || !warehouse.Longitude.HasValue)
+        {
+            try
+            {
+                var (lat, lng) = await _geocodingService.GeocodeAddressAsync(
+                    request.AddressWard, request.AddressDistrict, request.AddressCity);
+                if (lat.HasValue && lng.HasValue)
+                {
+                    warehouse.Latitude = lat.Value;
+                    warehouse.Longitude = lng.Value;
+                }
+            }
+            catch { /* Geocoding failure should not block warehouse creation */ }
+        }
+
         // If this is set as default, unset other defaults
         if (request.IsDefault)
         {
@@ -112,6 +131,23 @@ public class WarehouseService : IWarehouseService
         if (request.Longitude.HasValue) warehouse.Longitude = request.Longitude;
         if (request.Capacity.HasValue) warehouse.Capacity = request.Capacity;
         if (request.IsActive.HasValue) warehouse.IsActive = request.IsActive.Value;
+
+        // Auto-geocode if address changed but no new lat/lng provided
+        var addressChanged = request.AddressWard != null || request.AddressDistrict != null || request.AddressCity != null;
+        if (addressChanged && !request.Latitude.HasValue && !request.Longitude.HasValue)
+        {
+            try
+            {
+                var (lat, lng) = await _geocodingService.GeocodeAddressAsync(
+                    warehouse.AddressWard, warehouse.AddressDistrict, warehouse.AddressCity);
+                if (lat.HasValue && lng.HasValue)
+                {
+                    warehouse.Latitude = lat.Value;
+                    warehouse.Longitude = lng.Value;
+                }
+            }
+            catch { /* Geocoding failure should not block warehouse update */ }
+        }
         
         if (request.IsDefault.HasValue && request.IsDefault.Value)
         {

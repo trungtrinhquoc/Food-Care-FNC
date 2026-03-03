@@ -107,8 +107,8 @@ export function OrdersSection({
     // Filter orders
     const filteredOrders = orders.filter(order => {
         const matchesSearch =
-            order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+            (order.orderNumber?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
+            (order.customerName?.toLowerCase() ?? '').includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
         return matchesSearch && matchesStatus;
     });

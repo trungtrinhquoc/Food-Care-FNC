@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using FoodCare.API.Models.DTOs.Staff;
 using FoodCare.API.Services.Interfaces.StaffModule;
 using System.Security.Claims;
@@ -21,15 +22,21 @@ public class InboundSessionController : ControllerBase
     private readonly IInboundSessionService _sessionService;
     private readonly IStaffMemberService _staffMemberService;
     private readonly IWarehouseService _warehouseService;
+    private readonly ISupplierInboundService _supplierInboundService;
+    private readonly ILogger<InboundSessionController> _logger;
 
     public InboundSessionController(
         IInboundSessionService sessionService,
         IStaffMemberService staffMemberService,
-        IWarehouseService warehouseService)
+        IWarehouseService warehouseService,
+        ISupplierInboundService supplierInboundService,
+        ILogger<InboundSessionController> logger)
     {
         _sessionService = sessionService;
         _staffMemberService = staffMemberService;
         _warehouseService = warehouseService;
+        _supplierInboundService = supplierInboundService;
+        _logger = logger;
     }
 
     // =====================================================
@@ -110,6 +117,22 @@ public class InboundSessionController : ControllerBase
         try
         {
             var result = await _sessionService.CreateSessionAsync(request, staffId.Value);
+
+            // Auto-invite suppliers in the same district as the warehouse
+            try
+            {
+                await _supplierInboundService.InviteSuppliersForSessionAsync(result.Id);
+            }
+            catch (Exception ex)
+            {
+                // Don't fail session creation if supplier invitation fails
+                // but log the error so we can diagnose issues
+                _logger.LogWarning(ex,
+                    "Failed to auto-invite suppliers for session {SessionId}. " +
+                    "Suppliers can still discover sessions via area matching.",
+                    result.Id);
+            }
+
             return CreatedAtAction(nameof(GetSession), new { id = result.Id }, result);
         }
         catch (Exception ex)
@@ -242,6 +265,37 @@ public class InboundSessionController : ControllerBase
     }
 
     // =====================================================
+    // POST: Start processing session
+    // =====================================================
+
+    /// <summary>
+    /// Move session from Draft → Processing
+    /// </summary>
+    [HttpPost("{id}/start-processing")]
+    public async Task<ActionResult<InboundSessionDto>> StartProcessingSession(Guid id)
+    {
+        var staffId = await GetCurrentStaffIdAsync();
+        if (staffId == null) return Forbid("Cần hồ sơ nhân viên");
+
+        if (!await VerifySessionAccess(id, staffId.Value))
+            return Forbid("Phiên nhập không thuộc kho của bạn");
+
+        try
+        {
+            var result = await _sessionService.StartProcessingAsync(id, staffId.Value);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // =====================================================
     // POST: Complete session
     // =====================================================
 
@@ -301,6 +355,43 @@ public class InboundSessionController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // =====================================================
+    // GET: Session supplier registrations (Admin/Staff view)
+    // =====================================================
+
+    /// <summary>
+    /// Get supplier registrations for a session
+    /// </summary>
+    [HttpGet("{sessionId}/suppliers")]
+    public async Task<ActionResult<List<InboundSessionSupplierDto>>> GetSessionSuppliers(Guid sessionId)
+    {
+        var suppliers = await _supplierInboundService.GetSessionSuppliersAsync(sessionId);
+        return Ok(suppliers);
+    }
+
+    // =====================================================
+    // GET: Area-matched products for inbound session
+    // =====================================================
+
+    /// <summary>
+    /// Get approved products matched to the warehouse area.
+    /// Primary: same Ward + City as warehouse. Fallback: nearest suppliers within 10km.
+    /// </summary>
+    [HttpGet("area-products")]
+    public async Task<ActionResult<List<AreaMatchedProductDto>>> GetAreaProducts(
+        [FromQuery] Guid warehouseId)
+    {
+        try
+        {
+            var products = await _sessionService.GetAreaMatchedProductsAsync(warehouseId);
+            return Ok(products);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 

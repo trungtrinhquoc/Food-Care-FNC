@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { StatCard, SectionSkeleton, EmptyState } from './SupplierLayout';
+import { ChartContainer } from '../admin/ChartContainer';
 import {
     ShoppingCart,
     DollarSign,
@@ -24,7 +25,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer,
     PieChart,
     Pie,
     Cell,
@@ -43,8 +43,6 @@ interface OverviewSectionProps {
     onRejectOrder: (orderId: string) => void;
     onViewAllOrders: () => void;
 }
-
-const COLORS = ['#3b82f6', '#60a5fa', '#f59e0b', '#ef4444'];
 
 export function OverviewSection({
     stats,
@@ -238,7 +236,7 @@ export function OverviewSection({
                                     Chưa có dữ liệu doanh thu
                                 </div>
                             ) : (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ChartContainer className="h-full w-full">
                                     <AreaChart data={chartData}>
                                         <defs>
                                             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -264,7 +262,7 @@ export function OverviewSection({
                                             fill="url(#colorRevenue)"
                                         />
                                     </AreaChart>
-                                </ResponsiveContainer>
+                                </ChartContainer>
                             )}
                         </div>
                     </CardContent>
@@ -279,7 +277,7 @@ export function OverviewSection({
                     <CardContent>
                         {orderStatusData.length > 0 ? (
                             <div className="h-[200px]">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ChartContainer className="h-full w-full">
                                     <PieChart>
                                         <Pie
                                             data={orderStatusData}
@@ -296,7 +294,7 @@ export function OverviewSection({
                                         </Pie>
                                         <Tooltip />
                                     </PieChart>
-                                </ResponsiveContainer>
+                                </ChartContainer>
                             </div>
                         ) : (
                             <div className="h-[200px] flex items-center justify-center text-gray-500">
@@ -356,8 +354,8 @@ export function OverviewSection({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {pendingOrders.map((order) => (
-                                    <TableRow key={order.id} className="hover:bg-gray-50">
+                                {pendingOrders.map((order, index) => (
+                                    <TableRow key={order.id || order.orderNumber || index} className="hover:bg-gray-50">
                                         <TableCell className="font-medium">{order.orderNumber}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">

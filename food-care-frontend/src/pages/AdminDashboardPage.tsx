@@ -12,10 +12,12 @@ import {
   LogOut,
   Menu,
   X,
+  Home,
   CheckCircle,
   Warehouse,
   Ticket,
   HardHat,
+  ClipboardList,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -36,6 +38,7 @@ const WarehousesTab = lazy(() => import("./admin/WarehousesTab").then(m => ({ de
 const StaffManagementTab = lazy(() => import("./admin/StaffManagementTab").then(m => ({ default: m.StaffManagementTab })));
 const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
 const AdminCouponsPage = lazy(() => import("./admin/AdminCouponsPage"));
+const AdminInboundSessionsTab = lazy(() => import("./admin/AdminInboundSessionsTab").then(m => ({ default: m.AdminInboundSessionsTab })));
 
 // Tab configuration
 const TABS = [
@@ -47,6 +50,7 @@ const TABS = [
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
   { value: "warehouses", label: "Kho hàng", icon: Warehouse },
+  { value: "inbound", label: "Nhập kho", icon: ClipboardList },
   { value: "staff-mgmt", label: "Nhân viên", icon: HardHat },
   { value: "subscriptions", label: "Gói Đăng ký", icon: CheckCircle },
   { value: "coupons", label: "Mã giảm giá", icon: Ticket },
@@ -183,13 +187,24 @@ export default function AdminDashboardPage() {
           <div className="container mx-auto px-4 lg:px-6 lg:pt-6">
             {/* Header */}
             <header className="mb-6 bg-white rounded-2xl p-4 lg:p-6 shadow-sm border border-slate-200 sticky top-0 lg:top-6 z-20">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-orange-600" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <BarChart3 className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <h1 className="text-xl lg:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+                  </div>
+                  <p className="text-slate-500 text-sm ml-13">Quản lý và thống kê hệ thống Food & Care</p>
                 </div>
-                <h1 className="text-xl lg:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors text-sm font-medium"
+                >
+                  <Home className="w-4 h-4" />
+                  <span className="hidden sm:inline">Trang chủ</span>
+                </button>
               </div>
-              <p className="text-slate-500 text-sm ml-13">Quản lý và thống kê hệ thống Food & Care</p>
             </header>
 
             {/* Tab Content */}
@@ -260,6 +275,13 @@ export default function AdminDashboardPage() {
                 {selectedTab === "warehouses" && (
                   <div>
                     <WarehousesTab />
+                  </div>
+                )}
+
+                {/* Inbound Sessions Tab */}
+                {selectedTab === "inbound" && (
+                  <div>
+                    <AdminInboundSessionsTab />
                   </div>
                 )}
 

@@ -150,6 +150,10 @@ builder.Services.AddScoped<GeminiAiService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ISupplierAuthService, SupplierAuthService>();
 
+// Register Geocoding Service (Nominatim/OpenStreetMap)
+builder.Services.AddHttpClient<FoodCare.API.Services.Implementations.NominatimGeocodingService>();
+builder.Services.AddScoped<FoodCare.API.Services.Interfaces.IGeocodingService, FoodCare.API.Services.Implementations.NominatimGeocodingService>();
+
 // Register Staff Module Services
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 builder.Services.AddScoped<IStaffMemberService, StaffMemberService>();
@@ -159,6 +163,10 @@ builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IDiscrepancyService, DiscrepancyService>();
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IInboundSessionService, InboundSessionService>();
+builder.Services.AddScoped<ISupplierInboundService, SupplierInboundService>();
+
+// Background service: auto-close expired inbound sessions
+builder.Services.AddHostedService<FoodCare.API.Services.Background.InboundSessionExpiryService>();
 
 // Register Shipping Flow Service (Supplier → Staff → User)
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
