@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { DANANG_DISTRICTS, DA_NANG_PROVINCE_NAME } from '../data/daNangAddresses';
+import { MapPin } from 'lucide-react';
 import { SearchableSelect } from './ui/searchable-select';
 
 interface AddressValue {
@@ -13,116 +15,61 @@ interface AddressSelectorProps {
 }
 
 export function AddressSelector({ value, onChange }: AddressSelectorProps) {
-    const [provinces, setProvinces] = useState<any[]>([]);
-    const [districts, setDistricts] = useState<any[]>([]);
-    const [wards, setWards] = useState<any[]>([]);
+    const [selectedDistName, setSelectedDistName] = useState<string>(value.district || '');
 
-    // Store selected codes locally to manage levels correctly
-    const [selectedProvCode, setSelectedProvCode] = useState<string>("");
-    const [selectedDistCode, setSelectedDistCode] = useState<string>("");
+    const selectedDistrict = DANANG_DISTRICTS.find(d => d.name === selectedDistName);
+    const wards = selectedDistrict?.wards ?? [];
 
-    /* ================= LOAD PROVINCES ================= */
-    useEffect(() => {
-        fetch('https://provinces.open-api.vn/api/p/')
-            .then(res => res.json())
-            .then(data => {
-                setProvinces(data);
-                // Try to find code if name exists in props
-                if (value.province) {
-                    const found = data.find((p: any) => p.name === value.province);
-                    if (found) setSelectedProvCode(String(found.code));
-                }
-            });
-    }, []);
-
-    // Sync codes if names change from outside
-    useEffect(() => {
-        if (value.province && provinces.length > 0) {
-            const found = provinces.find(p => p.name === value.province);
-            if (found) setSelectedProvCode(String(found.code));
-        } else if (!value.province) {
-            setSelectedProvCode("");
-        }
-    }, [value.province, provinces]);
-
-    /* ================= HANDLERS ================= */
-    const handleProvinceChange = async (code: string) => {
-        const province = provinces.find(p => p.code === Number(code));
-        setSelectedProvCode(code);
-        setSelectedDistCode("");
-
+    const handleDistrictChange = (distName: string) => {
+        setSelectedDistName(distName);
         onChange({
-            province: province?.name,
-            district: undefined,
+            province: DA_NANG_PROVINCE_NAME,
+            district: distName,
             ward: undefined,
         });
-
-        setDistricts([]);
-        setWards([]);
-
-        const res = await fetch(
-            `https://provinces.open-api.vn/api/p/${code}?depth=2`
-        );
-        const data = await res.json();
-        setDistricts(data.districts || []);
     };
 
-    const handleDistrictChange = async (code: string) => {
-        const district = districts.find(d => d.code === Number(code));
-        setSelectedDistCode(code);
-
+    const handleWardChange = (wardName: string) => {
         onChange({
-            province: value.province,
-            district: district?.name,
-            ward: undefined,
-        });
-
-        setWards([]);
-
-        const res = await fetch(
-            `https://provinces.open-api.vn/api/d/${code}?depth=2`
-        );
-        const data = await res.json();
-        setWards(data.wards || []);
-    };
-
-    const handleWardChange = (nameWithCode: string) => {
-        // Since searchable select uses value as key, we use name here
-        onChange({
-            province: value.province,
-            district: value.district,
-            ward: nameWithCode,
+            province: DA_NANG_PROVINCE_NAME,
+            district: selectedDistName,
+            ward: wardName,
         });
     };
 
-    /* ================= RENDER ================= */
     return (
-        <div className="grid md:grid-cols-3 gap-4">
-            {/* PROVINCE */}
-            <SearchableSelect
-                placeholder="Tỉnh / Thành phố"
-                options={provinces.map(p => ({ value: String(p.code), label: p.name }))}
-                value={selectedProvCode}
-                onValueChange={handleProvinceChange}
-            />
+        <div className="space-y-3">
+            {/* Badge tỉnh cố định */}
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-sm font-semibold text-emerald-700">
+                <MapPin className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span>
+                    Tỉnh / Thành phố:{' '}
+                    <span className="font-bold">Thành phố Đà Nẵng</span>
+                    <span className="ml-1 text-[10px] text-emerald-500">(sau sáp nhập Quảng Nam)</span>
+                </span>
+                <span className="ml-auto text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">
+                    Cố định
+                </span>
+            </div>
 
-            {/* DISTRICT */}
-            <SearchableSelect
-                placeholder="Quận / Huyện"
-                disabled={!districts.length}
-                options={districts.map(d => ({ value: String(d.code), label: d.name }))}
-                value={selectedDistCode}
-                onValueChange={handleDistrictChange}
-            />
+            <div className="grid md:grid-cols-2 gap-3">
+                {/* QUẬN / HUYỆN / TP */}
+                <SearchableSelect
+                    placeholder="Chọn Quận / Huyện / TP"
+                    options={DANANG_DISTRICTS.map(d => ({ value: d.name, label: d.name }))}
+                    value={selectedDistName}
+                    onValueChange={handleDistrictChange}
+                />
 
-            {/* WARD */}
-            <SearchableSelect
-                placeholder="Phường / Xã"
-                disabled={!wards.length}
-                options={wards.map(w => ({ value: w.name, label: w.name }))}
-                value={value.ward}
-                onValueChange={handleWardChange}
-            />
+                {/* PHƯỜNG / XÃ */}
+                <SearchableSelect
+                    placeholder="Chọn Phường / Xã"
+                    disabled={!selectedDistName}
+                    options={wards.map(w => ({ value: w.name, label: w.name }))}
+                    value={value.ward ?? ''}
+                    onValueChange={handleWardChange}
+                />
+            </div>
         </div>
     );
 }

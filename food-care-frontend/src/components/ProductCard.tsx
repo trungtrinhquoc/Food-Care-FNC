@@ -101,7 +101,7 @@ export function ProductCard({ product, onViewDetail, onAddToCart }: ProductCardP
                 className="w-full btn-primary flex items-center justify-center gap-2 text-sm py-2"
             >
                 <ShoppingCart className="w-3.5 h-3.5" />
-                Thêm vào giỏ
+                Chọn mua
             </button>
 
             {/* Subscription Badge */}

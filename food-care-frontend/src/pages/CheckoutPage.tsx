@@ -17,8 +17,9 @@ import { profileApi } from '../services/api';
 import type { Address, CreateOrderRequest } from '../types';
 import { couponApi } from '../services/couponApi';
 import type { CouponDto } from '../services/couponApi';
+import { cloudinaryResize } from '../utils/cloudinary';
 
-import { Calendar, CreditCard, MapPin, Package, Check, Plus, Ticket, Percent } from 'lucide-react';
+import { Calendar, CreditCard, MapPin, Package, Check, Plus, Ticket, Percent, Banknote, Landmark } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 
@@ -51,6 +52,11 @@ export default function CheckoutPage() {
     const [selectedAddressId, setSelectedAddressId] = useState<string>('');
     const [showNewAddressForm, setShowNewAddressForm] = useState(false);
 
+    // Chỉ giao hàng Đà Nẵng
+    const DA_NANG_NAMES = ['Thành phố Đà Nẵng', 'Đà Nẵng', 'Da Nang', 'TP. Đà Nẵng', 'TP Đà Nẵng'];
+    const isDaNangAddress = (addr: Address) =>
+        DA_NANG_NAMES.some(n => addr.city?.toLowerCase().includes('đà nẵng') || addr.city?.toLowerCase().includes('da nang'));
+
     // Coupon state
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<CouponDto | null>(null);
@@ -75,15 +81,20 @@ export default function CheckoutPage() {
 
         const fetchAddresses = async () => {
             try {
-                const saved = await profileApi.getAddresses();
-                setSavedAddresses(saved);
+                const all = await profileApi.getAddresses();
+                // Chỉ giữ địa chỉ Đà Nẵng
+                const daNangAddrs = all.filter(a =>
+                    a.city?.toLowerCase().includes('đà nẵng') ||
+                    a.city?.toLowerCase().includes('da nang')
+                );
+                setSavedAddresses(daNangAddrs);
 
-                // If there's a default address, select it
-                const defaultAddr = saved.find(a => a.isDefault);
+                // Ưu tiên default address Đà Nẵng
+                const defaultAddr = daNangAddrs.find(a => a.isDefault) || daNangAddrs[0];
                 if (defaultAddr) {
                     handleSelectAddress(defaultAddr);
                     setShowNewAddressForm(false);
-                } else if (saved.length === 0) {
+                } else {
                     setShowNewAddressForm(true);
                     // FALLBACK: If no saved addresses, look at the last order
                     try {
@@ -210,6 +221,13 @@ export default function CheckoutPage() {
             return;
         }
 
+        // Kiểm tra địa chỉ phải ở Đà Nẵng
+        const cityLower = (address.province || formData.city || '').toLowerCase();
+        if (!cityLower.includes('đà nẵng') && !cityLower.includes('da nang')) {
+            toast.error('⚠️ Hiện tại chúng tôi chỉ giao hàng trong khu vực Thành phố Đà Nẵng.');
+            return;
+        }
+
         if (!user) return;
 
         try {
@@ -269,16 +287,16 @@ export default function CheckoutPage() {
                         window.location.href = paymentResponse.checkoutUrl;
                         return; // Stop here, browser will redirect
                     }
-                } catch (payError) {
+                } catch (payError: any) {
+                    const serverMsg = payError?.response?.data?.message || payError?.response?.data?.detail || payError?.message || 'Unknown error';
                     console.error('Payment redirect error:', payError);
-                    toast.error('Không thể tạo liên kết thanh toán. Vui lòng thử lại hoặc chọn COD.');
-                    // Don't navigate away, let user try another method
+                    console.error('Server error message:', serverMsg);
+                    toast.error(`❌ Lỗi tạo link thanh toán: ${serverMsg}`);
                     return;
                 }
             }
 
             toast.success('Đặt hàng thành công 🎉');
-
             clearSelectedItems();
             navigate('/');
         } catch (error: any) {
@@ -318,9 +336,20 @@ export default function CheckoutPage() {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container mx-auto px-4">
-                <h1 className="mb-8">Thanh Toán</h1>
+                <h1 className="mb-4">Thanh Toán</h1>
+
+                {/* Banner khu vực giao hàng */}
+                <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800 font-medium">
+                    <span className="text-lg">🗺️</span>
+                    <span>
+                        <strong>Khu vực giao hàng:</strong> Hiện tại Food &amp; Care chỉ phục vụ giao hàng trong{' '}
+                        <strong className="text-blue-900">Thành phố Đà Nẵng</strong>.
+                        Chúng tôi sẽ mở rộng sang các tỉnh thành khác sớm nhất có thể.
+                    </span>
+                </div>
 
                 <form onSubmit={handleSubmit}>
+
                     <div className="grid lg:grid-cols-3 gap-8">
                         {/* ================= LEFT ================= */}
                         <div className="lg:col-span-2 space-y-6">
@@ -335,7 +364,12 @@ export default function CheckoutPage() {
                                 <CardContent className="space-y-6">
                                     {savedAddresses.length > 0 && (
                                         <div className="space-y-3">
-                                            <Label>Chọn địa chỉ đã lưu</Label>
+                                            <Label className="flex items-center gap-2">
+                                                Địa chỉ đã lưu tại Đà Nẵng
+                                                <span className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                    {savedAddresses.length} địa chỉ
+                                                </span>
+                                            </Label>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 {savedAddresses.map(addr => (
                                                     <div
@@ -394,7 +428,7 @@ export default function CheckoutPage() {
                                                     <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${showNewAddressForm && !selectedAddressId ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-200 group-hover:border-emerald-400'}`}>
                                                         <Plus className="w-4 h-4" />
                                                     </div>
-                                                    <span className="text-sm font-medium">+ Sử dụng địa chỉ mới</span>
+                                                    <span className="text-sm font-medium">+ Sử dụng địa chỉ mới (Đà Nẵng)</span>
                                                 </div>
                                             </div>
                                             <Separator className="my-4" />
@@ -492,64 +526,103 @@ export default function CheckoutPage() {
                                         {/* COD */}
                                         <Label
                                             htmlFor="cod"
-                                            className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition
-      ${paymentMethod === 'cod'
-                                                    ? 'border-emerald-600 bg-emerald-50'
-                                                    : 'hover:border-gray-400'}
-    `}
+                                            className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'cod'
+                                                    ? 'border-emerald-500 bg-emerald-50/60'
+                                                    : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                }`}
                                         >
-                                            <RadioGroupItem value="cod" id="cod" className="mt-1" />
+                                            <RadioGroupItem value="cod" id="cod" className="sr-only" />
 
-                                            <div className="flex-1">
-                                                <div className="font-medium">
-                                                    Thanh toán khi nhận hàng (COD)
+                                            {/* COD Icon */}
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${paymentMethod === 'cod' ? 'bg-emerald-500' : 'bg-gray-100'
+                                                }`}>
+                                                <Banknote className={`w-5 h-5 ${paymentMethod === 'cod' ? 'text-white' : 'text-gray-500'}`} />
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-sm text-gray-900">
+                                                    Thanh toán khi nhận hàng
                                                 </div>
-                                                <div className="text-sm text-gray-500">
-                                                    Thanh toán bằng tiền mặt khi nhận hàng
+                                                <div className="text-xs text-gray-500 mt-0.5">
+                                                    Trả tiền mặt khi shipper giao hàng
                                                 </div>
                                             </div>
+
+                                            {paymentMethod === 'cod' && (
+                                                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                                    <Check className="w-3 h-3 text-white" />
+                                                </div>
+                                            )}
                                         </Label>
 
                                         {/* BANK */}
                                         <Label
                                             htmlFor="bank"
-                                            className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition
-      ${paymentMethod === 'bank'
-                                                    ? 'border-emerald-600 bg-emerald-50'
-                                                    : 'hover:border-gray-400'}
-    `}
+                                            className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'bank'
+                                                    ? 'border-blue-500 bg-blue-50/60'
+                                                    : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                }`}
                                         >
-                                            <RadioGroupItem value="bank" id="bank" className="mt-1" />
+                                            <RadioGroupItem value="bank" id="bank" className="sr-only" />
 
-                                            <div className="flex-1">
-                                                <div className="font-medium">
+                                            {/* Bank Icon */}
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${paymentMethod === 'bank' ? 'bg-blue-500' : 'bg-blue-50'
+                                                }`}>
+                                                <Landmark className={`w-5 h-5 ${paymentMethod === 'bank' ? 'text-white' : 'text-blue-500'}`} />
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-sm text-gray-900">
                                                     Chuyển khoản ngân hàng
                                                 </div>
-                                                <div className="text-sm text-gray-500">
-                                                    Chuyển khoản qua ngân hàng
+                                                <div className="text-xs text-gray-500 mt-0.5">
+                                                    Thanh toán qua PayOS · Nhanh &amp; bảo mật
                                                 </div>
                                             </div>
+
+                                            {paymentMethod === 'bank' && (
+                                                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                                    <Check className="w-3 h-3 text-white" />
+                                                </div>
+                                            )}
                                         </Label>
 
                                         {/* MOMO */}
                                         <Label
                                             htmlFor="momo"
-                                            className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition
-      ${paymentMethod === 'momo'
-                                                    ? 'border-emerald-600 bg-emerald-50'
-                                                    : 'hover:border-gray-400'}
-    `}
+                                            className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'momo'
+                                                    ? 'border-pink-500 bg-pink-50/60'
+                                                    : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                }`}
                                         >
-                                            <RadioGroupItem value="momo" id="momo" className="mt-1" />
+                                            <RadioGroupItem value="momo" id="momo" className="sr-only" />
 
-                                            <div className="flex-1">
-                                                <div className="font-medium">
+                                            {/* MoMo Icon */}
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${paymentMethod === 'momo' ? 'bg-[#ae2070]' : 'bg-pink-50'
+                                                }`}>
+                                                <svg viewBox="0 0 40 40" className="w-6 h-6" fill="none">
+                                                    <circle cx="20" cy="20" r="20" fill={paymentMethod === 'momo' ? 'transparent' : '#ae2070'} />
+                                                    <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle"
+                                                        fill="white" fontSize="14" fontWeight="bold" fontFamily="Arial, sans-serif">
+                                                        M
+                                                    </text>
+                                                </svg>
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-sm text-gray-900">
                                                     Ví điện tử MoMo
                                                 </div>
-                                                <div className="text-sm text-gray-500">
-                                                    Thanh toán qua ví MoMo
+                                                <div className="text-xs text-gray-500 mt-0.5">
+                                                    Thanh toán nhanh qua ví MoMo
                                                 </div>
                                             </div>
+
+                                            {paymentMethod === 'momo' && (
+                                                <div className="w-5 h-5 rounded-full bg-[#ae2070] flex items-center justify-center flex-shrink-0">
+                                                    <Check className="w-3 h-3 text-white" />
+                                                </div>
+                                            )}
                                         </Label>
                                     </RadioGroup>
                                 </CardContent>
@@ -569,22 +642,34 @@ export default function CheckoutPage() {
                                     {selectedItems.map(item => {
                                         const price = item.product.basePrice;
                                         return (
-                                            <div key={item.product.id} className="mb-4 border-b pb-3">
-                                                <div className="flex justify-between">
-                                                    <div>
-                                                        <div>{item.product.name}</div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {item.quantity} × {price.toLocaleString('vi-VN')}đ
-                                                        </div>
-                                                        {item.isSubscription && (
-                                                            <Badge className="mt-1">
-                                                                <Calendar className="w-3 h-3 mr-1" />
-                                                                {getSubscriptionText(item)}
-                                                            </Badge>
-                                                        )}
+                                            <div key={item.product.id} className="mb-4 border-b pb-4 border-gray-100 last:border-0">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="w-16 h-16 rounded-xl border border-gray-100 bg-white overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
+                                                        <img
+                                                            src={item.product.images?.[0] ? cloudinaryResize(item.product.images[0], 100) : item.product.imageUrl ? cloudinaryResize(item.product.imageUrl, 100) : '/placeholder.png'}
+                                                            className="w-full h-full object-contain"
+                                                            alt={item.product.name}
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).src = '/placeholder.png';
+                                                            }}
+                                                        />
                                                     </div>
-                                                    <div>
-                                                        {(price * item.quantity).toLocaleString('vi-VN')}đ
+                                                    <div className="flex-1 flex justify-between">
+                                                        <div className="pr-4">
+                                                            <div className="font-semibold text-gray-900 text-sm md:text-base leading-snug">{item.product.name}</div>
+                                                            <div className="text-[13px] text-gray-500 mt-1 font-medium">
+                                                                {item.quantity} × {price.toLocaleString('vi-VN')}đ
+                                                            </div>
+                                                            {item.isSubscription && (
+                                                                <Badge className="mt-2 text-xs py-0.5" variant="secondary">
+                                                                    <Calendar className="w-3 h-3 mr-1.5" />
+                                                                    {getSubscriptionText(item)}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <div className="font-bold text-gray-900 text-sm md:text-base whitespace-nowrap">
+                                                            {(price * item.quantity).toLocaleString('vi-VN')}đ
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -604,8 +689,8 @@ export default function CheckoutPage() {
                                     {/* Coupon Section */}
                                     <Separator className="my-4" />
                                     <div className="space-y-3">
-                                        <Label className="text-sm font-semibold flex items-center gap-2">
-                                            <Ticket className="w-4 h-4 text-emerald-600" />
+                                        <Label className="text-sm font-semibold flex items-center gap-2 text-emerald-800">
+                                            <Ticket className="w-4 h-4" />
                                             Mã giảm giá
                                         </Label>
 
@@ -614,33 +699,41 @@ export default function CheckoutPage() {
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    className="w-full justify-between items-center text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 h-12"
+                                                    className="w-full h-auto min-h-[3rem] py-2 md:py-0 md:h-14 rounded-full border-emerald-300 bg-white hover:bg-emerald-50 hover:border-emerald-500 transition-all flex flex-col md:flex-row items-center md:justify-between px-4 group shadow-sm text-emerald-700 font-medium whitespace-normal"
                                                     onClick={() => setShowCouponModal(true)}
                                                 >
-                                                    <span className="flex items-center gap-2">
-                                                        <Ticket className="w-5 h-5" />
-                                                        Chọn hoặc nhập mã giảm giá
-                                                    </span>
-                                                    <span>{availableCoupons.length} ưu đãi có sẵn</span>
+                                                    <div className="flex items-center justify-between w-full py-2 group cursor-pointer">
+                                                        <div className="flex items-center gap-2">
+                                                            <Ticket className="w-5 h-5 text-emerald-600" />
+                                                            <span className="text-sm font-semibold text-gray-800">Chọn mã giảm giá</span>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-sm font-medium text-emerald-600">
+                                                                {availableCoupons.length} ưu đãi
+                                                            </span>
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                        </div>
+                                                    </div>
                                                 </Button>
-                                                {couponError && <p className="text-sm text-red-500">{couponError}</p>}
+                                                {couponError && <p className="text-sm text-red-500 font-medium px-1">{couponError}</p>}
                                             </div>
                                         ) : (
-                                            <div className="p-4 border border-emerald-200 rounded-xl bg-emerald-50 relative overflow-hidden">
-                                                <div className="flex justify-between items-start relative z-10">
+                                            <div className="p-4 border border-emerald-200 rounded-2xl bg-emerald-50 relative overflow-hidden transition-all shadow-sm">
+                                                <div className="flex justify-between items-center relative z-10">
                                                     <div>
-                                                        <p className="font-bold text-emerald-800 flex items-center gap-2">
+                                                        <p className="font-bold text-emerald-800 flex items-center gap-2 text-base">
                                                             <Percent className="w-4 h-4" />
                                                             {appliedCoupon.code}
                                                         </p>
-                                                        <p className="text-sm text-emerald-600 mt-1">Đã áp dụng giảm {finalDiscount.toLocaleString('vi-VN')}đ</p>
+                                                        <p className="text-sm text-emerald-600 mt-1 font-medium">Đã áp dụng giảm {finalDiscount.toLocaleString('vi-VN')}đ</p>
                                                     </div>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={handleRemoveCoupon}
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg font-semibold"
                                                     >
                                                         Bỏ chọn
                                                     </Button>

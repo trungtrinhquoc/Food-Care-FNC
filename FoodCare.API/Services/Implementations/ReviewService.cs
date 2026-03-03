@@ -149,6 +149,7 @@ namespace FoodCare.API.Services.Implementations
 
             _db.Reviews.Add(review);
             await _db.SaveChangesAsync();
+            await UpdateProductRatingAsync(dto.ProductId);
         }
         public async Task MarkHelpfulAsync(Guid reviewId, Guid userId)
         {
@@ -165,6 +166,22 @@ namespace FoodCare.API.Services.Implementations
             });
 
             await _db.SaveChangesAsync();
+        }
+
+        private async Task UpdateProductRatingAsync(Guid productId)
+        {
+            var product = await _db.Products.FindAsync(productId);
+            if (product != null)
+            {
+                var reviews = await _db.Reviews
+                    .Where(r => r.ProductId == productId && (r.IsHidden == false || r.IsHidden == null))
+                    .ToListAsync();
+
+                product.RatingCount = reviews.Count;
+                product.RatingAverage = reviews.Any() ? (decimal)Math.Round(reviews.Average(r => r.Rating ?? 0), 1) : 0;
+
+                await _db.SaveChangesAsync();
+            }
         }
     }
 }

@@ -208,6 +208,11 @@ public class AdminReviewService : IAdminReviewService
         review.IsHidden = !(review.IsHidden ?? false);
         await _context.SaveChangesAsync();
 
+        if (review.ProductId.HasValue)
+        {
+            await UpdateProductRatingAsync(review.ProductId.Value);
+        }
+
         return true;
     }
 
@@ -219,9 +224,32 @@ public class AdminReviewService : IAdminReviewService
             return false;
         }
 
+        var productId = review.ProductId;
+
         _context.Reviews.Remove(review);
         await _context.SaveChangesAsync();
 
+        if (productId.HasValue)
+        {
+            await UpdateProductRatingAsync(productId.Value);
+        }
+
         return true;
+    }
+
+    private async Task UpdateProductRatingAsync(Guid productId)
+    {
+        var product = await _context.Products.FindAsync(productId);
+        if (product != null)
+        {
+            var reviews = await _context.Reviews
+                .Where(r => r.ProductId == productId && (r.IsHidden == false || r.IsHidden == null))
+                .ToListAsync();
+
+            product.RatingCount = reviews.Count;
+            product.RatingAverage = reviews.Any() ? (decimal)Math.Round(reviews.Average(r => r.Rating ?? 0), 1) : 0;
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
