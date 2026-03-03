@@ -18,6 +18,7 @@ namespace FoodCare.API.Models.DTOs.Orders
         public bool IsSubscriptionOrder { get; set; }
         public string? ShippingAddressSnapshot { get; set; }
         public string? PaymentMethodSnapshot { get; set; }
+        public string? TrackingNumber { get; set; }
         public DateTime? CreatedAt { get; set; }
         public List<OrdersItemDto> Items { get; set; } = new();
     }

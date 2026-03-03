@@ -67,6 +67,12 @@ public class MessageClassifier
             return MessageIntent.CouponCheck;
         }
         
+        // Farewell patterns
+        if (IsMatch(lowerMessage, @"\b(cảm ơn|thank|tạm biệt|bye|không cần|thế thôi|done|xong)\b"))
+        {
+            return MessageIntent.Farewell;
+        }
+        
         // Default: needs AI reasoning
         return MessageIntent.Complex;
     }
