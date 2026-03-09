@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import NotificationBell from './NotificationBell';
 
 export default function Header() {
     const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -332,7 +333,7 @@ export default function Header() {
                         )}
                     </nav>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-1">
                         <Link to="/cart" className="relative p-2 rounded-full hover:bg-gray-100 transition-colors group">
                             <ShoppingCart className="h-5 w-5 text-gray-600 group-hover:text-emerald-600" />
                             {getItemCount() > 0 && (
@@ -342,6 +343,7 @@ export default function Header() {
                             )}
                         </Link>
 
+                        {isAuthenticated && <NotificationBell />}
                         {isAuthenticated ? (
                             <div className="relative hidden sm:block" ref={dropdownRef}>
                                 <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center space-x-2 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors">
@@ -373,6 +375,9 @@ export default function Header() {
                                             </Link>
                                             <Link to="/subscriptions" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Package className="w-5 h-5 text-gray-400" /> <span className="text-sm">Đơn hàng định kỳ</span>
+                                            </Link>
+                                            <Link to="/notifications" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                                                <Bell className="w-5 h-5 text-gray-400" /> <span className="text-sm">Trung tâm thông báo</span>
                                             </Link>
                                             <Link to="/vouchers" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Ticket className="w-5 h-5 text-amber-500" /> <span className="text-sm">Kho Voucher ưu đãi</span>
