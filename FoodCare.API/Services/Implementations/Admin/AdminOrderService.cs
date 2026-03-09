@@ -263,9 +263,65 @@ public class AdminOrderService : IAdminOrderService
             }
         }
 
+        // === TẠO THÔNG BÁO CHO NGƯỜI DÙNG ===
+        if (order.UserId.HasValue)
+        {
+            var (notifTitle, notifMessage, notifType) = GetStatusNotificationContent(newStatus, order.Id);
+            var notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = order.UserId.Value,
+                Title = notifTitle,
+                Message = notifMessage,
+                Type = notifType,
+                IsRead = false,
+                LinkUrl = $"/profile?tab=orders&orderId={order.Id}",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Notifications.Add(notification);
+        }
+
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    private static (string Title, string Message, string Type) GetStatusNotificationContent(OrderStatus status, Guid orderId)
+    {
+        var shortId = orderId.ToString()[..8].ToUpper();
+        return status switch
+        {
+            OrderStatus.confirmed => (
+                "✅ Đơn hàng đã được xác nhận",
+                $"Đơn hàng #{shortId} của bạn đã được xác nhận và đang được chuẩn bị.",
+                "order_confirmed"
+            ),
+            OrderStatus.shipping => (
+                "🚚 Đơn hàng đang được giao đến bạn",
+                $"Đơn hàng #{shortId} đang trên đường giao đến địa chỉ của bạn. Vui lòng chú ý điện thoại!",
+                "order_shipping"
+            ),
+            OrderStatus.delivered => (
+                "🎉 Đơn hàng đã giao thành công",
+                $"Đơn hàng #{shortId} đã được giao thành công. Cảm ơn bạn đã mua sắm tại Food & Care!",
+                "order_delivered"
+            ),
+            OrderStatus.cancelled => (
+                "❌ Đơn hàng đã bị hủy",
+                $"Đơn hàng #{shortId} đã bị hủy. Nếu bạn đã thanh toán, tiền sẽ được hoàn về trong 3-5 ngày làm việc.",
+                "order_cancelled"
+            ),
+            OrderStatus.returned => (
+                "↩️ Đơn hàng đã hoàn trả",
+                $"Đơn hàng #{shortId} đã được xử lý hoàn trả. Tiền sẽ được hoàn lại trong 3-5 ngày làm việc.",
+                "order_returned"
+            ),
+            _ => (
+                "🔔 Cập nhật đơn hàng",
+                $"Trạng thái đơn hàng #{shortId} đã được cập nhật.",
+                "order_update"
+            )
+        };
     }
 
     public async Task<List<LatestOrderDto>> GetLatestOrdersAsync(int limit = 5)

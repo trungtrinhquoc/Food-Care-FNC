@@ -22,6 +22,7 @@ import SupplierDashboardPage from './pages/supplier/supplierDashboardPage';
 import StaffDashboardPage from './pages/staff/StaffDashboardPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
+import NotificationsPage from './pages/NotificationsPage';
 
 // Warehouse Receiving Components
 import ReceivingDashboard from './components/staff/ReceivingDashboard';
@@ -185,6 +186,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <VoucherCenterPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />
