@@ -166,6 +166,24 @@ namespace FoodCare.API.Services.Implementations
                 }
 
 
+                // === TẠO THÔNG BÁO ĐẶT HÀNG THÀNH CÔNG ===
+                if (dto.UserId.HasValue)
+                {
+                    var shortId = order.Id.ToString()[..8].ToUpper();
+                    var orderNotif = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = dto.UserId.Value,
+                        Title = "🛒 Đặt hàng thành công!",
+                        Message = $"Đơn hàng #{shortId} đã được đặt thành công. Chúng tôi sẽ sớm xác nhận đơn hàng của bạn.",
+                        Type = "order_placed",
+                        IsRead = false,
+                        LinkUrl = $"/profile?tab=orders&orderId={order.Id}",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Notifications.Add(orderNotif);
+                }
+
                 await _context.SaveChangesAsync();
 
                 // 5. Create Subscriptions for subscription items
