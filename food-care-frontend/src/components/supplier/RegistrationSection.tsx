@@ -464,6 +464,7 @@ export function RegistrationSection() {
                     province: form.addressCity || undefined,
                     district: form.addressDistrict || undefined,
                     ward: form.addressWard || undefined,
+                    street: form.addressStreet || undefined,
                   }}
                   onChange={(addr) => {
                     setForm(prev => ({
@@ -471,18 +472,12 @@ export function RegistrationSection() {
                       addressCity: addr.province ?? '',
                       addressDistrict: addr.district ?? '',
                       addressWard: addr.ward ?? '',
+                      addressStreet: addr.street ?? '',
                       operatingRegion: deriveRegionFromCity(addr.province ?? ''),
                     }));
                   }}
+                  showStreet={true}
                 />
-                <div>
-                  <label className="block text-sm font-medium mb-1">Địa chỉ chi tiết (số nhà, tên đường)</label>
-                  <Input
-                    value={form.addressStreet}
-                    onChange={(e) => updateField('addressStreet', e.target.value)}
-                    placeholder="Số nhà, tên đường"
-                  />
-                </div>
               </>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

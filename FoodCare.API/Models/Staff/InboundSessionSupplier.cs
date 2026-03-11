@@ -56,4 +56,7 @@ public class InboundSessionSupplier
 
     [ForeignKey("SupplierId")]
     public virtual Supplier Supplier { get; set; } = null!;
+
+    /// <summary>Shipments created from this session registration</summary>
+    public virtual ICollection<SupplierShipment> Shipments { get; set; } = new List<SupplierShipment>();
 }

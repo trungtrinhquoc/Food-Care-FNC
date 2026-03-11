@@ -45,6 +45,10 @@ export interface SupplierProfile {
   contactEmail?: string;
   phone?: string;
   address?: string;
+  addressStreet?: string;
+  addressWard?: string;
+  addressDistrict?: string;
+  addressCity?: string;
   contactPerson?: string;
   taxCode?: string;
   createdAt: string;
@@ -126,6 +130,11 @@ export interface UpdateProfileRequest {
   address?: string;
   contactPerson?: string;
   taxCode?: string;
+  // Structured address fields
+  addressStreet?: string;
+  addressWard?: string;
+  addressDistrict?: string;
+  addressCity?: string;
 }
 
 // =====================================================
@@ -148,6 +157,21 @@ export interface SupplierShipment {
   totalItems: number;
   totalQuantity: number;
   createdAt: string;
+  // Governance fields
+  submittedAt?: string;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
+  adminHoldReason?: string;
+  heldAt?: string;
+  invoiceUrl?: string;
+  packingListUrl?: string;
+  // Inbound session link
+  inboundSessionId?: string;
+  inboundSessionCode?: string;
+  inboundSessionSupplierId?: string;
   items: ShipmentItem[];
   documents: ShipmentDocument[];
 }
@@ -179,11 +203,12 @@ export interface ShipmentDocument {
 
 export interface CreateShipmentRequest {
   externalReference: string;
-  warehouseId: string;
+  warehouseId?: string;
   expectedDeliveryDate: string;
   trackingNumber?: string;
   carrier?: string;
   notes?: string;
+  inboundSessionId?: string;
   items: CreateShipmentItemRequest[];
 }
 
@@ -538,23 +563,16 @@ export const shipmentsApi = {
     await supplierApi.delete(`/shipments/${shipmentId}/items/${itemId}`);
   },
 
-  // Dispatch shipment
-  dispatchShipment: async (
+  // Start delivering shipment (Preparing → Delivering)
+  startDelivering: async (
     id: string,
     trackingNumber?: string,
-    carrier?: string
+    carrier?: string,
+    notes?: string
   ): Promise<SupplierShipment> => {
-    const response = await supplierApi.post<SupplierShipment>(`/shipments/${id}/dispatch`, {
+    const response = await supplierApi.post<SupplierShipment>(`/shipments/${id}/start-delivering`, {
       trackingNumber,
       carrier,
-    });
-    return response.data;
-  },
-
-  // Mark in transit
-  markInTransit: async (id: string, newEta?: string, notes?: string): Promise<SupplierShipment> => {
-    const response = await supplierApi.post<SupplierShipment>(`/shipments/${id}/in-transit`, {
-      newEta,
       notes,
     });
     return response.data;
@@ -719,6 +737,7 @@ export const adminApprovalApi = {
 export interface SupplierInboundSession {
   sessionId: string;
   sessionCode: string;
+  warehouseId?: string;
   warehouseName?: string;
   warehouseWard?: string;
   warehouseDistrict?: string;
@@ -760,6 +779,16 @@ export const inboundSessionsApi = {
   },
   declineSession: async (sessionId: string): Promise<void> => {
     await supplierApi.post(`/inbound-sessions/${sessionId}/decline`);
+  },
+  createShipmentFromSession: async (
+    sessionId: string,
+    request: Omit<CreateShipmentRequest, 'inboundSessionId'>
+  ): Promise<SupplierShipment> => {
+    const response = await supplierApi.post<SupplierShipment>('/shipments', {
+      ...request,
+      inboundSessionId: sessionId,
+    });
+    return response.data;
   },
 };
 

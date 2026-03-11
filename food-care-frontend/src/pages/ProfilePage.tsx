@@ -1402,29 +1402,23 @@ export default function ProfilePage() {
                                                     required
                                                 />
                                             </div>
-                                            <div className="md:col-span-2">
-                                                <Label htmlFor="addressLine">Địa chỉ *</Label>
-                                                <Input
-                                                    id="addressLine"
-                                                    value={addressForm.addressLine1}
-                                                    onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
-                                                    required
-                                                />
-                                            </div>
                                             <div className="md:col-span-2 space-y-2">
-                                                <Label>Tỉnh/Thành, Quận/Huyện, Phường/Xã *</Label>
+                                                <Label>Địa chỉ (Quận/Huyện, Phường/Xã, Số nhà/Đường) *</Label>
                                                 <AddressSelector
                                                     value={{
                                                         province: addressForm.city,
                                                         district: addressForm.district,
-                                                        ward: addressForm.ward
+                                                        ward: addressForm.ward,
+                                                        street: addressForm.addressLine1,
                                                     }}
                                                     onChange={(val) => setAddressForm({
                                                         ...addressForm,
                                                         city: val.province,
                                                         district: val.district,
-                                                        ward: val.ward
+                                                        ward: val.ward,
+                                                        addressLine1: val.street || '',
                                                     })}
+                                                    showStreet={true}
                                                 />
                                             </div>
                                             <div className="md:col-span-2">

@@ -7,6 +7,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.Staff;
 using FoodCare.API.Models.Enums;
 using FoodCare.API.Models.DTOs.Staff;
+using FoodCare.API.Helpers;
 using FoodCare.API.Services.Interfaces.StaffModule;
 
 namespace FoodCare.API.Services.Implementations.StaffModule;
@@ -26,47 +27,30 @@ public class ShipmentService : IShipmentService
             .Include(s => s.Supplier)
             .Include(s => s.Warehouse)
             .Include(s => s.Items).ThenInclude(i => i.Product)
+            .Include(s => s.InboundSession)
             .AsQueryable();
 
         if (queryParams.SupplierId.HasValue)
-        {
             query = query.Where(s => s.SupplierId == queryParams.SupplierId.Value);
-        }
-
         if (queryParams.WarehouseId.HasValue)
-        {
             query = query.Where(s => s.WarehouseId == queryParams.WarehouseId.Value);
-        }
-
         if (!string.IsNullOrEmpty(queryParams.Status) && Enum.TryParse<ShipmentStatus>(queryParams.Status, true, out var status))
-        {
             query = query.Where(s => s.Status == status);
-        }
-
         if (queryParams.FromDate.HasValue)
-        {
             query = query.Where(s => s.ExpectedDeliveryDate >= queryParams.FromDate.Value);
-        }
-
         if (queryParams.ToDate.HasValue)
-        {
             query = query.Where(s => s.ExpectedDeliveryDate <= queryParams.ToDate.Value);
-        }
-
         if (!string.IsNullOrEmpty(queryParams.SearchTerm))
-        {
-            query = query.Where(s => 
+            query = query.Where(s =>
                 s.ExternalReference.Contains(queryParams.SearchTerm) ||
                 (s.TrackingNumber != null && s.TrackingNumber.Contains(queryParams.SearchTerm)));
-        }
 
-        // Sorting
         query = queryParams.SortBy?.ToLower() switch
         {
-            "expected_date" => queryParams.SortDescending 
+            "expected_date" => queryParams.SortDescending
                 ? query.OrderByDescending(s => s.ExpectedDeliveryDate)
                 : query.OrderBy(s => s.ExpectedDeliveryDate),
-            "created_at" => queryParams.SortDescending 
+            "created_at" => queryParams.SortDescending
                 ? query.OrderByDescending(s => s.CreatedAt)
                 : query.OrderBy(s => s.CreatedAt),
             _ => query.OrderByDescending(s => s.CreatedAt)
@@ -95,6 +79,7 @@ public class ShipmentService : IShipmentService
             .Include(s => s.Warehouse)
             .Include(s => s.Items).ThenInclude(i => i.Product)
             .Include(s => s.Documents)
+            .Include(s => s.InboundSession)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         return shipment != null ? MapToDto(shipment) : null;
@@ -107,6 +92,7 @@ public class ShipmentService : IShipmentService
             .Include(s => s.Warehouse)
             .Include(s => s.Items).ThenInclude(i => i.Product)
             .Include(s => s.Documents)
+            .Include(s => s.InboundSession)
             .FirstOrDefaultAsync(s => s.ExternalReference == externalReference);
 
         return shipment != null ? MapToDto(shipment) : null;
@@ -114,28 +100,18 @@ public class ShipmentService : IShipmentService
 
     public async Task<SupplierShipmentDto> CreateShipmentAsync(int supplierId, Guid userId, CreateShipmentRequest request)
     {
-        // Verify supplier exists
         var supplier = await _context.Suppliers.FindAsync(supplierId);
         if (supplier == null)
-        {
             throw new ArgumentException("Supplier not found");
-        }
 
-        // Check for duplicate external reference (idempotency)
         var existingShipment = await _context.SupplierShipments
             .FirstOrDefaultAsync(s => s.ExternalReference == request.ExternalReference);
         if (existingShipment != null)
-        {
-            // Return existing shipment for idempotency
             return (await GetShipmentByIdAsync(existingShipment.Id))!;
-        }
 
-        // Verify warehouse exists
         var warehouse = await _context.Warehouses.FindAsync(request.WarehouseId);
         if (warehouse == null || !warehouse.IsActive)
-        {
             throw new ArgumentException("Warehouse not found or inactive");
-        }
 
         var shipment = new SupplierShipment
         {
@@ -143,7 +119,7 @@ public class ShipmentService : IShipmentService
             ExternalReference = request.ExternalReference,
             SupplierId = supplierId,
             WarehouseId = request.WarehouseId,
-            Status = ShipmentStatus.Draft,
+            Status = ShipmentStatus.Preparing,
             ExpectedDeliveryDate = request.ExpectedDeliveryDate,
             TrackingNumber = request.TrackingNumber,
             Carrier = request.Carrier,
@@ -152,7 +128,6 @@ public class ShipmentService : IShipmentService
             CreatedAt = DateTime.UtcNow
         };
 
-        // Add items
         decimal totalValue = 0;
         int totalQuantity = 0;
 
@@ -160,9 +135,7 @@ public class ShipmentService : IShipmentService
         {
             var product = await _context.Products.FindAsync(itemRequest.ProductId);
             if (product == null)
-            {
                 throw new ArgumentException($"Product {itemRequest.ProductId} not found");
-            }
 
             var item = new ShipmentItem
             {
@@ -183,23 +156,20 @@ public class ShipmentService : IShipmentService
             shipment.Items.Add(item);
             totalQuantity += itemRequest.Quantity;
             if (item.LineTotal.HasValue)
-            {
                 totalValue += item.LineTotal.Value;
-            }
         }
 
         shipment.TotalItems = request.Items.Count;
         shipment.TotalQuantity = totalQuantity;
         shipment.TotalValue = totalValue > 0 ? totalValue : null;
 
-        // Create initial status history
         var statusHistory = new ShipmentStatusHistory
         {
             Id = Guid.NewGuid(),
             ShipmentId = shipment.Id,
             PreviousStatus = null,
-            NewStatus = ShipmentStatus.Draft,
-            Notes = "Shipment created",
+            NewStatus = ShipmentStatus.Preparing,
+            Notes = "Lo hang da duoc tao - dang chuan bi hang",
             ChangedBy = userId,
             CreatedAt = DateTime.UtcNow
         };
@@ -211,91 +181,30 @@ public class ShipmentService : IShipmentService
         return (await GetShipmentByIdAsync(shipment.Id))!;
     }
 
-    public async Task<SupplierShipmentDto?> UpdateShipmentStatusAsync(Guid id, Guid userId, UpdateShipmentStatusRequest request)
-    {
-        var shipment = await _context.SupplierShipments.FindAsync(id);
-        if (shipment == null) return null;
-
-        if (!Enum.TryParse<ShipmentStatus>(request.Status, true, out var newStatus))
-        {
-            throw new ArgumentException("Invalid status");
-        }
-
-        // Validate status transition
-        if (!IsValidStatusTransition(shipment.Status, newStatus))
-        {
-            throw new InvalidOperationException($"Cannot transition from {shipment.Status} to {newStatus}");
-        }
-
-        var previousStatus = shipment.Status;
-        var previousEta = shipment.ExpectedDeliveryDate;
-
-        shipment.Status = newStatus;
-        shipment.UpdatedAt = DateTime.UtcNow;
-
-        if (request.NewEta.HasValue)
-        {
-            shipment.ExpectedDeliveryDate = request.NewEta.Value;
-        }
-
-        // Set actual dates based on status
-        if (newStatus == ShipmentStatus.Dispatched && !shipment.ActualDispatchDate.HasValue)
-        {
-            shipment.ActualDispatchDate = DateTime.UtcNow;
-        }
-        else if (newStatus == ShipmentStatus.Arrived && !shipment.ActualArrivalDate.HasValue)
-        {
-            shipment.ActualArrivalDate = DateTime.UtcNow;
-        }
-
-        // Create status history
-        var statusHistory = new ShipmentStatusHistory
-        {
-            Id = Guid.NewGuid(),
-            ShipmentId = shipment.Id,
-            PreviousStatus = previousStatus,
-            NewStatus = newStatus,
-            PreviousEta = request.NewEta.HasValue ? previousEta : null,
-            NewEta = request.NewEta,
-            Notes = request.Notes,
-            ChangedBy = userId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.ShipmentStatusHistories.Add(statusHistory);
-        await _context.SaveChangesAsync();
-
-        return await GetShipmentByIdAsync(id);
-    }
-
     public async Task<bool> CancelShipmentAsync(Guid id, Guid userId, string? reason = null)
     {
         var shipment = await _context.SupplierShipments.FindAsync(id);
         if (shipment == null) return false;
 
-        if (shipment.Status == ShipmentStatus.Stored || shipment.Status == ShipmentStatus.Closed)
-        {
-            throw new InvalidOperationException("Cannot cancel a shipment that has been stored or closed");
-        }
+        if (shipment.Status == ShipmentStatus.Success)
+            throw new InvalidOperationException("Khong the huy lo hang da hoan tat");
 
         var previousStatus = shipment.Status;
         shipment.Status = ShipmentStatus.Cancelled;
         shipment.UpdatedAt = DateTime.UtcNow;
 
-        var statusHistory = new ShipmentStatusHistory
+        _context.ShipmentStatusHistories.Add(new ShipmentStatusHistory
         {
             Id = Guid.NewGuid(),
             ShipmentId = shipment.Id,
             PreviousStatus = previousStatus,
             NewStatus = ShipmentStatus.Cancelled,
-            Notes = reason ?? "Shipment cancelled",
+            Notes = reason ?? "Lo hang da bi huy",
             ChangedBy = userId,
             CreatedAt = DateTime.UtcNow
-        };
+        });
 
-        _context.ShipmentStatusHistories.Add(statusHistory);
         await _context.SaveChangesAsync();
-
         return true;
     }
 
@@ -311,6 +220,8 @@ public class ShipmentService : IShipmentService
                 ProductName = i.Product.Name,
                 ProductSku = i.Product.Sku,
                 ExpectedQuantity = i.ExpectedQuantity,
+                ReceivedQuantity = i.ReceivedQuantity,
+                DamagedQuantity = i.DamagedQuantity,
                 Uom = i.Uom,
                 BatchNumber = i.BatchNumber,
                 ExpiryDate = i.ExpiryDate,
@@ -326,9 +237,7 @@ public class ShipmentService : IShipmentService
     {
         var shipment = await _context.SupplierShipments.FindAsync(shipmentId);
         if (shipment == null)
-        {
             throw new ArgumentException("Shipment not found");
-        }
 
         var document = new ShipmentDocument
         {
@@ -382,7 +291,6 @@ public class ShipmentService : IShipmentService
 
         _context.ShipmentDocuments.Remove(document);
         await _context.SaveChangesAsync();
-
         return true;
     }
 
@@ -412,23 +320,511 @@ public class ShipmentService : IShipmentService
         return await GetShipmentsAsync(queryParams);
     }
 
-    private static bool IsValidStatusTransition(ShipmentStatus current, ShipmentStatus next)
+    // =====================================================
+    // SIMPLIFIED STATUS TRANSITIONS
+    // =====================================================
+
+    public async Task<SupplierShipmentDto?> StartDeliveringAsync(Guid id, StartDeliveringRequest request)
     {
-        return (current, next) switch
+        var shipment = await _context.SupplierShipments
+            .Include(s => s.Items)
+            .Include(s => s.Supplier)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        if (shipment == null) return null;
+
+        if (shipment.Status != ShipmentStatus.Preparing)
+            throw new InvalidOperationException("Chi co the bat dau giao hang khi dang o trang thai 'Dang chuan bi'");
+
+        if (!shipment.Items.Any())
+            throw new InvalidOperationException("Khong the giao hang khi lo hang chua co san pham");
+
+        var oldStatus = shipment.Status;
+        shipment.Status = ShipmentStatus.Delivering;
+        shipment.ActualDispatchDate = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(request.TrackingNumber))
+            shipment.TrackingNumber = request.TrackingNumber;
+        if (!string.IsNullOrEmpty(request.Carrier))
+            shipment.Carrier = request.Carrier;
+        shipment.UpdatedAt = DateTime.UtcNow;
+
+        _context.ShipmentStatusHistories.Add(new ShipmentStatusHistory
         {
-            (ShipmentStatus.Draft, ShipmentStatus.Dispatched) => true,
-            (ShipmentStatus.Draft, ShipmentStatus.Cancelled) => true,
-            (ShipmentStatus.Dispatched, ShipmentStatus.InTransit) => true,
-            (ShipmentStatus.Dispatched, ShipmentStatus.Arrived) => true,
-            (ShipmentStatus.Dispatched, ShipmentStatus.Cancelled) => true,
-            (ShipmentStatus.InTransit, ShipmentStatus.Arrived) => true,
-            (ShipmentStatus.InTransit, ShipmentStatus.Cancelled) => true,
-            (ShipmentStatus.Arrived, ShipmentStatus.Inspected) => true,
-            (ShipmentStatus.Inspected, ShipmentStatus.Stored) => true,
-            (ShipmentStatus.Stored, ShipmentStatus.Closed) => true,
-            _ => false
+            Id = Guid.NewGuid(),
+            ShipmentId = shipment.Id,
+            PreviousStatus = oldStatus,
+            NewStatus = ShipmentStatus.Delivering,
+            Notes = request.Notes ?? "Supplier bat dau giao hang",
+            ChangedBy = Guid.Empty,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await NotificationHelper.NotifyWarehouseStaffAsync(_context,
+            shipment.WarehouseId,
+            "Lo hang dang duoc giao den",
+            $"Lo hang {shipment.ExternalReference} dang tren duong giao den kho.",
+            "shipment_delivering",
+            $"/staff/shipping?id={shipment.Id}");
+
+        await _context.SaveChangesAsync();
+        return await GetShipmentByIdAsync(id);
+    }
+
+    public async Task<SupplierShipmentDto?> ConfirmReceivedAsync(Guid id, ConfirmReceivedRequest request)
+    {
+        var shipment = await _context.SupplierShipments
+            .Include(s => s.Items)
+            .Include(s => s.Supplier)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        if (shipment == null) return null;
+
+        if (shipment.Status != ShipmentStatus.Delivering)
+            throw new InvalidOperationException("Chi co the xac nhan nhan hang khi lo hang dang o trang thai 'Dang giao'");
+
+        foreach (var receivedItem in request.Items)
+        {
+            var item = shipment.Items.FirstOrDefault(i => i.Id == receivedItem.ShipmentItemId);
+            if (item == null) continue;
+
+            item.ReceivedQuantity = receivedItem.ReceivedQuantity;
+            item.DamagedQuantity = receivedItem.DamagedQuantity;
+            item.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var oldStatus = shipment.Status;
+        shipment.Status = ShipmentStatus.Received;
+        shipment.ActualArrivalDate = DateTime.UtcNow;
+        shipment.UpdatedAt = DateTime.UtcNow;
+
+        _context.ShipmentStatusHistories.Add(new ShipmentStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            ShipmentId = shipment.Id,
+            PreviousStatus = oldStatus,
+            NewStatus = ShipmentStatus.Received,
+            Notes = request.Notes ?? "Staff da xac nhan nhan hang",
+            ChangedBy = Guid.Empty,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        if (shipment.Supplier != null)
+        {
+            await NotificationHelper.CreateDeliveryNotificationAsync(_context,
+                shipment, shipment.Supplier,
+                "Lo hang da duoc nhan",
+                $"Lo hang {shipment.ExternalReference} da duoc kho nhan thanh cong.",
+                "shipment_received");
+        }
+
+        await _context.SaveChangesAsync();
+        return await GetShipmentByIdAsync(id);
+    }
+
+    public async Task<SupplierShipmentDto?> CompleteShipmentAsync(Guid id)
+    {
+        var shipment = await _context.SupplierShipments
+            .Include(s => s.Supplier)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        if (shipment == null) return null;
+
+        if (shipment.Status != ShipmentStatus.Received)
+            throw new InvalidOperationException("Chi co the hoan tat khi lo hang da duoc nhan");
+
+        var oldStatus = shipment.Status;
+        shipment.Status = ShipmentStatus.Success;
+        shipment.UpdatedAt = DateTime.UtcNow;
+
+        if (shipment.InboundSessionSupplierId.HasValue)
+        {
+            var sessionSupplier = await _context.InboundSessionSuppliers.FindAsync(shipment.InboundSessionSupplierId.Value);
+            if (sessionSupplier != null)
+            {
+                sessionSupplier.Status = "Completed";
+                sessionSupplier.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        _context.ShipmentStatusHistories.Add(new ShipmentStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            ShipmentId = shipment.Id,
+            PreviousStatus = oldStatus,
+            NewStatus = ShipmentStatus.Success,
+            Notes = "Lo hang da hoan tat thanh cong",
+            ChangedBy = Guid.Empty,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        if (shipment.Supplier != null)
+        {
+            await NotificationHelper.CreateDeliveryNotificationAsync(_context,
+                shipment, shipment.Supplier,
+                "Lo hang hoan tat",
+                $"Lo hang {shipment.ExternalReference} da duoc xu ly hoan tat.",
+                "shipment_success");
+        }
+
+        await _context.SaveChangesAsync();
+        return await GetShipmentByIdAsync(id);
+    }
+
+    // =====================================================
+    // SUPPLIER-FACING METHODS
+    // =====================================================
+
+    public async Task<PagedResponse<SupplierShipmentDto>> GetShipmentsBySupplierAsync(Guid supplierId, int page, int pageSize, string? status)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == supplierId);
+        var queryParams = new ShipmentQueryParams
+        {
+            Page = page,
+            PageSize = pageSize,
+            Status = status
+        };
+        if (supplier != null)
+            queryParams.SupplierId = supplier.Id;
+        return await GetShipmentsAsync(queryParams);
+    }
+
+    public async Task<SupplierShipmentDto> CreateShipmentAsync(CreateSupplierShipmentRequest request, Guid supplierId)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == supplierId);
+        if (supplier == null)
+            throw new ArgumentException("Supplier not found");
+
+        Guid? inboundSessionSupplierId = null;
+        if (request.InboundSessionId.HasValue)
+        {
+            var sessionSupplier = await _context.InboundSessionSuppliers
+                .Include(iss => iss.Session)
+                .FirstOrDefaultAsync(iss =>
+                    iss.SessionId == request.InboundSessionId.Value &&
+                    iss.SupplierId == supplier.Id &&
+                    iss.Status == "Registered");
+
+            if (sessionSupplier == null)
+                throw new ArgumentException("Ban chua dang ky phien nhap kho nay hoac phien khong ton tai");
+
+            var session = sessionSupplier.Session;
+            if (session.Status == InboundSessionStatus.Cancelled)
+                throw new InvalidOperationException("Phien nhap kho da bi huy");
+
+            var existingSessionShipment = await _context.SupplierShipments
+                .AnyAsync(s => s.InboundSessionSupplierId == sessionSupplier.Id && s.Status != ShipmentStatus.Cancelled);
+            if (existingSessionShipment)
+                throw new InvalidOperationException("Ban da tao lo hang cho phien nhap kho nay roi");
+
+            request.WarehouseId = session.WarehouseId;
+            inboundSessionSupplierId = sessionSupplier.Id;
+        }
+
+        Guid warehouseId;
+        if (request.WarehouseId.HasValue && request.WarehouseId.Value != Guid.Empty)
+        {
+            warehouseId = request.WarehouseId.Value;
+        }
+        else
+        {
+            var region = WarehouseService.DetermineRegionFromCity(supplier.AddressCity);
+            var warehouse = region != null
+                ? await _context.Warehouses
+                    .Where(w => w.IsActive && w.Region != null && w.Region.ToLower() == region.ToLower())
+                    .FirstOrDefaultAsync()
+                : null;
+
+            warehouse ??= await _context.Warehouses
+                .Where(w => w.IsActive && w.IsDefault)
+                .FirstOrDefaultAsync();
+            warehouse ??= await _context.Warehouses
+                .Where(w => w.IsActive)
+                .FirstOrDefaultAsync();
+
+            if (warehouse == null)
+                throw new InvalidOperationException("No active warehouse available for assignment");
+
+            warehouseId = warehouse.Id;
+        }
+
+        var createRequest = new CreateShipmentRequest
+        {
+            WarehouseId = warehouseId,
+            ExternalReference = request.ExternalReference ?? Guid.NewGuid().ToString("N")[..12],
+            ExpectedDeliveryDate = request.ExpectedDeliveryDate,
+            Notes = request.Notes
+        };
+
+        var result = await CreateShipmentAsync(supplier.Id, supplierId, createRequest);
+
+        // Link inbound session and auto-populate items from InboundReceipt
+        if (request.InboundSessionId.HasValue)
+        {
+            var shipment = await _context.SupplierShipments.FindAsync(result.Id);
+            if (shipment != null)
+            {
+                shipment.InboundSessionId = request.InboundSessionId.Value;
+                shipment.InboundSessionSupplierId = inboundSessionSupplierId;
+
+                var receipt = await _context.InboundReceipts
+                    .Include(r => r.Details)
+                    .FirstOrDefaultAsync(r =>
+                        r.SessionId == request.InboundSessionId.Value &&
+                        r.SupplierId == supplier.Id);
+
+                if (receipt != null && receipt.Details.Any())
+                {
+                    decimal totalValue = 0;
+                    int totalQuantity = 0;
+
+                    foreach (var detail in receipt.Details)
+                    {
+                        var item = new ShipmentItem
+                        {
+                            Id = Guid.NewGuid(),
+                            ShipmentId = shipment.Id,
+                            ProductId = detail.ProductId,
+                            ExpectedQuantity = detail.Quantity,
+                            Uom = detail.Unit ?? "pcs",
+                            BatchNumber = detail.BatchNumber,
+                            ExpiryDate = detail.ExpiryDate,
+                            ManufactureDate = detail.ManufactureDate,
+                            UnitCost = detail.UnitPrice,
+                            LineTotal = detail.LineTotal,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.ShipmentItems.Add(item);
+                        totalQuantity += detail.Quantity;
+                        totalValue += detail.LineTotal;
+                    }
+
+                    shipment.TotalItems = receipt.Details.Count;
+                    shipment.TotalQuantity = totalQuantity;
+                    shipment.TotalValue = totalValue > 0 ? totalValue : null;
+                }
+
+                await _context.SaveChangesAsync();
+                result = (await GetShipmentByIdAsync(result.Id))!;
+            }
+        }
+
+        return result;
+    }
+
+    public async Task<SupplierShipmentDto?> UpdateShipmentAsync(Guid id, UpdateSupplierShipmentRequest request)
+    {
+        var shipment = await _context.SupplierShipments.FindAsync(id);
+        if (shipment == null) return null;
+
+        if (shipment.Status != ShipmentStatus.Preparing)
+            throw new InvalidOperationException("Chi co the chinh sua lo hang khi dang chuan bi");
+
+        if (request.ExpectedDeliveryDate.HasValue)
+            shipment.ExpectedDeliveryDate = request.ExpectedDeliveryDate.Value;
+        if (request.Notes != null)
+            shipment.Notes = request.Notes;
+
+        shipment.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return await GetShipmentByIdAsync(id);
+    }
+
+    public async Task<SupplierShipmentDto?> AddShipmentItemAsync(Guid shipmentId, AddShipmentItemRequest request)
+    {
+        _context.ChangeTracker.Clear();
+
+        var shipment = await _context.SupplierShipments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == shipmentId);
+        if (shipment == null) return null;
+
+        if (shipment.Status != ShipmentStatus.Preparing)
+            throw new InvalidOperationException("Chi co the them san pham khi lo hang dang chuan bi");
+
+        var item = new ShipmentItem
+        {
+            Id = Guid.NewGuid(),
+            ShipmentId = shipmentId,
+            ProductId = request.ProductId,
+            ExpectedQuantity = request.Quantity,
+            Uom = request.Uom ?? "pcs",
+            BatchNumber = request.BatchNumber,
+            ExpiryDate = request.ExpiryDate,
+            ManufactureDate = request.ManufactureDate,
+            UnitCost = request.UnitCost,
+            LineTotal = request.Quantity * (request.UnitCost ?? 0),
+            Notes = request.Notes,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.ShipmentItems.Add(item);
+        await _context.SaveChangesAsync();
+
+        var allItems = await _context.ShipmentItems
+            .AsNoTracking()
+            .Where(i => i.ShipmentId == shipmentId)
+            .ToListAsync();
+
+        var totalItems = allItems.Count;
+        var totalQty = allItems.Sum(i => i.ExpectedQuantity);
+        var totalVal = allItems.Sum(i => i.LineTotal ?? 0m);
+        var now = DateTime.UtcNow;
+
+        await _context.SupplierShipments
+            .Where(s => s.Id == shipmentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.TotalItems, totalItems)
+                .SetProperty(s => s.TotalQuantity, totalQty)
+                .SetProperty(s => s.TotalValue, totalVal)
+                .SetProperty(s => s.UpdatedAt, now));
+
+        _context.ChangeTracker.Clear();
+        return await GetShipmentByIdAsync(shipmentId);
+    }
+
+    public async Task<SupplierShipmentDto?> UpdateShipmentItemAsync(Guid shipmentId, Guid itemId, UpdateShipmentItemRequest request)
+    {
+        _context.ChangeTracker.Clear();
+
+        var shipment = await _context.SupplierShipments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == shipmentId);
+        if (shipment == null) return null;
+
+        if (shipment.Status != ShipmentStatus.Preparing)
+            throw new InvalidOperationException("Chi co the sua san pham khi lo hang dang chuan bi");
+
+        var item = await _context.ShipmentItems
+            .FirstOrDefaultAsync(i => i.Id == itemId && i.ShipmentId == shipmentId);
+        if (item == null) return null;
+
+        if (request.Quantity.HasValue)
+            item.ExpectedQuantity = request.Quantity.Value;
+        if (request.BatchNumber != null)
+            item.BatchNumber = request.BatchNumber;
+        if (request.ExpiryDate.HasValue)
+            item.ExpiryDate = request.ExpiryDate;
+        if (request.UnitCost.HasValue)
+            item.UnitCost = request.UnitCost.Value;
+        if (request.Notes != null)
+            item.Notes = request.Notes;
+
+        item.LineTotal = item.ExpectedQuantity * item.UnitCost;
+        await _context.SaveChangesAsync();
+
+        var allItems = await _context.ShipmentItems
+            .AsNoTracking()
+            .Where(i => i.ShipmentId == shipmentId)
+            .ToListAsync();
+
+        var totalQty = allItems.Sum(i => i.ExpectedQuantity);
+        var totalVal = allItems.Sum(i => i.LineTotal ?? 0m);
+        var now = DateTime.UtcNow;
+
+        await _context.SupplierShipments
+            .Where(s => s.Id == shipmentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.TotalQuantity, totalQty)
+                .SetProperty(s => s.TotalValue, totalVal)
+                .SetProperty(s => s.UpdatedAt, now));
+
+        _context.ChangeTracker.Clear();
+        return await GetShipmentByIdAsync(shipmentId);
+    }
+
+    public async Task<bool> RemoveShipmentItemAsync(Guid shipmentId, Guid itemId)
+    {
+        _context.ChangeTracker.Clear();
+
+        var shipment = await _context.SupplierShipments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == shipmentId);
+        if (shipment == null) return false;
+
+        if (shipment.Status != ShipmentStatus.Preparing)
+            throw new InvalidOperationException("Chi co the xoa san pham khi lo hang dang chuan bi");
+
+        var item = await _context.ShipmentItems
+            .FirstOrDefaultAsync(i => i.Id == itemId && i.ShipmentId == shipmentId);
+        if (item == null) return false;
+
+        _context.ShipmentItems.Remove(item);
+        await _context.SaveChangesAsync();
+
+        var allItems = await _context.ShipmentItems
+            .AsNoTracking()
+            .Where(i => i.ShipmentId == shipmentId)
+            .ToListAsync();
+
+        var totalItems = allItems.Count;
+        var totalQty = allItems.Sum(i => i.ExpectedQuantity);
+        var totalVal = allItems.Sum(i => i.LineTotal ?? 0m);
+        var now = DateTime.UtcNow;
+
+        await _context.SupplierShipments
+            .Where(s => s.Id == shipmentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.TotalItems, totalItems)
+                .SetProperty(s => s.TotalQuantity, totalQty)
+                .SetProperty(s => s.TotalValue, totalVal)
+                .SetProperty(s => s.UpdatedAt, now));
+
+        return true;
+    }
+
+    public async Task<ShipmentDocumentDto> AddDocumentAsync(Guid shipmentId, AddShipmentDocumentRequest request)
+    {
+        return await AddDocumentAsync(shipmentId, Guid.Empty, request.DocumentType, request.FileName, request.FileUrl, request.MimeType, request.FileSize);
+    }
+
+    public async Task<bool> CancelShipmentAsync(Guid id, CancelShipmentRequest request)
+    {
+        return await CancelShipmentAsync(id, Guid.Empty, request.Reason);
+    }
+
+    public async Task<object> GetSupplierShipmentStatsAsync(Guid supplierId)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == supplierId);
+        if (supplier == null)
+            return new { total = 0, preparing = 0, delivering = 0, received = 0, success = 0, cancelled = 0 };
+
+        var shipments = await _context.SupplierShipments
+            .Where(s => s.SupplierId == supplier.Id)
+            .ToListAsync();
+
+        return new
+        {
+            total = shipments.Count,
+            preparing = shipments.Count(s => s.Status == ShipmentStatus.Preparing),
+            delivering = shipments.Count(s => s.Status == ShipmentStatus.Delivering),
+            received = shipments.Count(s => s.Status == ShipmentStatus.Received),
+            success = shipments.Count(s => s.Status == ShipmentStatus.Success),
+            cancelled = shipments.Count(s => s.Status == ShipmentStatus.Cancelled)
         };
     }
+
+    // =====================================================
+    // ADMIN OPERATIONS
+    // =====================================================
+
+    public async Task<bool> DeleteShipmentAsync(Guid id)
+    {
+        var shipment = await _context.SupplierShipments
+            .Include(s => s.Items)
+            .Include(s => s.Documents)
+            .Include(s => s.StatusHistory)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        if (shipment == null) return false;
+
+        _context.ShipmentStatusHistories.RemoveRange(shipment.StatusHistory);
+        _context.ShipmentDocuments.RemoveRange(shipment.Documents);
+        _context.ShipmentItems.RemoveRange(shipment.Items);
+        _context.SupplierShipments.Remove(shipment);
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    // =====================================================
+    // HELPERS
+    // =====================================================
 
     private static SupplierShipmentDto MapToDto(SupplierShipment shipment)
     {
@@ -451,6 +847,9 @@ public class ShipmentService : IShipmentService
             TotalItems = shipment.TotalItems,
             TotalQuantity = shipment.TotalQuantity,
             CreatedAt = shipment.CreatedAt,
+            InboundSessionId = shipment.InboundSessionId,
+            InboundSessionCode = shipment.InboundSession?.SessionCode,
+            InboundSessionSupplierId = shipment.InboundSessionSupplierId,
             Items = shipment.Items?.Select(i => new ShipmentItemDto
             {
                 Id = i.Id,
@@ -458,6 +857,8 @@ public class ShipmentService : IShipmentService
                 ProductName = i.Product?.Name,
                 ProductSku = i.Product?.Sku,
                 ExpectedQuantity = i.ExpectedQuantity,
+                ReceivedQuantity = i.ReceivedQuantity,
+                DamagedQuantity = i.DamagedQuantity,
                 Uom = i.Uom,
                 BatchNumber = i.BatchNumber,
                 ExpiryDate = i.ExpiryDate,
@@ -476,295 +877,6 @@ public class ShipmentService : IShipmentService
                 FileSize = d.FileSize,
                 UploadedAt = d.UploadedAt
             }).ToList() ?? new List<ShipmentDocumentDto>()
-        };
-    }
-
-    // Supplier-facing methods
-    public async Task<PagedResponse<SupplierShipmentDto>> GetShipmentsBySupplierAsync(Guid supplierId, int page, int pageSize, string? status)
-    {
-        var queryParams = new ShipmentQueryParams
-        {
-            Page = page,
-            PageSize = pageSize,
-            Status = status
-        };
-        // Convert Guid to int for SupplierId (assuming supplier has int ID in database)
-        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == supplierId);
-        if (supplier != null)
-        {
-            queryParams.SupplierId = supplier.Id;
-        }
-        return await GetShipmentsAsync(queryParams);
-    }
-
-    public async Task<SupplierShipmentDto> CreateShipmentAsync(CreateSupplierShipmentRequest request, Guid supplierId)
-    {
-        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == supplierId);
-        if (supplier == null)
-            throw new ArgumentException("Supplier not found");
-
-        // AUTO-ASSIGN WAREHOUSE BY REGION if not provided
-        Guid warehouseId;
-        if (request.WarehouseId.HasValue && request.WarehouseId.Value != Guid.Empty)
-        {
-            warehouseId = request.WarehouseId.Value;
-        }
-        else
-        {
-            // Determine region from supplier's city
-            var region = WarehouseService.DetermineRegionFromCity(supplier.AddressCity);
-            var warehouse = region != null 
-                ? await _context.Warehouses
-                    .Where(w => w.IsActive && w.Region != null && w.Region.ToLower() == region.ToLower())
-                    .FirstOrDefaultAsync()
-                : null;
-
-            // Fallback: use default warehouse
-            warehouse ??= await _context.Warehouses
-                .Where(w => w.IsActive && w.IsDefault)
-                .FirstOrDefaultAsync();
-
-            // Last resort: any active warehouse
-            warehouse ??= await _context.Warehouses
-                .Where(w => w.IsActive)
-                .FirstOrDefaultAsync();
-
-            if (warehouse == null)
-                throw new InvalidOperationException("No active warehouse available for assignment");
-
-            warehouseId = warehouse.Id;
-        }
-
-        // Convert to standard CreateShipmentRequest
-        var createRequest = new CreateShipmentRequest
-        {
-            WarehouseId = warehouseId,
-            ExternalReference = request.ExternalReference ?? Guid.NewGuid().ToString("N")[..12],
-            ExpectedDeliveryDate = request.ExpectedDeliveryDate,
-            Notes = request.Notes
-        };
-
-        return await CreateShipmentAsync(supplier.Id, supplierId, createRequest);
-    }
-
-    public async Task<SupplierShipmentDto?> UpdateShipmentAsync(Guid id, UpdateSupplierShipmentRequest request)
-    {
-        var shipment = await _context.SupplierShipments
-            .Include(s => s.Items)
-            .FirstOrDefaultAsync(s => s.Id == id);
-
-        if (shipment == null) return null;
-
-        if (shipment.Status != ShipmentStatus.Draft)
-            throw new InvalidOperationException("Only draft shipments can be updated");
-
-        if (request.ExpectedDeliveryDate.HasValue)
-            shipment.ExpectedDeliveryDate = request.ExpectedDeliveryDate.Value;
-        if (request.Notes != null)
-            shipment.Notes = request.Notes;
-        // UpdateSupplierShipmentRequest doesn't have DestinationWarehouseId, removed
-
-        shipment.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-        return await GetShipmentByIdAsync(id);
-    }
-
-    public async Task<SupplierShipmentDto?> AddShipmentItemAsync(Guid shipmentId, AddShipmentItemRequest request)
-    {
-        var shipment = await _context.SupplierShipments
-            .Include(s => s.Items)
-            .FirstOrDefaultAsync(s => s.Id == shipmentId);
-
-        if (shipment == null) return null;
-
-        if (shipment.Status != ShipmentStatus.Draft)
-            throw new InvalidOperationException("Cannot add items to non-draft shipment");
-
-        var item = new ShipmentItem
-        {
-            Id = Guid.NewGuid(),
-            ShipmentId = shipmentId,
-            ProductId = request.ProductId,
-            ExpectedQuantity = request.Quantity, // Changed from ExpectedQuantity
-            Uom = request.Uom ?? "pcs",
-            BatchNumber = request.BatchNumber,
-            ExpiryDate = request.ExpiryDate,
-            ManufactureDate = request.ManufactureDate,
-            UnitCost = request.UnitCost,
-            LineTotal = request.Quantity * (request.UnitCost ?? 0),
-            Notes = request.Notes,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        shipment.Items.Add(item);
-        shipment.TotalItems = shipment.Items.Count;
-        shipment.TotalQuantity = shipment.Items.Sum(i => i.ExpectedQuantity);
-        shipment.TotalValue = shipment.Items.Sum(i => i.LineTotal);
-        shipment.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return await GetShipmentByIdAsync(shipmentId);
-    }
-
-    public async Task<SupplierShipmentDto?> UpdateShipmentItemAsync(Guid shipmentId, Guid itemId, UpdateShipmentItemRequest request)
-    {
-        var shipment = await _context.SupplierShipments
-            .Include(s => s.Items)
-            .FirstOrDefaultAsync(s => s.Id == shipmentId);
-
-        if (shipment == null) return null;
-
-        if (shipment.Status != ShipmentStatus.Draft)
-            throw new InvalidOperationException("Cannot update items in non-draft shipment");
-
-        var item = shipment.Items.FirstOrDefault(i => i.Id == itemId);
-        if (item == null) return null;
-
-        if (request.Quantity.HasValue) // Changed from ExpectedQuantity
-            item.ExpectedQuantity = request.Quantity.Value;
-        if (request.BatchNumber != null)
-            item.BatchNumber = request.BatchNumber;
-        if (request.ExpiryDate.HasValue)
-            item.ExpiryDate = request.ExpiryDate;
-        if (request.UnitCost.HasValue)
-            item.UnitCost = request.UnitCost.Value;
-        if (request.Notes != null)
-            item.Notes = request.Notes;
-
-        item.LineTotal = item.ExpectedQuantity * item.UnitCost;
-
-        shipment.TotalQuantity = shipment.Items.Sum(i => i.ExpectedQuantity);
-        shipment.TotalValue = shipment.Items.Sum(i => i.LineTotal);
-        shipment.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return await GetShipmentByIdAsync(shipmentId);
-    }
-
-    public async Task<bool> RemoveShipmentItemAsync(Guid shipmentId, Guid itemId)
-    {
-        var shipment = await _context.SupplierShipments
-            .Include(s => s.Items)
-            .FirstOrDefaultAsync(s => s.Id == shipmentId);
-
-        if (shipment == null) return false;
-
-        if (shipment.Status != ShipmentStatus.Draft)
-            throw new InvalidOperationException("Cannot remove items from non-draft shipment");
-
-        var item = shipment.Items.FirstOrDefault(i => i.Id == itemId);
-        if (item == null) return false;
-
-        shipment.Items.Remove(item);
-        shipment.TotalItems = shipment.Items.Count;
-        shipment.TotalQuantity = shipment.Items.Sum(i => i.ExpectedQuantity);
-        shipment.TotalValue = shipment.Items.Sum(i => i.LineTotal);
-        shipment.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<ShipmentDocumentDto> AddDocumentAsync(Guid shipmentId, AddShipmentDocumentRequest request)
-    {
-        return await AddDocumentAsync(shipmentId, Guid.Empty, request.DocumentType, request.FileName, request.FileUrl, request.MimeType, request.FileSize);
-    }
-
-    public async Task<SupplierShipmentDto?> DispatchShipmentAsync(Guid id, DispatchShipmentRequest request)
-    {
-        var shipment = await _context.SupplierShipments.FindAsync(id);
-        if (shipment == null) return null;
-
-        if (shipment.Status != ShipmentStatus.Draft)
-            throw new InvalidOperationException("Only draft shipments can be dispatched");
-
-        // DOCUMENT CHECK: Require at least one document (biên lai / chứng từ giao hàng)
-        var hasDocuments = await _context.ShipmentDocuments
-            .AnyAsync(d => d.ShipmentId == id);
-        if (!hasDocuments)
-            throw new InvalidOperationException("Cannot dispatch shipment without uploaded documents (biên lai / chứng từ giao hàng). Please upload at least one document first.");
-
-        // ITEMS CHECK: Require at least one item
-        var hasItems = await _context.ShipmentItems
-            .AnyAsync(i => i.ShipmentId == id);
-        if (!hasItems)
-            throw new InvalidOperationException("Cannot dispatch shipment without items");
-
-        shipment.Status = ShipmentStatus.Dispatched;
-        shipment.ActualDispatchDate = request.ActualDispatchDate ?? DateTime.UtcNow;
-        shipment.TrackingNumber = request.TrackingNumber;
-        shipment.Carrier = request.Carrier;
-        shipment.UpdatedAt = DateTime.UtcNow;
-
-        // Add status history inline
-        var statusHistory = new ShipmentStatusHistory
-        {
-            Id = Guid.NewGuid(),
-            ShipmentId = shipment.Id,
-            NewStatus = ShipmentStatus.Dispatched,
-            ChangedBy = Guid.Empty,
-            Notes = request.Notes,
-            CreatedAt = DateTime.UtcNow
-        };
-        _context.ShipmentStatusHistories.Add(statusHistory);
-
-        await _context.SaveChangesAsync();
-        return await GetShipmentByIdAsync(id);
-    }
-
-    public async Task<SupplierShipmentDto?> MarkInTransitAsync(Guid id, UpdateTransitRequest request)
-    {
-        var shipment = await _context.SupplierShipments.FindAsync(id);
-        if (shipment == null) return null;
-
-        if (shipment.Status != ShipmentStatus.Dispatched)
-            throw new InvalidOperationException("Shipment must be dispatched before marking in transit");
-
-        shipment.Status = ShipmentStatus.InTransit;
-        if (request.NewEta.HasValue)
-            shipment.ExpectedDeliveryDate = request.NewEta.Value;
-        shipment.UpdatedAt = DateTime.UtcNow;
-
-        // Add status history inline
-        var statusHistory = new ShipmentStatusHistory
-        {
-            Id = Guid.NewGuid(),
-            ShipmentId = shipment.Id,
-            NewStatus = ShipmentStatus.InTransit,
-            ChangedBy = Guid.Empty,
-            Notes = request.Notes,
-            CreatedAt = DateTime.UtcNow
-        };
-        _context.ShipmentStatusHistories.Add(statusHistory);
-
-        await _context.SaveChangesAsync();
-        return await GetShipmentByIdAsync(id);
-    }
-
-    public async Task<bool> CancelShipmentAsync(Guid id, CancelShipmentRequest request)
-    {
-        return await CancelShipmentAsync(id, Guid.Empty, request.Reason);
-    }
-
-    public async Task<object> GetSupplierShipmentStatsAsync(Guid supplierId)
-    {
-        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == supplierId);
-        if (supplier == null)
-            return new { total = 0, draft = 0, dispatched = 0, inTransit = 0, arrived = 0 };
-
-        var shipments = await _context.SupplierShipments
-            .Where(s => s.SupplierId == supplier.Id)
-            .ToListAsync();
-
-        return new
-        {
-            total = shipments.Count,
-            draft = shipments.Count(s => s.Status == ShipmentStatus.Draft),
-            dispatched = shipments.Count(s => s.Status == ShipmentStatus.Dispatched),
-            inTransit = shipments.Count(s => s.Status == ShipmentStatus.InTransit),
-            arrived = shipments.Count(s => s.Status == ShipmentStatus.Arrived),
-            inspected = shipments.Count(s => s.Status == ShipmentStatus.Inspected),
-            stored = shipments.Count(s => s.Status == ShipmentStatus.Stored)
         };
     }
 }

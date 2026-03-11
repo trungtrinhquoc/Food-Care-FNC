@@ -29,6 +29,7 @@ import {
   type SupplierOrder,
   type SupplierStats,
   type UpdateProfileRequest,
+  type SupplierRegistration,
 } from '../../services/supplier/supplierApi';
 
 export default function SupplierDashboardPage() {
@@ -88,37 +89,49 @@ export default function SupplierDashboardPage() {
   }, []);
 
   const loadAllData = () => {
-    loadProfile();
+    loadProfileAndRegistration();
     loadStats();
     loadOrders();
     loadProducts();
-    loadRegistrationStatus();
   };
 
-  const loadRegistrationStatus = async () => {
-    try {
-      const data = await registrationApi.getStatus();
-      setIsRegistrationApproved(data.registrationStatus === 'approved');
-    } catch {
-      setIsRegistrationApproved(false);
-    }
-  };
-
-  const loadProfile = async () => {
+  // Load profile and registration in parallel, merge registration data into profile form
+  const loadProfileAndRegistration = async () => {
     try {
       setLoadingProfile(true);
-      const data = await profileApi.getProfile();
-      setProfile(data);
+      const [profileData, regData] = await Promise.allSettled([
+        profileApi.getProfile(),
+        registrationApi.getStatus(),
+      ]);
+
+      const profile = profileData.status === 'fulfilled' ? profileData.value : null;
+      const reg: SupplierRegistration | null = regData.status === 'fulfilled' ? regData.value : null;
+
+      if (profile) setProfile(profile);
+      if (reg) {
+        setIsRegistrationApproved(reg.registrationStatus === 'approved');
+      }
+
+      // Merge: profile fields take priority; fall back to registration data when profile field is empty
       setProfileForm({
-        name: data.name,
-        contactEmail: data.contactEmail,
-        phone: data.phone,
-        address: data.address,
-        contactPerson: data.contactPerson,
-        taxCode: data.taxCode,
+        name: profile?.name || reg?.businessName || '',
+        contactEmail: profile?.contactEmail || reg?.contactEmail || '',
+        phone: profile?.phone || reg?.contactPhone || '',
+        contactPerson: profile?.contactPerson || reg?.contactName || '',
+        taxCode: profile?.taxCode || reg?.taxCode || '',
+        addressStreet: profile?.addressStreet || reg?.addressStreet || '',
+        addressWard: profile?.addressWard || reg?.addressWard || '',
+        addressDistrict: profile?.addressDistrict || reg?.addressDistrict || '',
+        addressCity: profile?.addressCity || reg?.addressCity || '',
+        address: profile?.address || [
+          reg?.addressStreet,
+          reg?.addressWard,
+          reg?.addressDistrict,
+          reg?.addressCity,
+        ].filter(Boolean).join(', ') || '',
       });
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      console.error('Failed to load profile/registration:', error);
     } finally {
       setLoadingProfile(false);
     }
@@ -194,6 +207,8 @@ export default function SupplierDashboardPage() {
       const updated = await profileApi.updateProfile(profileForm);
       setProfile(updated);
       toast.success('Đã cập nhật thông tin');
+      // Reload to re-sync with latest data
+      await loadProfileAndRegistration();
     } catch (error) {
       console.error('Failed to update profile:', error);
       toast.error('Không thể cập nhật thông tin');

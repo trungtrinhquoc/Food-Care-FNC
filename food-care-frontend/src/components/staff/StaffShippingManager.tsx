@@ -102,7 +102,7 @@ function InboundSection({ onRefresh }: InboundSectionProps) {
     };
 
     const getStatusBadge = (status: string) => {
-        const config = SHIPMENT_STATUS_CONFIG[status] || SHIPMENT_STATUS_CONFIG.Draft;
+        const config = SHIPMENT_STATUS_CONFIG[status] || SHIPMENT_STATUS_CONFIG.Preparing;
         return (
             <Badge className={`${config.bgColor} ${config.color} border-0`}>
                 {config.label}
@@ -294,18 +294,7 @@ function InboundSection({ onRefresh }: InboundSectionProps) {
                                         <TableCell>{getStatusBadge(shipment.status)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                {shipment.status === 'InTransit' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleMarkArrived(shipment.id)}
-                                                        disabled={actionLoading}
-                                                    >
-                                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                                        Đã đến
-                                                    </Button>
-                                                )}
-                                                {shipment.status === 'Arrived' && (
+                                                {shipment.status === 'Delivering' && (
                                                     <Button
                                                         size="sm"
                                                         variant="default"
@@ -313,10 +302,10 @@ function InboundSection({ onRefresh }: InboundSectionProps) {
                                                         disabled={actionLoading}
                                                     >
                                                         <ClipboardCheck className="h-4 w-4 mr-1" />
-                                                        Kiểm tra
+                                                        Nhận hàng
                                                     </Button>
                                                 )}
-                                                {shipment.status === 'Inspected' && (
+                                                {shipment.status === 'Received' && (
                                                     <Button
                                                         size="sm"
                                                         className="bg-emerald-600 hover:bg-emerald-700"
@@ -324,7 +313,7 @@ function InboundSection({ onRefresh }: InboundSectionProps) {
                                                         disabled={actionLoading}
                                                     >
                                                         <Store className="h-4 w-4 mr-1" />
-                                                        Lưu kho
+                                                        Hoàn tất
                                                     </Button>
                                                 )}
                                                 <Button

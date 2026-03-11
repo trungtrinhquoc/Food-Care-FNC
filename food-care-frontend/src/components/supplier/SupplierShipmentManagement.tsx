@@ -185,6 +185,18 @@ export const SupplierShipmentManagement: React.FC = () => {
     }
   };
 
+  const handleSubmitForApproval = async (id: string) => {
+    try {
+      await shipmentsApi.submitForApproval(id);
+      await loadShipments();
+      toast.success('Đã gửi yêu cầu duyệt lô hàng');
+    } catch (error: unknown) {
+      console.error('Error submitting for approval:', error);
+      const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gửi yêu cầu duyệt thất bại';
+      toast.error(msg);
+    }
+  };
+
   const handleViewDetail = async (shipment: SupplierShipment) => {
     // In production, fetch full details with items
     setSelectedShipment({
@@ -238,19 +250,24 @@ export const SupplierShipmentManagement: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
-      Draft: { variant: 'outline', icon: <Package className="h-3 w-3" /> },
-      Dispatched: { variant: 'secondary', icon: <Send className="h-3 w-3" /> },
-      InTransit: { variant: 'default', icon: <Truck className="h-3 w-3" /> },
-      Arrived: { variant: 'default', icon: <CheckCircle className="h-3 w-3" /> },
-      Received: { variant: 'default', icon: <CheckCircle className="h-3 w-3" /> },
+    const statusMap: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
+      Draft: { variant: 'outline', icon: <Package className="h-3 w-3" />, label: 'Nháp' },
+      Submitted: { variant: 'secondary', icon: <Send className="h-3 w-3" />, label: 'Chờ duyệt' },
+      AdminApproved: { variant: 'default', icon: <CheckCircle className="h-3 w-3" />, label: 'Đã duyệt' },
+      AdminRejected: { variant: 'destructive', icon: <Package className="h-3 w-3" />, label: 'Bị từ chối' },
+      Dispatched: { variant: 'secondary', icon: <Send className="h-3 w-3" />, label: 'Đã gửi' },
+      InTransit: { variant: 'default', icon: <Truck className="h-3 w-3" />, label: 'Đang vận chuyển' },
+      Arrived: { variant: 'default', icon: <CheckCircle className="h-3 w-3" />, label: 'Đã đến kho' },
+      Received: { variant: 'default', icon: <CheckCircle className="h-3 w-3" />, label: 'Đã nhận' },
+      OnHold: { variant: 'secondary', icon: <Package className="h-3 w-3" />, label: 'Tạm dừng' },
+      Cancelled: { variant: 'destructive', icon: <Package className="h-3 w-3" />, label: 'Đã hủy' },
     };
 
-    const config = statusMap[status] || statusMap.Draft;
+    const config = statusMap[status] || { variant: 'outline' as const, icon: <Package className="h-3 w-3" />, label: status };
     return (
       <Badge variant={config.variant} className="gap-1">
         {config.icon}
-        {status}
+        {config.label}
       </Badge>
     );
   };
@@ -266,9 +283,13 @@ export const SupplierShipmentManagement: React.FC = () => {
   const stats = {
     total: shipments.length,
     draft: shipments.filter(s => s.status === 'Draft').length,
+    submitted: shipments.filter(s => s.status === 'Submitted').length,
+    approved: shipments.filter(s => s.status === 'AdminApproved').length,
+    rejected: shipments.filter(s => s.status === 'AdminRejected').length,
     dispatched: shipments.filter(s => s.status === 'Dispatched').length,
     inTransit: shipments.filter(s => s.status === 'InTransit').length,
     arrived: shipments.filter(s => s.status === 'Arrived' || s.status === 'Received').length,
+    onHold: shipments.filter(s => s.status === 'OnHold').length,
   };
 
   return (
@@ -288,7 +309,7 @@ export const SupplierShipmentManagement: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -299,6 +320,18 @@ export const SupplierShipmentManagement: React.FC = () => {
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-gray-600">{stats.draft}</div>
             <p className="text-sm text-muted-foreground">Draft</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-yellow-600">{stats.submitted}</div>
+            <p className="text-sm text-muted-foreground">Chờ duyệt</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-emerald-600">{stats.approved}</div>
+            <p className="text-sm text-muted-foreground">Đã duyệt</p>
           </CardContent>
         </Card>
         <Card>
@@ -319,6 +352,22 @@ export const SupplierShipmentManagement: React.FC = () => {
             <p className="text-sm text-muted-foreground">Arrived/Received</p>
           </CardContent>
         </Card>
+        {stats.rejected > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+              <p className="text-sm text-muted-foreground">Bị từ chối</p>
+            </CardContent>
+          </Card>
+        )}
+        {stats.onHold > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-amber-600">{stats.onHold}</div>
+              <p className="text-sm text-muted-foreground">Tạm dừng</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filters */}
@@ -429,12 +478,32 @@ export const SupplierShipmentManagement: React.FC = () => {
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => handleDispatch(shipment.id)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                                onClick={() => handleSubmitForApproval(shipment.id)}
                               >
                                 <Send className="h-4 w-4 mr-1" />
-                                Dispatch
+                                Gửi duyệt
                               </Button>
                             </>
+                          )}
+                          {shipment.status === 'AdminApproved' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleDispatch(shipment.id)}
+                            >
+                              <Truck className="h-4 w-4 mr-1" />
+                              Dispatch
+                            </Button>
+                          )}
+                          {shipment.status === 'AdminRejected' && shipment.rejectionReason && (
+                            <span className="text-xs text-red-600 max-w-[150px] truncate" title={shipment.rejectionReason}>
+                              Lý do: {shipment.rejectionReason}
+                            </span>
+                          )}
+                          {shipment.status === 'OnHold' && shipment.adminHoldReason && (
+                            <span className="text-xs text-amber-600 max-w-[150px] truncate" title={shipment.adminHoldReason}>
+                              Lý do: {shipment.adminHoldReason}
+                            </span>
                           )}
                         </div>
                       </TableCell>

@@ -99,8 +99,8 @@ public class ReceiptService : IReceiptService
         if (shipment == null)
             throw new ArgumentException("Shipment not found");
 
-        if (shipment.Status != ShipmentStatus.Arrived)
-            throw new InvalidOperationException("Shipment must be in 'arrived' status to create receipt");
+        if (shipment.Status != ShipmentStatus.Received)
+            throw new InvalidOperationException("Shipment must be in 'Received' status to create receipt");
 
         // Check if receipt already exists
         var existingReceipt = await _context.Receipts.AnyAsync(r => r.ShipmentId == request.ShipmentId);
@@ -257,7 +257,7 @@ public class ReceiptService : IReceiptService
         var shipment = await _context.SupplierShipments.FindAsync(receipt.ShipmentId);
         if (shipment != null)
         {
-            shipment.Status = ShipmentStatus.Inspected;
+            shipment.Status = ShipmentStatus.Received;
             shipment.UpdatedAt = DateTime.UtcNow;
 
             // Add shipment history
@@ -265,8 +265,8 @@ public class ReceiptService : IReceiptService
             {
                 Id = Guid.NewGuid(),
                 ShipmentId = shipment.Id,
-                PreviousStatus = ShipmentStatus.Arrived,
-                NewStatus = ShipmentStatus.Inspected,
+                PreviousStatus = ShipmentStatus.Received,
+                NewStatus = ShipmentStatus.Received,
                 Notes = $"Inspection completed: {receipt.TotalAccepted}/{receipt.TotalExpected} accepted",
                 ChangedBy = staffId,
                 CreatedAt = DateTime.UtcNow
@@ -330,15 +330,15 @@ public class ReceiptService : IReceiptService
         // Update shipment status to 'stored'
         if (receipt.Shipment != null)
         {
-            receipt.Shipment.Status = ShipmentStatus.Stored;
+            receipt.Shipment.Status = ShipmentStatus.Success;
             receipt.Shipment.UpdatedAt = DateTime.UtcNow;
 
             _context.ShipmentStatusHistories.Add(new ShipmentStatusHistory
             {
                 Id = Guid.NewGuid(),
                 ShipmentId = receipt.Shipment.Id,
-                PreviousStatus = ShipmentStatus.Inspected,
-                NewStatus = ShipmentStatus.Stored,
+                PreviousStatus = ShipmentStatus.Received,
+                NewStatus = ShipmentStatus.Success,
                 Notes = "Items stored in inventory",
                 ChangedBy = staffId,
                 CreatedAt = DateTime.UtcNow

@@ -472,23 +472,30 @@ export default function CheckoutPage() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label className="text-sm font-semibold">Địa chỉ cụ thể *</Label>
-                                                <Input
-                                                    name="address"
-                                                    placeholder="Số nhà, tên đường..."
-                                                    value={formData.address}
-                                                    onChange={handleChange}
-                                                    className="h-11"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-semibold">Tỉnh/Thành, Quận/Huyện, Phường/Xã *</Label>
+                                                <Label className="text-sm font-semibold">Địa chỉ giao hàng *</Label>
                                                 <AddressSelector
-                                                    value={address}
-                                                    onChange={(value) =>
-                                                        setAddress(prev => ({ ...prev, ...value }))
-                                                    }
+                                                    value={{
+                                                        province: address.province,
+                                                        district: address.district,
+                                                        ward: address.ward,
+                                                        street: formData.address,
+                                                    }}
+                                                    onChange={(val) => {
+                                                        setAddress(prev => ({
+                                                            ...prev,
+                                                            province: val.province || '',
+                                                            district: val.district || '',
+                                                            ward: val.ward || '',
+                                                        }));
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            address: val.street || '',
+                                                            city: val.province || '',
+                                                            district: val.district || '',
+                                                            ward: val.ward || '',
+                                                        }));
+                                                    }}
+                                                    showStreet={true}
                                                 />
                                             </div>
                                         </div>

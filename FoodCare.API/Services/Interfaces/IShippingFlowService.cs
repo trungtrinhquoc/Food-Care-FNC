@@ -12,9 +12,14 @@ public interface IShippingFlowService
     Task<SupplierShipmentResponseDto> CreateSupplierShipmentAsync(int supplierId, CreateSupplierShipmentDto dto);
     
     /// <summary>
-    /// Supplier updates shipment status (Dispatch, update tracking)
+    /// Supplier updates shipment status (Delivering, update tracking)
     /// </summary>
     Task<SupplierShipmentResponseDto> UpdateSupplierShipmentStatusAsync(int supplierId, Guid shipmentId, UpdateSupplierShipmentStatusDto dto);
+    
+    /// <summary>
+    /// Supplier starts delivering shipment (Preparing → Delivering)
+    /// </summary>
+    Task<SupplierShipmentResponseDto> SubmitShipmentForApprovalAsync(int supplierId, Guid shipmentId);
     
     /// <summary>
     /// Get shipments for supplier

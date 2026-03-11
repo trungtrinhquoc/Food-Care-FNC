@@ -213,48 +213,21 @@ public class SupplierShipmentController : ControllerBase
     }
 
     /// <summary>
-    /// Dispatch shipment (mark as sent)
+    /// Start delivering shipment (Preparing -> Delivering)
     /// </summary>
-    [HttpPost("{id}/dispatch")]
-    public async Task<ActionResult<SupplierShipmentDto>> DispatchShipment(Guid id, [FromBody] DispatchShipmentRequest request)
+    [HttpPost("{id}/start-delivering")]
+    public async Task<ActionResult<SupplierShipmentDto>> StartDelivering(Guid id, [FromBody] StartDeliveringRequest request)
     {
         var supplierIntId = await GetSupplierIntIdAsync();
         if (supplierIntId == null) return Forbid("Supplier ID required");
 
-        // Verify ownership
         var existing = await _shipmentService.GetShipmentByIdAsync(id);
         if (existing == null) return NotFound();
         if (existing.SupplierId != supplierIntId.Value) return Forbid();
 
         try
         {
-            var shipment = await _shipmentService.DispatchShipmentAsync(id, request);
-            if (shipment == null) return NotFound();
-            return Ok(shipment);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Mark shipment as in transit
-    /// </summary>
-    [HttpPost("{id}/in-transit")]
-    public async Task<ActionResult<SupplierShipmentDto>> MarkInTransit(Guid id, [FromBody] UpdateTransitRequest request)
-    {
-        var supplierIntId = await GetSupplierIntIdAsync();
-        if (supplierIntId == null) return Forbid("Supplier ID required");
-
-        // Verify ownership
-        var existing = await _shipmentService.GetShipmentByIdAsync(id);
-        if (existing == null) return NotFound();
-        if (existing.SupplierId != supplierIntId.Value) return Forbid();
-
-        try
-        {
-            var shipment = await _shipmentService.MarkInTransitAsync(id, request);
+            var shipment = await _shipmentService.StartDeliveringAsync(id, request);
             if (shipment == null) return NotFound();
             return Ok(shipment);
         }

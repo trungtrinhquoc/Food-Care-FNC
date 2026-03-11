@@ -11,6 +11,8 @@ import { Button } from './Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
+import { AddressSelector } from '../AddressSelector';
+import type { AddressValue } from '../AddressSelector';
 import type { Supplier, SupplierFormData } from '../../types/admin';
 
 const defaultFormData: SupplierFormData = {
@@ -18,6 +20,10 @@ const defaultFormData: SupplierFormData = {
   email: '',
   phone: '',
   address: '',
+  addressStreet: '',
+  addressWard: '',
+  addressDistrict: '',
+  addressCity: '',
   contact: '',
   products: '',
 };
@@ -60,6 +66,10 @@ export function SupplierDialog({
         email: editingSupplier.email,
         phone: editingSupplier.phone,
         address: editingSupplier.address || '',
+        addressStreet: '',
+        addressWard: '',
+        addressDistrict: '',
+        addressCity: '',
         contact: editingSupplier.contact || '',
         products: editingSupplier.products?.join(', ') || '',
       });
@@ -114,10 +124,27 @@ export function SupplierDialog({
           </div>
           <div>
             <Label>Địa chỉ</Label>
-            <Input
-              value={supplierForm.address}
-              onChange={(e) => updateForm('address', e.target.value)}
-              placeholder="KCN Tân Bình, TP.HCM"
+            <AddressSelector
+              value={{
+                street: supplierForm.addressStreet || '',
+                province: supplierForm.addressCity || undefined,
+                district: supplierForm.addressDistrict || undefined,
+                ward: supplierForm.addressWard || undefined,
+              }}
+              onChange={(val: AddressValue) => {
+                const street = val.street ?? '';
+                const ward = val.ward ?? '';
+                const district = val.district ?? '';
+                const city = val.province ?? '';
+                // Update structured fields
+                updateForm('addressStreet', street);
+                updateForm('addressWard', ward);
+                updateForm('addressDistrict', district);
+                updateForm('addressCity', city);
+                // Also update legacy flat address
+                updateForm('address', [street, ward, district, city].filter(Boolean).join(', '));
+              }}
+              showStreet={true}
             />
           </div>
           <div>

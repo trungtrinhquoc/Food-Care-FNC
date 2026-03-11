@@ -12,7 +12,6 @@ public interface IShipmentService
     Task<SupplierShipmentDto?> GetShipmentByIdAsync(Guid id);
     Task<SupplierShipmentDto?> GetShipmentByReferenceAsync(string externalReference);
     Task<SupplierShipmentDto> CreateShipmentAsync(int supplierId, Guid userId, CreateShipmentRequest request);
-    Task<SupplierShipmentDto?> UpdateShipmentStatusAsync(Guid id, Guid userId, UpdateShipmentStatusRequest request);
     Task<bool> CancelShipmentAsync(Guid id, Guid userId, string? reason = null);
     
     // Shipment items
@@ -37,8 +36,14 @@ public interface IShipmentService
     Task<SupplierShipmentDto?> UpdateShipmentItemAsync(Guid shipmentId, Guid itemId, UpdateShipmentItemRequest request);
     Task<bool> RemoveShipmentItemAsync(Guid shipmentId, Guid itemId);
     Task<ShipmentDocumentDto> AddDocumentAsync(Guid shipmentId, AddShipmentDocumentRequest request);
-    Task<SupplierShipmentDto?> DispatchShipmentAsync(Guid id, DispatchShipmentRequest request);
-    Task<SupplierShipmentDto?> MarkInTransitAsync(Guid id, UpdateTransitRequest request);
     Task<bool> CancelShipmentAsync(Guid id, CancelShipmentRequest request);
     Task<object> GetSupplierShipmentStatsAsync(Guid supplierId);
+
+    // Simplified status transitions
+    Task<SupplierShipmentDto?> StartDeliveringAsync(Guid id, StartDeliveringRequest request);
+    Task<SupplierShipmentDto?> ConfirmReceivedAsync(Guid id, ConfirmReceivedRequest request);
+    Task<SupplierShipmentDto?> CompleteShipmentAsync(Guid id);
+
+    // Admin operations
+    Task<bool> DeleteShipmentAsync(Guid id);
 }

@@ -35,7 +35,7 @@ public class SupplierShipment
     public Guid WarehouseId { get; set; }
 
     [Column("status")]
-    public ShipmentStatus Status { get; set; } = ShipmentStatus.Draft;
+    public ShipmentStatus Status { get; set; } = ShipmentStatus.Preparing;
 
     [Column("expected_delivery_date")]
     public DateTime ExpectedDeliveryDate { get; set; }
@@ -76,6 +76,56 @@ public class SupplierShipment
     [Column("updated_at")]
     public DateTime? UpdatedAt { get; set; }
 
+    // =====================================================
+    // Admin Governance Fields
+    // =====================================================
+
+    [Column("submitted_at")]
+    public DateTime? SubmittedAt { get; set; }
+
+    [Column("approved_by")]
+    public Guid? ApprovedBy { get; set; }
+
+    [Column("approved_at")]
+    public DateTime? ApprovedAt { get; set; }
+
+    [Column("rejection_reason")]
+    public string? RejectionReason { get; set; }
+
+    [Column("rejected_at")]
+    public DateTime? RejectedAt { get; set; }
+
+    [Column("admin_hold_reason")]
+    public string? AdminHoldReason { get; set; }
+
+    [Column("held_at")]
+    public DateTime? HeldAt { get; set; }
+
+    [Column("held_by")]
+    public Guid? HeldBy { get; set; }
+
+    [Column("invoice_url")]
+    public string? InvoiceUrl { get; set; }
+
+    [Column("packing_list_url")]
+    public string? PackingListUrl { get; set; }
+
+    // =====================================================
+    // Inbound Session Link
+    // =====================================================
+
+    /// <summary>
+    /// Optional link to the inbound session this shipment was created from
+    /// </summary>
+    [Column("inbound_session_id")]
+    public Guid? InboundSessionId { get; set; }
+
+    /// <summary>
+    /// Optional link to the specific supplier registration for the session
+    /// </summary>
+    [Column("inbound_session_supplier_id")]
+    public Guid? InboundSessionSupplierId { get; set; }
+
     // Navigation properties
     [ForeignKey("SupplierId")]
     public virtual Supplier Supplier { get; set; } = null!;
@@ -85,6 +135,18 @@ public class SupplierShipment
 
     [ForeignKey("CreatedBy")]
     public virtual User? Creator { get; set; }
+
+    [ForeignKey("ApprovedBy")]
+    public virtual User? ApprovedByUser { get; set; }
+
+    [ForeignKey("HeldBy")]
+    public virtual User? HeldByUser { get; set; }
+
+    [ForeignKey("InboundSessionId")]
+    public virtual InboundSession? InboundSession { get; set; }
+
+    [ForeignKey("InboundSessionSupplierId")]
+    public virtual InboundSessionSupplier? InboundSessionSupplier { get; set; }
 
     public virtual ICollection<ShipmentItem> Items { get; set; } = new List<ShipmentItem>();
     public virtual ICollection<ShipmentDocument> Documents { get; set; } = new List<ShipmentDocument>();

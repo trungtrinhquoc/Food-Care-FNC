@@ -73,6 +73,10 @@ export function SuppliersTab() {
     email: "",
     phone: "",
     address: "",
+    addressStreet: "",
+    addressWard: "",
+    addressDistrict: "",
+    addressCity: "",
     contact: "",
     products: "",
   });
@@ -132,6 +136,10 @@ export function SuppliersTab() {
       email: "",
       phone: "",
       address: "",
+      addressStreet: "",
+      addressWard: "",
+      addressDistrict: "",
+      addressCity: "",
       contact: "",
       products: "",
     });
@@ -145,6 +153,10 @@ export function SuppliersTab() {
       email: supplier.email,
       phone: supplier.phone,
       address: supplier.address,
+      addressStreet: "",
+      addressWard: "",
+      addressDistrict: "",
+      addressCity: "",
       contact: supplier.contact,
       products: supplier.products.join(", "),
     });

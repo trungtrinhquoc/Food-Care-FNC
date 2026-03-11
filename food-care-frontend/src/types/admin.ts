@@ -289,6 +289,10 @@ export interface SupplierFormData {
   email: string;
   phone: string;
   address: string;
+  addressStreet: string;
+  addressWard: string;
+  addressDistrict: string;
+  addressCity: string;
   contact: string;
   products: string;
 }

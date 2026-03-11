@@ -36,13 +36,27 @@ public class InboundSessionExpiryService : BackgroundService
             {
                 await CloseExpiredSessionsAsync(stoppingToken);
             }
+            catch (OperationCanceledException)
+            {
+                // Normal shutdown — stop cleanly without crashing the host
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking expired inbound sessions");
             }
 
-            await Task.Delay(CheckInterval, stoppingToken);
+            try
+            {
+                await Task.Delay(CheckInterval, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
+
+        _logger.LogInformation("InboundSessionExpiryService stopped");
     }
 
     private async Task CloseExpiredSessionsAsync(CancellationToken ct)

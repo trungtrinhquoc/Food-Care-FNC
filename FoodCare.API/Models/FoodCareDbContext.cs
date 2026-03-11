@@ -67,6 +67,9 @@ public partial class FoodCareDbContext : DbContext {
     public DbSet<ChatFaq> ChatFaqs { get; set; }
     public DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
 
+    // Admin Governance DbSets
+    public DbSet<AdminActionLog> AdminActionLogs { get; set; }
+
     // Inbound Session Module DbSets (Phiên nhập kho)
     public DbSet<InboundSession> InboundSessions { get; set; }
     public DbSet<InboundReceipt> InboundReceipts { get; set; }
@@ -923,7 +926,7 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.ExternalReference).HasColumnName("external_reference").HasMaxLength(100).IsRequired();
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id").IsRequired();
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired();
-            entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(ShipmentStatus.Draft);
+            entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(ShipmentStatus.Preparing);
             entity.Property(e => e.ExpectedDeliveryDate).HasColumnName("expected_delivery_date").IsRequired();
             entity.Property(e => e.ActualDispatchDate).HasColumnName("actual_dispatch_date");
             entity.Property(e => e.ActualArrivalDate).HasColumnName("actual_arrival_date");
@@ -941,6 +944,48 @@ public partial class FoodCareDbContext : DbContext {
             entity.HasOne(e => e.Creator).WithMany().HasForeignKey(e => e.CreatedBy).OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.ExternalReference);
             entity.HasIndex(e => e.Status);
+
+            // Admin governance columns
+            entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.RejectedAt).HasColumnName("rejected_at");
+            entity.Property(e => e.AdminHoldReason).HasColumnName("admin_hold_reason");
+            entity.Property(e => e.HeldAt).HasColumnName("held_at");
+            entity.Property(e => e.HeldBy).HasColumnName("held_by");
+            entity.Property(e => e.InvoiceUrl).HasColumnName("invoice_url");
+            entity.Property(e => e.PackingListUrl).HasColumnName("packing_list_url");
+            entity.HasOne(e => e.ApprovedByUser).WithMany().HasForeignKey(e => e.ApprovedBy).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.HeldByUser).WithMany().HasForeignKey(e => e.HeldBy).OnDelete(DeleteBehavior.SetNull);
+
+            // Inbound session link
+            entity.Property(e => e.InboundSessionId).HasColumnName("inbound_session_id");
+            entity.Property(e => e.InboundSessionSupplierId).HasColumnName("inbound_session_supplier_id");
+            entity.HasOne(e => e.InboundSession).WithMany().HasForeignKey(e => e.InboundSessionId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.InboundSessionSupplier).WithMany(iss => iss.Shipments).HasForeignKey(e => e.InboundSessionSupplierId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // AdminActionLog
+        modelBuilder.Entity<AdminActionLog>(entity => {
+            entity.ToTable("admin_action_logs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.EntityId).HasColumnName("entity_id").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.AdminId).HasColumnName("admin_id").IsRequired();
+            entity.Property(e => e.Action).HasColumnName("action").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.OldStatus).HasColumnName("old_status").HasMaxLength(50);
+            entity.Property(e => e.NewStatus).HasColumnName("new_status").HasMaxLength(50);
+            entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.Metadata).HasColumnName("metadata").HasColumnType("jsonb");
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Admin).WithMany().HasForeignKey(e => e.AdminId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.EntityType, e.EntityId });
+            entity.HasIndex(e => e.AdminId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.Action);
         });
 
         // ShipmentItem

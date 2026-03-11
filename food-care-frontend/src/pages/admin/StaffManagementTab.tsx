@@ -655,7 +655,19 @@ function WarehouseStaffPage({ warehouse, onBack }: WarehouseStaffPageProps) {
               <Label>Chức vụ *</Label>
               <Select
                 value={createForm.staffPositionEnum}
-                onValueChange={(v) => setCreateForm(f => ({ ...f, staffPositionEnum: v as StaffPositionEnum }))}
+                onValueChange={(v) => {
+                  const hasAccess = SYSTEM_ACCESS_POSITIONS.includes(v as StaffPositionEnum);
+                  setCreateForm(f => ({
+                    ...f,
+                    staffPositionEnum: v as StaffPositionEnum,
+                    ...(!hasAccess ? {
+                      canApproveReceipts: false,
+                      canAdjustInventory: false,
+                      canOverrideFifo: false,
+                      canCreateInboundSession: false,
+                    } : {}),
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn chức vụ" />
@@ -693,44 +705,53 @@ function WarehouseStaffPage({ warehouse, onBack }: WarehouseStaffPageProps) {
             </div>
 
             <div className="space-y-3 border-t pt-3">
-              <Label className="text-gray-500">Quyền hạn</Label>
               <div className="flex items-center justify-between">
+                <Label className="text-gray-500">Quyền hạn</Label>
+                {!checkCanAccessSystem(createForm.staffPositionEnum) && (
+                  <span className="text-xs text-orange-500 font-medium">Không áp dụng (chức vụ không truy cập HT)</span>
+                )}
+              </div>
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(createForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Duyệt phiếu nhập</span>
                 </div>
                 <Switch
                   checked={createForm.canApproveReceipts}
+                  disabled={!checkCanAccessSystem(createForm.staffPositionEnum)}
                   onCheckedChange={(v) => setCreateForm(f => ({ ...f, canApproveReceipts: v }))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(createForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Settings className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Điều chỉnh tồn kho</span>
                 </div>
                 <Switch
                   checked={createForm.canAdjustInventory}
+                  disabled={!checkCanAccessSystem(createForm.staffPositionEnum)}
                   onCheckedChange={(v) => setCreateForm(f => ({ ...f, canAdjustInventory: v }))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(createForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Override FIFO</span>
                 </div>
                 <Switch
                   checked={createForm.canOverrideFifo}
+                  disabled={!checkCanAccessSystem(createForm.staffPositionEnum)}
                   onCheckedChange={(v) => setCreateForm(f => ({ ...f, canOverrideFifo: v }))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(createForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <PackagePlus className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Tạo phiên nhập kho</span>
                 </div>
                 <Switch
                   checked={createForm.canCreateInboundSession}
+                  disabled={!checkCanAccessSystem(createForm.staffPositionEnum)}
                   onCheckedChange={(v) => setCreateForm(f => ({ ...f, canCreateInboundSession: v }))}
                 />
               </div>
@@ -775,7 +796,19 @@ function WarehouseStaffPage({ warehouse, onBack }: WarehouseStaffPageProps) {
               <Label>Chức vụ</Label>
               <Select
                 value={editForm.staffPositionEnum || "WarehouseStaff"}
-                onValueChange={(v) => setEditForm(f => ({ ...f, staffPositionEnum: v as StaffPositionEnum }))}
+                onValueChange={(v) => {
+                  const hasAccess = SYSTEM_ACCESS_POSITIONS.includes(v as StaffPositionEnum);
+                  setEditForm(f => ({
+                    ...f,
+                    staffPositionEnum: v as StaffPositionEnum,
+                    ...(!hasAccess ? {
+                      canApproveReceipts: false,
+                      canAdjustInventory: false,
+                      canOverrideFifo: false,
+                      canCreateInboundSession: false,
+                    } : {}),
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -808,44 +841,53 @@ function WarehouseStaffPage({ warehouse, onBack }: WarehouseStaffPageProps) {
             </div>
 
             <div className="space-y-3 border-t pt-3">
-              <Label className="text-gray-500">Quyền hạn</Label>
               <div className="flex items-center justify-between">
+                <Label className="text-gray-500">Quyền hạn</Label>
+                {!checkCanAccessSystem(editForm.staffPositionEnum) && (
+                  <span className="text-xs text-orange-500 font-medium">Không áp dụng (chức vụ không truy cập HT)</span>
+                )}
+              </div>
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(editForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Duyệt phiếu nhập</span>
                 </div>
                 <Switch
                   checked={editForm.canApproveReceipts ?? false}
+                  disabled={!checkCanAccessSystem(editForm.staffPositionEnum)}
                   onCheckedChange={(v) => setEditForm(f => ({ ...f, canApproveReceipts: v }))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(editForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Settings className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Điều chỉnh tồn kho</span>
                 </div>
                 <Switch
                   checked={editForm.canAdjustInventory ?? false}
+                  disabled={!checkCanAccessSystem(editForm.staffPositionEnum)}
                   onCheckedChange={(v) => setEditForm(f => ({ ...f, canAdjustInventory: v }))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(editForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Override FIFO</span>
                 </div>
                 <Switch
                   checked={editForm.canOverrideFifo ?? false}
+                  disabled={!checkCanAccessSystem(editForm.staffPositionEnum)}
                   onCheckedChange={(v) => setEditForm(f => ({ ...f, canOverrideFifo: v }))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${!checkCanAccessSystem(editForm.staffPositionEnum) ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <PackagePlus className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">Tạo phiên nhập kho</span>
                 </div>
                 <Switch
                   checked={editForm.canCreateInboundSession ?? false}
+                  disabled={!checkCanAccessSystem(editForm.staffPositionEnum)}
                   onCheckedChange={(v) => setEditForm(f => ({ ...f, canCreateInboundSession: v }))}
                 />
               </div>
