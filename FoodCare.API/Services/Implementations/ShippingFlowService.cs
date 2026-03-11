@@ -2,6 +2,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Shipping;
 using FoodCare.API.Models.Enums;
 using FoodCare.API.Models.Staff;
+using FoodCare.API.Helpers;
 using FoodCare.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,13 +25,10 @@ public class ShippingFlowService : IShippingFlowService
     {
         return status switch
         {
-            "Draft" => "Nháp",
-            "Dispatched" => "Đã gửi",
-            "InTransit" => "Đang vận chuyển",
-            "Arrived" => "Đã đến kho",
-            "Inspected" => "Đã kiểm tra",
-            "Stored" => "Đã lưu kho",
-            "Closed" => "Đã hoàn tất",
+            "Preparing" => "Đang chuẩn bị",
+            "Delivering" => "Đang giao hàng",
+            "Received" => "Đã nhận hàng",
+            "Success" => "Hoàn tất",
             "Cancelled" => "Đã hủy",
             "pending" => "Chờ xử lý",
             "confirmed" => "Đã xác nhận",
@@ -85,12 +83,10 @@ public class ShippingFlowService : IShippingFlowService
     {
         return status switch
         {
-            "Draft" => "Đơn hàng đã được tạo",
-            "Dispatched" => "Nhà cung cấp đã gửi hàng",
-            "InTransit" => "Hàng đang trên đường vận chuyển",
-            "Arrived" => "Hàng đã đến kho",
-            "Inspected" => "Nhân viên kho đã kiểm tra hàng",
-            "Stored" => "Hàng đã được lưu vào kho",
+            "Preparing" => "Đơn hàng đang được chuẩn bị",
+            "Delivering" => "Nhà cung cấp đang giao hàng",
+            "Received" => "Kho đã nhận hàng",
+            "Success" => "Hoàn tất nhập kho",
             "pending" => "Đơn hàng đã được tạo",
             "confirmed" => "Đơn hàng đã được xác nhận",
             "OrderReceived" => "Kho đã nhận đơn hàng",
@@ -124,7 +120,7 @@ public class ShippingFlowService : IShippingFlowService
             ExternalReference = $"SHIP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}",
             SupplierId = supplierId,
             WarehouseId = dto.WarehouseId,
-            Status = ShipmentStatus.Draft,
+            Status = ShipmentStatus.Preparing,
             ExpectedDeliveryDate = dto.ExpectedDeliveryDate,
             Carrier = dto.Carrier,
             TrackingNumber = dto.TrackingNumber,
@@ -162,7 +158,7 @@ public class ShippingFlowService : IShippingFlowService
         {
             Id = Guid.NewGuid(),
             ShipmentId = shipment.Id,
-            Status = ShipmentStatus.Draft,
+            Status = ShipmentStatus.Preparing,
             Notes = "Đơn hàng được tạo bởi nhà cung cấp",
             CreatedAt = DateTime.UtcNow
         });
@@ -174,6 +170,51 @@ public class ShippingFlowService : IShippingFlowService
             ?? throw new InvalidOperationException("Failed to retrieve created shipment");
     }
 
+    /// <summary>
+    /// Supplier starts delivering shipment (Preparing → Delivering)
+    /// </summary>
+    public async Task<SupplierShipmentResponseDto> SubmitShipmentForApprovalAsync(int supplierId, Guid shipmentId)
+    {
+        var shipment = await _context.SupplierShipments
+            .Include(s => s.Items)
+            .Include(s => s.StatusHistory)
+            .FirstOrDefaultAsync(s => s.Id == shipmentId && s.SupplierId == supplierId);
+
+        if (shipment == null)
+            throw new InvalidOperationException("Shipment not found");
+
+        if (shipment.Status != ShipmentStatus.Preparing)
+            throw new InvalidOperationException($"Cannot start delivering shipment in '{shipment.Status}' status. Must be 'Preparing'.");
+
+        if (!shipment.Items.Any())
+            throw new InvalidOperationException("Cannot deliver shipment without items.");
+
+        var oldStatus = shipment.Status;
+        shipment.Status = ShipmentStatus.Delivering;
+        shipment.ActualDispatchDate = DateTime.UtcNow;
+        shipment.UpdatedAt = DateTime.UtcNow;
+
+        // Add status history
+        shipment.StatusHistory.Add(new ShipmentStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            ShipmentId = shipment.Id,
+            PreviousStatus = oldStatus,
+            NewStatus = ShipmentStatus.Delivering,
+            Notes = "Nhà cung cấp bắt đầu giao hàng",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Notify warehouse staff about incoming delivery
+        var supplier = await _context.Suppliers.FindAsync(supplierId);
+        await NotificationHelper.NotifyIncomingDeliveryAsync(_context, shipment, supplier?.StoreName ?? "Supplier");
+
+        await _context.SaveChangesAsync();
+
+        return await GetSupplierShipmentDetailAsync(supplierId, shipmentId)
+            ?? throw new InvalidOperationException("Failed to retrieve shipment");
+    }
+
     public async Task<SupplierShipmentResponseDto> UpdateSupplierShipmentStatusAsync(int supplierId, Guid shipmentId, UpdateSupplierShipmentStatusDto dto)
     {
         var shipment = await _context.SupplierShipments
@@ -183,14 +224,29 @@ public class ShippingFlowService : IShippingFlowService
         if (shipment == null)
             throw new InvalidOperationException("Shipment not found");
 
-        // Parse and update status
+        // Parse and validate status
         if (Enum.TryParse<ShipmentStatus>(dto.Status, out var newStatus))
         {
+            // Validate status transition
+            var validTransitions = new Dictionary<ShipmentStatus, ShipmentStatus[]>
+            {
+                { ShipmentStatus.Preparing, new[] { ShipmentStatus.Delivering, ShipmentStatus.Cancelled } },
+                { ShipmentStatus.Delivering, new[] { ShipmentStatus.Cancelled } }
+            };
+
+            if (validTransitions.TryGetValue(shipment.Status, out var allowed) && !allowed.Contains(newStatus))
+                throw new InvalidOperationException($"Cannot transition from '{shipment.Status}' to '{newStatus}'.");
+
+            var oldStatus = shipment.Status;
             shipment.Status = newStatus;
             
-            if (newStatus == ShipmentStatus.Dispatched)
+            if (newStatus == ShipmentStatus.Delivering)
             {
                 shipment.ActualDispatchDate = DateTime.UtcNow;
+
+                // Notify warehouse staff about incoming delivery
+                var supplier = await _context.Suppliers.FindAsync(supplierId);
+                await NotificationHelper.NotifyIncomingDeliveryAsync(_context, shipment, supplier?.StoreName ?? "Supplier");
             }
         }
 
@@ -322,22 +378,18 @@ public class ShippingFlowService : IShippingFlowService
             query = query.Where(s => s.WarehouseId == warehouseId.Value);
         }
 
-        var pendingStatuses = new[] { ShipmentStatus.Dispatched, ShipmentStatus.InTransit };
-        var arrivedStatuses = new[] { ShipmentStatus.Arrived };
-        var inspectingStatuses = new[] { ShipmentStatus.Inspected };
-
         var pendingShipments = await query
-            .Where(s => pendingStatuses.Contains(s.Status))
+            .Where(s => s.Status == ShipmentStatus.Delivering)
             .OrderBy(s => s.ExpectedDeliveryDate)
             .Take(10)
             .ToListAsync();
 
         return new StaffInboundSummaryDto
         {
-            TotalPendingShipments = await query.CountAsync(s => pendingStatuses.Contains(s.Status)),
+            TotalPendingShipments = await query.CountAsync(s => s.Status == ShipmentStatus.Delivering),
             TotalArrivedToday = await query.CountAsync(s => s.ActualArrivalDate != null && s.ActualArrivalDate.Value.Date == today),
-            TotalInspecting = await query.CountAsync(s => inspectingStatuses.Contains(s.Status)),
-            TotalStoredToday = await query.CountAsync(s => s.Status == ShipmentStatus.Stored && s.UpdatedAt != null && s.UpdatedAt.Value.Date == today),
+            TotalInspecting = await query.CountAsync(s => s.Status == ShipmentStatus.Received),
+            TotalStoredToday = await query.CountAsync(s => s.Status == ShipmentStatus.Success && s.UpdatedAt != null && s.UpdatedAt.Value.Date == today),
             PendingShipments = pendingShipments.Select(MapToSupplierShipmentResponse).ToList()
         };
     }
@@ -351,7 +403,7 @@ public class ShippingFlowService : IShippingFlowService
         if (shipment == null)
             throw new InvalidOperationException("Shipment not found");
 
-        shipment.Status = ShipmentStatus.Arrived;
+        shipment.Status = ShipmentStatus.Received;
         shipment.ActualArrivalDate = DateTime.UtcNow;
         shipment.UpdatedAt = DateTime.UtcNow;
 
@@ -359,7 +411,7 @@ public class ShippingFlowService : IShippingFlowService
         {
             Id = Guid.NewGuid(),
             ShipmentId = shipment.Id,
-            Status = ShipmentStatus.Arrived,
+            Status = ShipmentStatus.Received,
             Notes = "Hàng đã đến kho",
             ChangedBy = Guid.TryParse(staffId, out var guid) ? guid : null,
             CreatedAt = DateTime.UtcNow
@@ -394,14 +446,14 @@ public class ShippingFlowService : IShippingFlowService
             }
         }
 
-        shipment.Status = ShipmentStatus.Inspected;
+        shipment.Status = ShipmentStatus.Received;
         shipment.UpdatedAt = DateTime.UtcNow;
 
         shipment.StatusHistory.Add(new ShipmentStatusHistory
         {
             Id = Guid.NewGuid(),
             ShipmentId = shipment.Id,
-            Status = ShipmentStatus.Inspected,
+            Status = ShipmentStatus.Received,
             Notes = dto.Notes ?? "Đã kiểm tra và nhận hàng",
             ChangedBy = Guid.TryParse(staffId, out var guid) ? guid : null,
             CreatedAt = DateTime.UtcNow
@@ -445,14 +497,14 @@ public class ShippingFlowService : IShippingFlowService
             _context.WarehouseInventories.Add(inventory);
         }
 
-        shipment.Status = ShipmentStatus.Stored;
+        shipment.Status = ShipmentStatus.Success;
         shipment.UpdatedAt = DateTime.UtcNow;
 
         shipment.StatusHistory.Add(new ShipmentStatusHistory
         {
             Id = Guid.NewGuid(),
             ShipmentId = shipment.Id,
-            Status = ShipmentStatus.Stored,
+            Status = ShipmentStatus.Success,
             Notes = "Hàng đã được lưu vào kho",
             ChangedBy = Guid.TryParse(staffId, out var guid) ? guid : null,
             CreatedAt = DateTime.UtcNow
@@ -830,9 +882,9 @@ public class ShippingFlowService : IShippingFlowService
         // Check for late deliveries
         var lateShipments = await _context.SupplierShipments
             .Where(s => s.ExpectedDeliveryDate < DateTime.UtcNow && 
-                        s.Status != ShipmentStatus.Arrived && 
-                        s.Status != ShipmentStatus.Stored &&
-                        s.Status != ShipmentStatus.Closed)
+                        s.Status != ShipmentStatus.Received && 
+                        s.Status != ShipmentStatus.Success &&
+                        s.Status != ShipmentStatus.Cancelled)
             .ToListAsync();
 
         foreach (var shipment in lateShipments)

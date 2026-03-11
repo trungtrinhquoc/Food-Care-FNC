@@ -231,26 +231,23 @@ function WarehouseDialog({ open, onOpenChange, warehouse, onSuccess }: Warehouse
 
           <div>
             <Label>Địa chỉ</Label>
-            <Input
-              value={form.addressStreet}
-              onChange={(e) => update("addressStreet", e.target.value)}
-              placeholder="Số nhà, đường"
-              className="mb-2"
-            />
             <AddressSelector
               value={{
                 province: form.addressCity,
                 district: form.addressDistrict,
                 ward: form.addressWard,
+                street: form.addressStreet,
               }}
               onChange={(addr) =>
                 setForm((prev) => ({
                   ...prev,
+                  addressStreet: addr.street ?? "",
                   addressCity: addr.province ?? "",
                   addressDistrict: addr.district ?? "",
                   addressWard: addr.ward ?? "",
                 }))
               }
+              showStreet={true}
             />
           </div>
 

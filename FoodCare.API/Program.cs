@@ -135,6 +135,7 @@ builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>();
+builder.Services.AddScoped<IAdminDeliveryService, AdminDeliveryService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
 builder.Services.AddScoped<IReviewService, ReviewService>();

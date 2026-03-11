@@ -1,16 +1,19 @@
 namespace FoodCare.API.Models.Enums;
 
 /// <summary>
-/// Shipment lifecycle statuses
+/// Simplified shipment lifecycle statuses.
+/// 
+/// Flow:
+///   Preparing → Delivering → Received → Success
+///
+/// Exception:
+///   Cancelled
 /// </summary>
 public enum ShipmentStatus
 {
-    Draft,
-    Dispatched,
-    InTransit,
-    Arrived,
-    Inspected,
-    Stored,
-    Closed,
+    Preparing,
+    Delivering,
+    Received,
+    Success,
     Cancelled
 }

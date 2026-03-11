@@ -58,6 +58,9 @@ import {
 import { StaffLayout } from '../../components/staff/StaffLayout';
 import { StaffShippingManager } from '../../components/staff/StaffShippingManager';
 
+// Import system-access check
+import { SYSTEM_ACCESS_POSITIONS } from '../../services/admin/warehouseService';
+
 
 // Import types
 import type {
@@ -114,6 +117,9 @@ export default function StaffDashboardPage() {
   const [discrepancies, setDiscrepancies] = useState<DiscrepancyReport[]>([]);
   const [returns, setReturns] = useState<ReturnShipment[]>([]);
 
+  // Access denied state
+  const [accessDeniedOpen, setAccessDeniedOpen] = useState(false);
+
   // Dialog states
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [receiptDetailOpen, setReceiptDetailOpen] = useState(false);
@@ -161,7 +167,15 @@ export default function StaffDashboardPage() {
         returnApi.getAll(1, 50, 'pending'),
       ]);
 
-      if (profileRes) setStaffProfile(profileRes);
+      if (profileRes) {
+        setStaffProfile(profileRes);
+        // Check if staff position has system access
+        const pos = profileRes.staffPositionEnum;
+        if (pos && !(SYSTEM_ACCESS_POSITIONS as string[]).includes(pos)) {
+          setAccessDeniedOpen(true);
+          return;
+        }
+      }
       setWarehouses(warehousesRes.items);
       setReceipts(receiptsRes.items);
       setLowStockInventory(lowStockRes);
@@ -1195,6 +1209,37 @@ export default function StaffDashboardPage() {
   };
 
   return (
+    <>
+      {/* Access Denied Dialog */}
+      <Dialog open={accessDeniedOpen} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Không có quyền truy cập
+            </DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              Chức vụ <strong>{staffProfile?.staffPositionLabel || staffProfile?.position}</strong> không được phép truy cập hệ thống quản lý kho.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-sm text-gray-600">
+            Chỉ các chức vụ <strong>Trưởng phòng kho</strong>, <strong>Phó quản lý kho</strong>, và <strong>Tổ trưởng / Giám sát kho</strong> mới có quyền truy cập.
+          </div>
+          <DialogFooter>
+            <Button
+              className="bg-red-600 hover:bg-red-700 w-full"
+              onClick={() => {
+                setAccessDeniedOpen(false);
+                logout();
+                navigate('/');
+              }}
+            >
+              Về trang chủ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     <StaffLayout
       currentTab={selectedTab}
       onTabChange={setSelectedTab}
@@ -1462,5 +1507,6 @@ export default function StaffDashboardPage() {
         </DialogContent>
       </Dialog>
     </StaffLayout>
+    </>
   );
 }

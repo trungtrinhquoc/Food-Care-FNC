@@ -1,75 +1,256 @@
-import { useState } from 'react';
-import { DANANG_DISTRICTS, DA_NANG_PROVINCE_NAME } from '../data/daNangAddresses';
-import { MapPin } from 'lucide-react';
+import { useEffect, useRef, useCallback } from 'react';
+import { MapPin, Loader2, Navigation } from 'lucide-react';
 import { SearchableSelect } from './ui/searchable-select';
+import { useAddressApi, type AddressValue } from '../hooks/useAddressApi';
 
-interface AddressValue {
-    province?: string;
-    district?: string;
-    ward?: string;
-}
+export type { AddressValue };
 
 interface AddressSelectorProps {
     value: AddressValue;
     onChange: (value: AddressValue) => void;
+    /** Lock province selection (default: "Đà Nẵng"). Pass undefined to allow all provinces. */
+    lockProvince?: string;
+    /** Show street input with Goong.io autocomplete (default: true) */
+    showStreet?: boolean;
+    /** Disabled state */
+    disabled?: boolean;
 }
 
-export function AddressSelector({ value, onChange }: AddressSelectorProps) {
-    const [selectedDistName, setSelectedDistName] = useState<string>(value.district || '');
+export function AddressSelector({
+    value,
+    onChange,
+    lockProvince = 'Đà Nẵng',
+    showStreet = true,
+    disabled = false,
+}: AddressSelectorProps) {
+    const {
+        provinces,
+        districts,
+        wards,
+        streetSuggestions,
+        selectedProvince,
+        selectedDistrict,
+        selectedWard,
+        streetValue,
+        loadingProvinces,
+        loadingDistricts,
+        loadingWards,
+        loadingStreet,
+        isProvinceLocked,
+        selectProvince,
+        selectDistrict,
+        selectWard,
+        setStreetValue,
+        selectStreetSuggestion,
+        clearStreetSuggestions,
+        getAddressValue,
+    } = useAddressApi({
+        lockProvince,
+        initialValue: value,
+    });
 
-    const selectedDistrict = DANANG_DISTRICTS.find(d => d.name === selectedDistName);
-    const wards = selectedDistrict?.wards ?? [];
+    // Ref to track whether initial sync has been done
+    const initialSyncDone = useRef(false);
 
-    const handleDistrictChange = (distName: string) => {
-        setSelectedDistName(distName);
-        onChange({
-            province: DA_NANG_PROVINCE_NAME,
-            district: distName,
-            ward: undefined,
-        });
+    // Sync external value changes (e.g., editing an existing address)
+    useEffect(() => {
+        if (initialSyncDone.current) return;
+
+        // If districts are loaded and value has district but hook hasn't matched yet
+        if (value.district && districts.length > 0 && !selectedDistrict) {
+            const match = districts.find((d) => d.name === value.district);
+            if (match) {
+                selectDistrict(match.code, match.name);
+            }
+        }
+
+        // If wards are loaded and value has ward but hook hasn't matched yet
+        if (value.ward && wards.length > 0 && !selectedWard) {
+            const match = wards.find((w) => w.name === value.ward);
+            if (match) {
+                selectWard(match.code, match.name);
+                initialSyncDone.current = true;
+            }
+        }
+
+        // Mark sync as done if we have no district/ward to sync
+        if (!value.district && !value.ward) {
+            initialSyncDone.current = true;
+        }
+    }, [value.district, value.ward, districts, wards, selectedDistrict, selectedWard, selectDistrict, selectWard]);
+
+    // Propagate changes to parent via onChange
+    const prevAddressRef = useRef<string>('');
+
+    const emitChange = useCallback(() => {
+        const addr = getAddressValue();
+        const key = JSON.stringify(addr);
+        if (key !== prevAddressRef.current) {
+            prevAddressRef.current = key;
+            onChange(addr);
+        }
+    }, [getAddressValue, onChange]);
+
+    useEffect(() => {
+        emitChange();
+    }, [selectedProvince, selectedDistrict, selectedWard, streetValue, emitChange]);
+
+    // Street dropdown click-outside
+    const streetContainerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                streetContainerRef.current &&
+                !streetContainerRef.current.contains(event.target as Node)
+            ) {
+                clearStreetSuggestions();
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [clearStreetSuggestions]);
+
+    // ─── Handlers ──────────────────────────────────────────────────────
+
+    const handleProvinceChange = (code: string) => {
+        const prov = provinces.find((p) => p.code === Number(code));
+        if (prov) selectProvince(prov.code, prov.name);
     };
 
-    const handleWardChange = (wardName: string) => {
-        onChange({
-            province: DA_NANG_PROVINCE_NAME,
-            district: selectedDistName,
-            ward: wardName,
-        });
+    const handleDistrictChange = (code: string) => {
+        const dist = districts.find((d) => d.code === Number(code));
+        if (dist) selectDistrict(dist.code, dist.name);
     };
+
+    const handleWardChange = (code: string) => {
+        const w = wards.find((wd) => wd.code === Number(code));
+        if (w) selectWard(w.code, w.name);
+    };
+
+    // ─── Render ─────────────────────────────────────────────────────────
 
     return (
         <div className="space-y-3">
-            {/* Badge tỉnh cố định */}
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-sm font-semibold text-emerald-700">
-                <MapPin className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span>
-                    Tỉnh / Thành phố:{' '}
-                    <span className="font-bold">Thành phố Đà Nẵng</span>
-                    <span className="ml-1 text-[10px] text-emerald-500">(sau sáp nhập Quảng Nam)</span>
-                </span>
-                <span className="ml-auto text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">
-                    Cố định
-                </span>
-            </div>
+            {/* Province — locked badge or dropdown */}
+            {isProvinceLocked ? (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-sm font-semibold text-emerald-700">
+                    <MapPin className="w-4 h-4 shrink-0 text-emerald-500" />
+                    <span>
+                        Tỉnh / Thành phố:{' '}
+                        <span className="font-bold">
+                            {selectedProvince?.name || 'Đang tải...'}
+                        </span>
+                    </span>
+                    <span className="ml-auto text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">
+                        Cố định
+                    </span>
+                </div>
+            ) : (
+                <div>
+                    {loadingProvinces ? (
+                        <div className="flex items-center gap-2 h-11 px-3 border rounded-md text-sm text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Đang tải tỉnh/thành...
+                        </div>
+                    ) : (
+                        <SearchableSelect
+                            placeholder="Chọn Tỉnh / Thành phố"
+                            options={provinces.map((p) => ({
+                                value: String(p.code),
+                                label: p.name,
+                            }))}
+                            value={selectedProvince ? String(selectedProvince.code) : ''}
+                            onValueChange={handleProvinceChange}
+                            disabled={disabled}
+                        />
+                    )}
+                </div>
+            )}
 
+            {/* District + Ward */}
             <div className="grid md:grid-cols-2 gap-3">
-                {/* QUẬN / HUYỆN / TP */}
-                <SearchableSelect
-                    placeholder="Chọn Quận / Huyện / TP"
-                    options={DANANG_DISTRICTS.map(d => ({ value: d.name, label: d.name }))}
-                    value={selectedDistName}
-                    onValueChange={handleDistrictChange}
-                />
+                {/* District */}
+                {loadingDistricts ? (
+                    <div className="flex items-center gap-2 h-11 px-3 border rounded-md text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang tải quận/huyện...
+                    </div>
+                ) : (
+                    <SearchableSelect
+                        placeholder="Chọn Quận / Huyện"
+                        options={districts.map((d) => ({
+                            value: String(d.code),
+                            label: d.name,
+                        }))}
+                        value={selectedDistrict ? String(selectedDistrict.code) : ''}
+                        onValueChange={handleDistrictChange}
+                        disabled={disabled || !selectedProvince}
+                    />
+                )}
 
-                {/* PHƯỜNG / XÃ */}
-                <SearchableSelect
-                    placeholder="Chọn Phường / Xã"
-                    disabled={!selectedDistName}
-                    options={wards.map(w => ({ value: w.name, label: w.name }))}
-                    value={value.ward ?? ''}
-                    onValueChange={handleWardChange}
-                />
+                {/* Ward */}
+                {loadingWards ? (
+                    <div className="flex items-center gap-2 h-11 px-3 border rounded-md text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang tải phường/xã...
+                    </div>
+                ) : (
+                    <SearchableSelect
+                        placeholder="Chọn Phường / Xã"
+                        options={wards.map((w) => ({
+                            value: String(w.code),
+                            label: w.name,
+                        }))}
+                        value={selectedWard ? String(selectedWard.code) : ''}
+                        onValueChange={handleWardChange}
+                        disabled={disabled || !selectedDistrict}
+                    />
+                )}
             </div>
+
+            {/* Street autocomplete (Goong.io) */}
+            {showStreet && (
+                <div className="relative" ref={streetContainerRef}>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            className="flex h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
+                            placeholder="Số nhà, tên đường..."
+                            value={streetValue}
+                            onChange={(e) => setStreetValue(e.target.value)}
+                            disabled={disabled}
+                        />
+                        {loadingStreet && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Suggestions dropdown */}
+                    {streetSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 z-[100] mt-1 max-h-60 overflow-y-auto rounded-md border bg-white shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                            {streetSuggestions.map((prediction) => (
+                                <div
+                                    key={prediction.place_id}
+                                    className="flex items-start gap-2 px-3 py-2.5 cursor-pointer hover:bg-emerald-50 hover:text-emerald-900 transition-colors text-sm"
+                                    onClick={() => selectStreetSuggestion(prediction)}
+                                >
+                                    <Navigation className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                    <div className="min-w-0">
+                                        <p className="font-medium truncate">
+                                            {prediction.structured_formatting.main_text}
+                                        </p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            {prediction.structured_formatting.secondary_text}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
 import { Separator } from '../ui/separator';
 import { SectionHeader, SectionSkeleton } from './SupplierLayout';
+import { AddressSelector } from '../AddressSelector';
+import type { AddressValue } from '../AddressSelector';
 import {
     Settings,
     User,
@@ -136,12 +137,27 @@ export function SettingsSection({
                             <MapPin className="h-4 w-4 text-gray-400" />
                             Địa chỉ
                         </Label>
-                        <Textarea
-                            id="address"
-                            placeholder="Nhập địa chỉ đầy đủ"
-                            value={profileForm.address || ''}
-                            onChange={(e) => handleChange('address', e.target.value)}
-                            rows={3}
+                        <AddressSelector
+                            value={{
+                                street: profileForm.addressStreet || profileForm.address || '',
+                                province: profileForm.addressCity || undefined,
+                                district: profileForm.addressDistrict || undefined,
+                                ward: profileForm.addressWard || undefined,
+                            }}
+                            onChange={(val: AddressValue) => {
+                                onUpdateForm({
+                                    ...profileForm,
+                                    addressStreet: val.street ?? '',
+                                    addressCity: val.province ?? '',
+                                    addressDistrict: val.district ?? '',
+                                    addressWard: val.ward ?? '',
+                                    // Also update legacy flat address for backward compat
+                                    address: [val.street, val.ward, val.district, val.province]
+                                        .filter(Boolean)
+                                        .join(', '),
+                                });
+                            }}
+                            showStreet={true}
                         />
                     </div>
 

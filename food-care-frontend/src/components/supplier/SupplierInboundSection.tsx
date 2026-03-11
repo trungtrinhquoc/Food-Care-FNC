@@ -25,11 +25,13 @@ import {
   Send,
   Package,
   Loader2,
+  Truck,
 } from 'lucide-react';
 import {
   inboundSessionsApi,
   type SupplierInboundSession,
   type SupplierRegisterInboundRequest,
+  type CreateShipmentRequest,
 } from '@/services/supplier/supplierApi';
 
 export function SupplierInboundSection() {
@@ -43,6 +45,17 @@ export function SupplierInboundSection() {
   const [registerForm, setRegisterForm] = useState<SupplierRegisterInboundRequest>({
     note: '',
     estimatedDeliveryDate: '',
+  });
+
+  // Create shipment dialog
+  const [shipmentDialogOpen, setShipmentDialogOpen] = useState(false);
+  const [shipmentSession, setShipmentSession] = useState<SupplierInboundSession | null>(null);
+  const [shipmentForm, setShipmentForm] = useState({
+    externalReference: '',
+    expectedDeliveryDate: '',
+    trackingNumber: '',
+    carrier: '',
+    notes: '',
   });
 
   const loadSessions = useCallback(async () => {
@@ -112,6 +125,52 @@ export function SupplierInboundSection() {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Thao tác thất bại');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleOpenShipmentDialog = (session: SupplierInboundSession) => {
+    setShipmentSession(session);
+    setShipmentForm({
+      externalReference: `SHP-${session.sessionCode}-${Date.now().toString(36).toUpperCase()}`,
+      expectedDeliveryDate: session.estimatedDeliveryDate || '',
+      trackingNumber: '',
+      carrier: '',
+      notes: '',
+    });
+    setShipmentDialogOpen(true);
+  };
+
+  const handleCreateShipment = async () => {
+    if (!shipmentSession) return;
+
+    if (!shipmentForm.externalReference.trim()) {
+      toast.error('Vui lòng nhập mã lô hàng');
+      return;
+    }
+    if (!shipmentForm.expectedDeliveryDate) {
+      toast.error('Vui lòng chọn ngày giao dự kiến');
+      return;
+    }
+
+    try {
+      setActionLoading(shipmentSession.sessionId);
+      const request: Omit<CreateShipmentRequest, 'inboundSessionId'> = {
+        externalReference: shipmentForm.externalReference,
+        expectedDeliveryDate: shipmentForm.expectedDeliveryDate,
+        trackingNumber: shipmentForm.trackingNumber || undefined,
+        carrier: shipmentForm.carrier || undefined,
+        notes: shipmentForm.notes || undefined,
+        items: [],
+      };
+      await inboundSessionsApi.createShipmentFromSession(shipmentSession.sessionId, request);
+      toast.success('Tạo lô hàng thành công! Bạn có thể thêm sản phẩm tại mục Giao hàng.');
+      setShipmentDialogOpen(false);
+      loadSessions();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Tạo lô hàng thất bại');
     } finally {
       setActionLoading(null);
     }
@@ -222,6 +281,7 @@ export function SupplierInboundSection() {
                   <SessionCard
                     key={session.registrationId}
                     session={session}
+                    onCreateShipment={handleOpenShipmentDialog}
                     actionLoading={actionLoading}
                     getStatusBadge={getStatusBadge}
                     getSessionStatusBadge={getSessionStatusBadge}
@@ -323,6 +383,115 @@ export function SupplierInboundSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Shipment Dialog */}
+      <Dialog open={shipmentDialogOpen} onOpenChange={setShipmentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo lô hàng</DialogTitle>
+            <DialogDescription>
+              Tạo lô hàng giao cho phiên <strong>{shipmentSession?.sessionCode}</strong> tại{' '}
+              <strong>{shipmentSession?.warehouseName}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">
+                Mã lô hàng
+              </label>
+              <Input
+                value={shipmentForm.externalReference}
+                onChange={(e) =>
+                  setShipmentForm(prev => ({ ...prev, externalReference: e.target.value }))
+                }
+                placeholder="Mã lô hàng (tự động tạo)"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">
+                Ngày giao dự kiến *
+              </label>
+              <Input
+                type="datetime-local"
+                value={shipmentForm.expectedDeliveryDate}
+                max={shipmentSession?.expectedEndDate
+                  ? new Date(shipmentSession.expectedEndDate).toISOString().slice(0, 16)
+                  : undefined}
+                onChange={(e) =>
+                  setShipmentForm(prev => ({ ...prev, expectedDeliveryDate: e.target.value }))
+                }
+              />
+              {shipmentSession?.expectedEndDate && (
+                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Hạn chót phiên: {formatDate(shipmentSession.expectedEndDate)}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">
+                  Đơn vị vận chuyển
+                </label>
+                <Input
+                  value={shipmentForm.carrier}
+                  onChange={(e) =>
+                    setShipmentForm(prev => ({ ...prev, carrier: e.target.value }))
+                  }
+                  placeholder="VD: GHTK, GHN..."
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">
+                  Mã vận đơn
+                </label>
+                <Input
+                  value={shipmentForm.trackingNumber}
+                  onChange={(e) =>
+                    setShipmentForm(prev => ({ ...prev, trackingNumber: e.target.value }))
+                  }
+                  placeholder="Nếu có"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">
+                Ghi chú
+              </label>
+              <Textarea
+                placeholder="Mô tả hàng hóa, lưu ý đặc biệt..."
+                value={shipmentForm.notes}
+                onChange={(e) =>
+                  setShipmentForm(prev => ({ ...prev, notes: e.target.value }))
+                }
+                rows={3}
+              />
+            </div>
+            <p className="text-xs text-gray-500 bg-blue-50 rounded px-3 py-2">
+              <Package className="w-3 h-3 inline mr-1" />
+              Sau khi tạo, bạn có thể thêm sản phẩm vào lô hàng tại mục <strong>Giao hàng</strong>.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShipmentDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleCreateShipment}
+              disabled={actionLoading === shipmentSession?.sessionId}
+            >
+              {actionLoading === shipmentSession?.sessionId ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Truck className="w-4 h-4 mr-2" />
+              )}
+              Tạo lô hàng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -332,6 +501,7 @@ function SessionCard({
   session,
   onRegister,
   onDecline,
+  onCreateShipment,
   actionLoading,
   getStatusBadge,
   getSessionStatusBadge,
@@ -340,6 +510,7 @@ function SessionCard({
   session: SupplierInboundSession;
   onRegister?: (session: SupplierInboundSession) => void;
   onDecline?: (session: SupplierInboundSession) => void;
+  onCreateShipment?: (session: SupplierInboundSession) => void;
   actionLoading: string | null;
   getStatusBadge: (status: string) => React.ReactNode;
   getSessionStatusBadge: (status: string) => React.ReactNode;
@@ -434,6 +605,22 @@ function SessionCard({
                   <XCircle className="w-4 h-4 mr-1" />
                 )}
                 Từ chối
+              </Button>
+            )}
+            {onCreateShipment && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => onCreateShipment(session)}
+                disabled={isLoading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Truck className="w-4 h-4 mr-1" />
+                )}
+                Tạo lô hàng
               </Button>
             )}
           </div>

@@ -259,15 +259,149 @@ export interface ShippingAlert {
 // ===== HELPER TYPES =====
 
 export const SHIPMENT_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-  Draft: { label: 'Nháp', color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  Dispatched: { label: 'Đã gửi', color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  InTransit: { label: 'Đang vận chuyển', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
-  Arrived: { label: 'Đã đến kho', color: 'text-green-600', bgColor: 'bg-green-100' },
-  Inspected: { label: 'Đã kiểm tra', color: 'text-teal-600', bgColor: 'bg-teal-100' },
-  Stored: { label: 'Đã lưu kho', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
-  Closed: { label: 'Hoàn tất', color: 'text-gray-600', bgColor: 'bg-gray-200' },
+  Preparing: { label: 'Đang chuẩn bị', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  Delivering: { label: 'Đang giao hàng', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  Received: { label: 'Đã nhận hàng', color: 'text-green-600', bgColor: 'bg-green-100' },
+  Success: { label: 'Hoàn tất', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
   Cancelled: { label: 'Đã hủy', color: 'text-red-600', bgColor: 'bg-red-100' },
 };
+
+// ===== ADMIN DELIVERY GOVERNANCE TYPES =====
+
+export interface AdminDeliverySummary {
+  id: string;
+  externalReference: string;
+  supplierName: string;
+  supplierId: number;
+  warehouseName: string;
+  warehouseId: string;
+  status: string;
+  totalItems: number;
+  totalValue: number;
+  totalQuantity: number;
+  expectedDeliveryDate: string;
+  createdAt: string;
+}
+
+export interface AdminDeliveryDetail {
+  id: string;
+  externalReference: string;
+  supplierName: string;
+  supplierId: number;
+  supplierStoreName?: string;
+  supplierIsVerified: boolean;
+  warehouseName: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  status: string;
+  totalItems: number;
+  totalQuantity: number;
+  totalValue: number;
+  expectedDeliveryDate: string;
+  actualDispatchDate?: string;
+  actualArrivalDate?: string;
+  trackingNumber?: string;
+  carrier?: string;
+  notes?: string;
+  createdAt: string;
+  items: AdminDeliveryItem[];
+  documents: AdminDeliveryDocument[];
+  statusHistory: AdminDeliveryStatusHistory[];
+}
+
+export interface AdminDeliveryItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSku?: string;
+  expectedQuantity: number;
+  receivedQuantity?: number;
+  damagedQuantity?: number;
+  uom: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  unitCost: number;
+  lineTotal: number;
+}
+
+export interface AdminDeliveryDocument {
+  id: string;
+  documentType: string;
+  fileName: string;
+  fileUrl: string;
+  uploadedAt: string;
+}
+
+export interface AdminDeliveryStatusHistory {
+  id: string;
+  previousStatus?: string;
+  newStatus: string;
+  previousEta?: string;
+  newEta?: string;
+  notes?: string;
+  location?: string;
+  changedBy?: string;
+  changedByName?: string;
+  createdAt: string;
+}
+
+export interface AdminActionLog {
+  id: string;
+  entityType: string;
+  entityId: string;
+  adminId: string;
+  adminName: string;
+  action: string;
+  oldStatus?: string;
+  newStatus?: string;
+  reason?: string;
+  metadata?: string;
+  createdAt: string;
+}
+
+export interface DeliveryKpi {
+  warehouseId: string;
+  warehouseName: string;
+  totalDeliveries: number;
+  completedCount: number;
+  cancelledCount: number;
+  inProgressCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  disputedCount: number;
+  onHoldCount: number;
+  avgApprovalTimeMinutes: number;
+  supplierComplianceRate: number;
+  rejectRate: number;
+  disputeRate: number;
+  onTimeDeliveryRate: number;
+  periodFrom?: string;
+  periodTo?: string;
+}
+
+export interface DeliveryFilterParams {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  warehouseId?: string;
+  supplierId?: number;
+  fromDate?: string;
+  toDate?: string;
+  search?: string;
+  sortBy?: string;
+  sortDescending?: boolean;
+}
+
+export interface AuditLogFilterParams {
+  page?: number;
+  pageSize?: number;
+  entityType?: string;
+  entityId?: string;
+  adminId?: string;
+  action?: string;
+  fromDate?: string;
+  toDate?: string;
+}
 
 export const ORDER_SHIPPING_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
   pending: { label: 'Chờ xử lý', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: 'Clock' },

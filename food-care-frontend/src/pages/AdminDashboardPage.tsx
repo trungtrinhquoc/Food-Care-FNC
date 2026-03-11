@@ -18,6 +18,8 @@ import {
   Ticket,
   HardHat,
   ClipboardList,
+  Truck,
+  FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -39,6 +41,9 @@ const StaffManagementTab = lazy(() => import("./admin/StaffManagementTab").then(
 const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
 const AdminCouponsPage = lazy(() => import("./admin/AdminCouponsPage"));
 const AdminInboundSessionsTab = lazy(() => import("./admin/AdminInboundSessionsTab").then(m => ({ default: m.AdminInboundSessionsTab })));
+const AdminDeliveryTab = lazy(() => import("./admin/AdminDeliveryTab").then(m => ({ default: m.AdminDeliveryTab })));
+const AdminDeliveryKpiTab = lazy(() => import("./admin/AdminDeliveryKpiTab").then(m => ({ default: m.AdminDeliveryKpiTab })));
+const AdminAuditLogTab = lazy(() => import("./admin/AdminAuditLogTab").then(m => ({ default: m.AdminAuditLogTab })));
 
 // Tab configuration
 const TABS = [
@@ -51,6 +56,9 @@ const TABS = [
   { value: "suppliers", label: "NCC", icon: Package },
   { value: "warehouses", label: "Kho hàng", icon: Warehouse },
   { value: "inbound", label: "Nhập kho", icon: ClipboardList },
+  { value: "deliveries", label: "Giao hàng", icon: Truck },
+  { value: "delivery-kpi", label: "KPI GH", icon: BarChart3 },
+  { value: "audit-log", label: "Nhật ký", icon: FileText },
   { value: "staff-mgmt", label: "Nhân viên", icon: HardHat },
   { value: "subscriptions", label: "Gói Đăng ký", icon: CheckCircle },
   { value: "coupons", label: "Mã giảm giá", icon: Ticket },
@@ -282,6 +290,27 @@ export default function AdminDashboardPage() {
                 {selectedTab === "inbound" && (
                   <div>
                     <AdminInboundSessionsTab />
+                  </div>
+                )}
+
+                {/* Delivery Governance Tab */}
+                {selectedTab === "deliveries" && (
+                  <div>
+                    <AdminDeliveryTab />
+                  </div>
+                )}
+
+                {/* Delivery KPI Tab */}
+                {selectedTab === "delivery-kpi" && (
+                  <div>
+                    <AdminDeliveryKpiTab />
+                  </div>
+                )}
+
+                {/* Audit Log Tab */}
+                {selectedTab === "audit-log" && (
+                  <div>
+                    <AdminAuditLogTab />
                   </div>
                 )}
 

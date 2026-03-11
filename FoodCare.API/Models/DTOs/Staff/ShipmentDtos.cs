@@ -27,6 +27,12 @@ public class SupplierShipmentDto
     public int TotalItems { get; set; }
     public int TotalQuantity { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Inbound session link
+    public Guid? InboundSessionId { get; set; }
+    public string? InboundSessionCode { get; set; }
+    public Guid? InboundSessionSupplierId { get; set; }
+
     public List<ShipmentItemDto> Items { get; set; } = new();
     public List<ShipmentDocumentDto> Documents { get; set; } = new();
 }
@@ -38,6 +44,8 @@ public class ShipmentItemDto
     public string? ProductName { get; set; }
     public string? ProductSku { get; set; }
     public int ExpectedQuantity { get; set; }
+    public int? ReceivedQuantity { get; set; }
+    public int? DamagedQuantity { get; set; }
     public string Uom { get; set; } = null!;
     public string? BatchNumber { get; set; }
     public DateTime? ExpiryDate { get; set; }
@@ -463,6 +471,12 @@ public class CreateSupplierShipmentRequest
     /// </summary>
     public Guid? WarehouseId { get; set; }
 
+    /// <summary>
+    /// Optional: Link this shipment to an inbound session.
+    /// When provided, warehouse is auto-assigned from the session.
+    /// </summary>
+    public Guid? InboundSessionId { get; set; }
+
     [Required]
     public DateTime ExpectedDeliveryDate { get; set; }
 
@@ -470,8 +484,16 @@ public class CreateSupplierShipmentRequest
     public string? Carrier { get; set; }
     public string? Notes { get; set; }
 
-    [Required]
-    [MinLength(1)]
+    /// <summary>
+    /// URL of the attached invoice document
+    /// </summary>
+    public string? InvoiceUrl { get; set; }
+
+    /// <summary>
+    /// URL of the attached packing list document
+    /// </summary>
+    public string? PackingListUrl { get; set; }
+
     public List<CreateShipmentItemRequest> Items { get; set; } = new();
 }
 
@@ -536,18 +558,33 @@ public class AddShipmentDocumentRequest
     public long? FileSize { get; set; }
 }
 
-public class DispatchShipmentRequest
+public class StartDeliveringRequest
 {
-    public DateTime? ActualDispatchDate { get; set; }
     public string? TrackingNumber { get; set; }
     public string? Carrier { get; set; }
     public string? Notes { get; set; }
 }
 
-public class UpdateTransitRequest
+public class ConfirmReceivedRequest
 {
-    public DateTime? NewEta { get; set; }
     public string? Notes { get; set; }
+
+    [Required]
+    [MinLength(1)]
+    public List<ReceivedItemRequest> Items { get; set; } = new();
+}
+
+public class ReceivedItemRequest
+{
+    [Required]
+    public Guid ShipmentItemId { get; set; }
+
+    [Required]
+    [Range(0, int.MaxValue)]
+    public int ReceivedQuantity { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int DamagedQuantity { get; set; } = 0;
 }
 
 public class CancelShipmentRequest

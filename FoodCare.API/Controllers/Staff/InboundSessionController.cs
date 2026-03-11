@@ -372,6 +372,16 @@ public class InboundSessionController : ControllerBase
         return Ok(suppliers);
     }
 
+    /// <summary>
+    /// Get shipments linked to a session
+    /// </summary>
+    [HttpGet("{sessionId:guid}/shipments")]
+    public async Task<ActionResult<List<SupplierShipmentDto>>> GetSessionShipments(Guid sessionId)
+    {
+        var shipments = await _sessionService.GetSessionShipmentsAsync(sessionId);
+        return Ok(shipments);
+    }
+
     // =====================================================
     // GET: Area-matched products for inbound session
     // =====================================================

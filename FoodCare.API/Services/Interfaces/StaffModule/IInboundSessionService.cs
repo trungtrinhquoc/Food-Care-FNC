@@ -34,4 +34,9 @@ public interface IInboundSessionService
     /// Falls back to nearest suppliers within 10km radius using Haversine distance.
     /// </summary>
     Task<List<AreaMatchedProductDto>> GetAreaMatchedProductsAsync(Guid warehouseId);
+
+    /// <summary>
+    /// Get shipments linked to an inbound session
+    /// </summary>
+    Task<List<SupplierShipmentDto>> GetSessionShipmentsAsync(Guid sessionId);
 }

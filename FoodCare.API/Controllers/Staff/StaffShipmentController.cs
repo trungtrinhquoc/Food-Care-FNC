@@ -81,10 +81,10 @@ public class StaffShipmentController : ControllerBase
     }
 
     /// <summary>
-    /// Mark shipment as arrived at warehouse
+    /// Confirm received shipment at warehouse (Delivering → Received)
     /// </summary>
     [HttpPost("{id}/mark-arrived")]
-    public async Task<ActionResult<SupplierShipmentDto>> MarkArrived(Guid id, [FromBody] UpdateShipmentStatusRequest? request = null)
+    public async Task<ActionResult<SupplierShipmentDto>> MarkArrived(Guid id, [FromBody] ConfirmReceivedRequest? request = null)
     {
         var (staffId, userId) = await GetCurrentStaffAndUserIdAsync();
         if (staffId == null || userId == null) return Forbid("Staff profile required");
@@ -98,12 +98,8 @@ public class StaffShipmentController : ControllerBase
 
         try
         {
-            var statusRequest = new UpdateShipmentStatusRequest
-            {
-                Status = "Arrived",
-                Notes = request?.Notes ?? $"Shipment arrived at warehouse, confirmed by staff"
-            };
-            var result = await _shipmentService.UpdateShipmentStatusAsync(id, userId.Value, statusRequest);
+            var confirmRequest = request ?? new ConfirmReceivedRequest { Notes = "Shipment received at warehouse" };
+            var result = await _shipmentService.ConfirmReceivedAsync(id, confirmRequest);
             if (result == null) return NotFound();
             return Ok(result);
         }
@@ -117,7 +113,7 @@ public class StaffShipmentController : ControllerBase
     /// Confirm arrival and receive (alias for backward compatibility)
     /// </summary>
     [HttpPost("{id}/confirm-arrival")]
-    public async Task<ActionResult<SupplierShipmentDto>> ConfirmArrival(Guid id, [FromBody] UpdateShipmentStatusRequest? request = null)
+    public async Task<ActionResult<SupplierShipmentDto>> ConfirmArrival(Guid id, [FromBody] ConfirmReceivedRequest? request = null)
     {
         return await MarkArrived(id, request);
     }
@@ -204,12 +200,11 @@ public class StaffShipmentController : ControllerBase
         return Ok(new
         {
             total = allShipments.Count,
-            draft = allShipments.Count(s => s.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase)),
-            dispatched = allShipments.Count(s => s.Status.Equals("Dispatched", StringComparison.OrdinalIgnoreCase)),
-            inTransit = allShipments.Count(s => s.Status.Equals("InTransit", StringComparison.OrdinalIgnoreCase)),
-            arrived = allShipments.Count(s => s.Status.Equals("Arrived", StringComparison.OrdinalIgnoreCase)),
-            inspected = allShipments.Count(s => s.Status.Equals("Inspected", StringComparison.OrdinalIgnoreCase)),
-            stored = allShipments.Count(s => s.Status.Equals("Stored", StringComparison.OrdinalIgnoreCase))
+            preparing = allShipments.Count(s => s.Status.Equals("Preparing", StringComparison.OrdinalIgnoreCase)),
+            delivering = allShipments.Count(s => s.Status.Equals("Delivering", StringComparison.OrdinalIgnoreCase)),
+            received = allShipments.Count(s => s.Status.Equals("Received", StringComparison.OrdinalIgnoreCase)),
+            success = allShipments.Count(s => s.Status.Equals("Success", StringComparison.OrdinalIgnoreCase)),
+            cancelled = allShipments.Count(s => s.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
         });
     }
 

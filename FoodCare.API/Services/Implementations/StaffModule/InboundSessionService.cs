@@ -742,4 +742,40 @@ public class InboundSessionService : IInboundSessionService
         Note = detail.Note,
         CreatedAt = detail.CreatedAt
     };
+
+    public async Task<List<SupplierShipmentDto>> GetSessionShipmentsAsync(Guid sessionId)
+    {
+        var shipments = await _context.SupplierShipments
+            .Include(s => s.Supplier)
+            .Include(s => s.Warehouse)
+            .Include(s => s.Items).ThenInclude(i => i.Product)
+            .Include(s => s.InboundSession)
+            .Where(s => s.InboundSessionId == sessionId)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+
+        return shipments.Select(s => new SupplierShipmentDto
+        {
+            Id = s.Id,
+            ExternalReference = s.ExternalReference,
+            SupplierId = s.SupplierId,
+            SupplierName = s.Supplier?.StoreName,
+            WarehouseId = s.WarehouseId,
+            WarehouseName = s.Warehouse?.Name,
+            Status = s.Status.ToString(),
+            ExpectedDeliveryDate = s.ExpectedDeliveryDate,
+            ActualDispatchDate = s.ActualDispatchDate,
+            ActualArrivalDate = s.ActualArrivalDate,
+            TrackingNumber = s.TrackingNumber,
+            Carrier = s.Carrier,
+            Notes = s.Notes,
+            TotalValue = s.TotalValue,
+            TotalItems = s.TotalItems,
+            TotalQuantity = s.TotalQuantity,
+            CreatedAt = s.CreatedAt,
+            InboundSessionId = s.InboundSessionId,
+            InboundSessionCode = s.InboundSession?.SessionCode,
+            InboundSessionSupplierId = s.InboundSessionSupplierId,
+        }).ToList();
+    }
 }
