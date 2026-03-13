@@ -44,6 +44,10 @@ public partial class User
 
     public DateTime? PasswordResetExpiry { get; set; }
 
+    // Số dư tài khoản
+    [Column(TypeName = "decimal(15,2)")]
+    public decimal AccountBalance { get; set; } = 0;
+
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();
@@ -65,6 +69,8 @@ public partial class User
     public virtual ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
 
     public virtual MemberTier? Tier { get; set; }
+
+    public virtual ICollection<WalletTransaction> WalletTransactions { get; set; } = new List<WalletTransaction>();
 
     public virtual ICollection<ZaloMessagesLog> ZaloMessagesLogs { get; set; } = new List<ZaloMessagesLog>();
 

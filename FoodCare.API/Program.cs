@@ -138,6 +138,7 @@ builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>(
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<ICouponService, CouponService>();
 

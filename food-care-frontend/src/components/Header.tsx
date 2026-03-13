@@ -5,7 +5,7 @@ import {
     X, ChevronDown, LogOut, Home, LayoutDashboard, Package,
     Truck, Store, BarChart3, FileText, Bell, Ticket,
     CheckCircle, XCircle, AlertCircle, Plus, Loader2,
-    Camera, Box, ShoppingCart as ShoppingCartIcon
+    Camera, Box, ShoppingCart as ShoppingCartIcon, Wallet
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -373,6 +373,9 @@ export default function Header() {
                                             <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <User className="w-5 h-5 text-gray-400" /> <span className="text-sm">Thông tin cá nhân</span>
                                             </Link>
+                                            <Link to="/profile?tab=wallet" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                                                <Wallet className="w-5 h-5 text-emerald-500" /> <span className="text-sm">Ví FNC Pay</span>
+                                            </Link>
                                             <Link to="/subscriptions" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Package className="w-5 h-5 text-gray-400" /> <span className="text-sm">Đơn hàng định kỳ</span>
                                             </Link>
@@ -416,6 +419,10 @@ export default function Header() {
                                     <span className="ml-auto text-[10px] bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded-full">Mới</span>
                                 </Link>
                                 <Link to="/profile" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/profile') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Tài khoản</Link>
+                                <Link to="/profile?tab=wallet" className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${location.search.includes('tab=wallet') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>
+                                    <Wallet className="h-4 w-4 text-emerald-500" />
+                                    Ví FNC Pay
+                                </Link>
                             </>
                         )}
                         {!isAuthenticated && (

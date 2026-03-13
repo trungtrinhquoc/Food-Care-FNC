@@ -41,6 +41,7 @@ public partial class FoodCareDbContext : DbContext {
     public virtual DbSet<ZaloMessagesLog> ZaloMessagesLogs { get; set; }
     public virtual DbSet<ZaloTemplate> ZaloTemplates { get; set; }
     public virtual DbSet<Transaction> Transaction { get; set; }
+    public virtual DbSet<WalletTransaction> WalletTransactions { get; set; }
 
 
     public DbSet<LoginLog> LoginLogs { get; set; }
@@ -745,6 +746,12 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
 
+            // Số dư tài khoản
+            entity.Property(e => e.AccountBalance)
+                  .HasColumnName("account_balance")
+                  .HasDefaultValue(0m)
+                  .HasPrecision(15, 2);
+
             // Email Verification Columns
             entity.Property(e => e.EmailVerified)
                 .HasColumnName("email_verified")
@@ -785,6 +792,34 @@ public partial class FoodCareDbContext : DbContext {
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // WalletTransaction Configuration
+        modelBuilder.Entity<WalletTransaction>(entity => {
+            entity.HasKey(e => e.Id).HasName("wallet_transactions_pkey");
+            entity.ToTable("wallet_transactions");
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Amount).HasPrecision(15, 2).HasColumnName("amount");
+            entity.Property(e => e.Type)
+                  .HasConversion<string>()
+                  .HasMaxLength(20)
+                  .HasColumnName("type");
+            entity.Property(e => e.Status)
+                  .HasConversion<string>()
+                  .HasMaxLength(20)
+                  .HasDefaultValue(WalletTransactionStatus.Pending)
+                  .HasColumnName("status");
+            entity.Property(e => e.ReferenceId).HasColumnName("reference_id");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_wallet_transactions_user");
+            entity.HasOne(d => d.User)
+                  .WithMany(p => p.WalletTransactions)
+                  .HasForeignKey(d => d.UserId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("wallet_transactions_user_id_fkey");
         });
 
         // PointsHistory configuration

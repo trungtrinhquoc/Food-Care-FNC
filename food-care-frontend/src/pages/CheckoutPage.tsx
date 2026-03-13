@@ -19,9 +19,10 @@ import { couponApi } from '../services/couponApi';
 import type { CouponDto } from '../services/couponApi';
 import { cloudinaryResize } from '../utils/cloudinary';
 
-import { Calendar, CreditCard, MapPin, Package, Check, Plus, Ticket, Percent, Banknote, Landmark } from 'lucide-react';
+import { Calendar, CreditCard, MapPin, Package, Check, Plus, Ticket, Percent, Banknote, Landmark, Wallet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
+import { walletApi } from '../services/walletApi';
 
 export default function CheckoutPage() {
     const [address, setAddress] = useState({
@@ -35,7 +36,8 @@ export default function CheckoutPage() {
 
     const selectedItems = getSelectedItems();
 
-    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank' | 'momo'>('cod');
+    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank' | 'momo' | 'wallet'>('cod');
+    const [walletBalance, setWalletBalance] = useState<number>(0);
 
     const [formData, setFormData] = useState({
         fullName: user?.fullName || '',
@@ -131,6 +133,9 @@ export default function CheckoutPage() {
         };
 
         fetchAddresses();
+
+        // Load wallet balance
+        walletApi.getBalance().then(d => setWalletBalance(d.balance)).catch(() => { });
     }, [user, navigate]);
 
     /* =======================
@@ -275,6 +280,20 @@ export default function CheckoutPage() {
                     });
                 } catch (saveError) {
                     console.error('Error auto-saving address:', saveError);
+                }
+            }
+
+            // If wallet payment, deduct from balance
+            if (paymentMethod === 'wallet') {
+                if (walletBalance < finalTotal) {
+                    toast.error(`Số dư FNC Pay không đủ. Cần ${finalTotal.toLocaleString('vi-VN')}đ, hiện có ${walletBalance.toLocaleString('vi-VN')}đ.`);
+                    return;
+                }
+                try {
+                    await walletApi.deductBalance(finalTotal, order.id, `Payment for Order #${order.id.slice(0, 8)}`);
+                } catch {
+                    toast.error('Could not process payment from FNC Pay, please try again');
+                    return;
                 }
             }
 
@@ -519,16 +538,45 @@ export default function CheckoutPage() {
                                     <RadioGroup
                                         value={paymentMethod}
                                         onValueChange={(value) =>
-                                            setPaymentMethod(value as 'cod' | 'bank' | 'momo')
+                                            setPaymentMethod(value as 'cod' | 'bank' | 'momo' | 'wallet')
                                         }
                                         className="space-y-3"
                                     >
+                                        {/* WALLET */}
+                                        <Label
+                                            htmlFor="wallet"
+                                            className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'wallet'
+                                                ? 'border-emerald-500 bg-emerald-50/60'
+                                                : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                }`}
+                                        >
+                                            <RadioGroupItem value="wallet" id="wallet" className="sr-only" />
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${paymentMethod === 'wallet' ? 'bg-emerald-500' : 'bg-emerald-50'}`}>
+                                                <Wallet className={`w-5 h-5 ${paymentMethod === 'wallet' ? 'text-white' : 'text-emerald-500'}`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-sm text-gray-900">FNC Pay</div>
+                                                <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-2">
+                                                    <span className="font-medium">Số dư:</span>
+                                                    <span className={`font-bold ${walletBalance >= finalTotal ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                        {walletBalance.toLocaleString('vi-VN')}đ
+                                                    </span>
+                                                    {walletBalance < finalTotal && <span className="text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full text-[9px]">KHÔNG ĐỦ</span>}
+                                                </div>
+                                            </div>
+                                            {paymentMethod === 'wallet' && (
+                                                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                                    <Check className="w-3 h-3 text-white" />
+                                                </div>
+                                            )}
+                                        </Label>
+
                                         {/* COD */}
                                         <Label
                                             htmlFor="cod"
                                             className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'cod'
-                                                    ? 'border-emerald-500 bg-emerald-50/60'
-                                                    : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                ? 'border-emerald-500 bg-emerald-50/60'
+                                                : 'border-gray-100 hover:border-gray-300 bg-white'
                                                 }`}
                                         >
                                             <RadioGroupItem value="cod" id="cod" className="sr-only" />
@@ -559,8 +607,8 @@ export default function CheckoutPage() {
                                         <Label
                                             htmlFor="bank"
                                             className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'bank'
-                                                    ? 'border-blue-500 bg-blue-50/60'
-                                                    : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                ? 'border-blue-500 bg-blue-50/60'
+                                                : 'border-gray-100 hover:border-gray-300 bg-white'
                                                 }`}
                                         >
                                             <RadioGroupItem value="bank" id="bank" className="sr-only" />
@@ -591,8 +639,8 @@ export default function CheckoutPage() {
                                         <Label
                                             htmlFor="momo"
                                             className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'momo'
-                                                    ? 'border-pink-500 bg-pink-50/60'
-                                                    : 'border-gray-100 hover:border-gray-300 bg-white'
+                                                ? 'border-pink-500 bg-pink-50/60'
+                                                : 'border-gray-100 hover:border-gray-300 bg-white'
                                                 }`}
                                         >
                                             <RadioGroupItem value="momo" id="momo" className="sr-only" />
