@@ -13,7 +13,7 @@ export const orderApi = {
     },
 
     getMyOrders: async (): Promise<Order[]> => {
-        const response = await api.get<Order[]>('/orders/my');
+        const response = await api.get<Order[]>('/orders/my-orders');
         return response.data;
     },
 };

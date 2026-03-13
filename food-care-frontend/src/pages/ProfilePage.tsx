@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { profileApi, productsApi } from '../services/api';
 import { toast } from 'sonner';
 import type { Order, Address, PaymentMethod, OrderStatus } from '../types';
@@ -18,7 +18,7 @@ import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
     Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2,
-    Camera
+    Camera, Wallet
 } from 'lucide-react';
 import { SimplePagination } from '../components/ui/pagination';
 import { AddressSelector } from '../components/AddressSelector';
@@ -26,6 +26,7 @@ import { OrderDetailDialog } from '../components/OrderDetailDialog';
 import { ProductReviewDialog } from '../components/ProductReviewDialog';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { uploadToCloudinary } from '../utils/cloudinary';
+import { WalletTab } from '../components/WalletTab';
 
 function parseImageUrl(imageUrl?: string | string[]): string[] {
     if (!imageUrl) return [];
@@ -81,7 +82,28 @@ export default function ProfilePage() {
     const { user, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
     const { addToCart } = useCart();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tabParam = searchParams.get('tab');
+
+    const [activeTab, setActiveTab] = useState(tabParam || 'overview');
+
+    useEffect(() => {
+        if (tabParam) {
+            setActiveTab(tabParam);
+        } else {
+            setActiveTab('overview');
+        }
+    }, [tabParam]);
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        if (value === 'overview') {
+            searchParams.delete('tab');
+            setSearchParams(searchParams, { replace: true });
+        } else {
+            setSearchParams({ tab: value }, { replace: true });
+        }
+    };
     const [buyingAgain, setBuyingAgain] = useState(false);
 
     // State for data
@@ -751,13 +773,16 @@ export default function ProfilePage() {
 
             {/* Main Content */}
             <section className="container mx-auto px-4 py-8">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <Tabs value={activeTab} onValueChange={handleTabChange}>
                     <TabsList className="mb-10 w-full justify-start overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide no-scrollbar bg-gray-100/80 p-1.5 rounded-2xl border-none h-auto">
                         <TabsTrigger value="overview" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
                             <User className="w-4 h-4 text-blue-500" /> <span>Tổng quan</span>
                         </TabsTrigger>
                         <TabsTrigger value="orders" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
                             <Package className="w-4 h-4 text-orange-500" /> <span>Đơn hàng</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="wallet" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
+                            <Wallet className="w-4 h-4 text-emerald-500" /> <span>FNC Pay</span>
                         </TabsTrigger>
                         <TabsTrigger value="membership" className="flex items-center gap-2 px-6 py-3 data-[state=active]:!bg-emerald-600 data-[state=active]:!text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/40 rounded-xl transition-all font-bold text-gray-600 hover:text-emerald-600">
                             <Crown className="w-4 h-4 text-yellow-500" /> <span>Hạng thành viên</span>
@@ -766,6 +791,11 @@ export default function ProfilePage() {
                             <Settings className="w-4 h-4 text-gray-500" /> <span>Cài đặt</span>
                         </TabsTrigger>
                     </TabsList>
+
+                    {/* Wallet Tab */}
+                    <TabsContent value="wallet">
+                        <WalletTab />
+                    </TabsContent>
 
                     {/* Overview Tab */}
                     <TabsContent value="overview" className="space-y-6">
