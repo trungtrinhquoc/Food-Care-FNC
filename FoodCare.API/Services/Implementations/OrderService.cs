@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Orders;
 using FoodCare.API.Models.Enums;
@@ -70,7 +70,7 @@ namespace FoodCare.API.Services.Implementations
                     Subtotal = subtotal,
                     ShippingFee = shippingFee,
                     DiscountAmount = discount,
-                    TotalAmount = subtotal + shippingFee - discount,
+                    TotalAmount = Math.Max(0, subtotal + shippingFee - discount),
 
                     ShippingAddressSnapshot = JsonSerializer.Serialize(new
                     {

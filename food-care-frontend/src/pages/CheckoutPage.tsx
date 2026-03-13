@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -31,10 +31,14 @@ export default function CheckoutPage() {
         ward: '',
     });
     const navigate = useNavigate();
+    const location = useLocation();
     const { getSelectedItems, getSelectedTotal, clearSelectedItems } = useCart();
     const { user } = useAuth();
 
     const selectedItems = getSelectedItems();
+    // Check if items are passed via state (e.g. from "Mua ngay" directly)
+    const stateItems = location.state?.items;
+    const checkoutItems = stateItems || selectedItems;
 
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank' | 'momo' | 'wallet'>('cod');
     const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -76,7 +80,7 @@ export default function CheckoutPage() {
             return;
         }
 
-        if (selectedItems.length === 0) {
+        if (checkoutItems.length === 0) {
             navigate('/cart');
             return;
         }
@@ -169,10 +173,15 @@ export default function CheckoutPage() {
     };
 
     // Calculate final totals
-    const subtotal = getSelectedTotal();
+    const subtotal = checkoutItems.reduce((total: number, i: any) => {
+        const price = i.subscription
+            ? i.product.basePrice * (1 - (i.subscription.discount || 0) / 100)
+            : i.product.basePrice;
+        return total + price * i.quantity;
+    }, 0);
 
     useEffect(() => {
-        if (user && selectedItems.length > 0) {
+        if (user && checkoutItems.length > 0) {
             const fetchCoupons = async () => {
                 try {
                     const list = await couponApi.getAvailableCoupons(subtotal);
@@ -193,7 +202,7 @@ export default function CheckoutPage() {
         setCouponError('');
         if (!couponCode.trim()) return;
         try {
-            const result = await couponApi.validateCoupon(couponCode, getSelectedTotal());
+            const result = await couponApi.validateCoupon(couponCode, subtotal);
             setAppliedCoupon(result);
             toast.success('Áp dụng mã giảm giá thành công');
         } catch (error: any) {
@@ -216,7 +225,7 @@ export default function CheckoutPage() {
         ? Math.min(discountAmount, appliedCoupon.maxDiscountAmount)
         : discountAmount;
 
-    const finalTotal = subtotal - finalDiscount;
+    const finalTotal = Math.max(0, subtotal - finalDiscount);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -244,7 +253,7 @@ export default function CheckoutPage() {
                 paymentMethod,
                 note: formData.notes,
                 couponCode: appliedCoupon?.code,
-                items: selectedItems.map(item => ({
+                items: checkoutItems.map((item: any) => ({
                     productId: item.product.id,
                     productName: item.product.name,
                     quantity: item.quantity,
@@ -347,7 +356,7 @@ export default function CheckoutPage() {
         return frequencyLabels[item.subscription.frequency];
     };
 
-    if (!user || selectedItems.length === 0) return null;
+    if (!user || checkoutItems.length === 0) return null;
 
     /* =======================
        RENDER
@@ -694,7 +703,7 @@ export default function CheckoutPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {selectedItems.map(item => {
+                                    {checkoutItems.map((item: any) => {
                                         const price = item.product.basePrice;
                                         return (
                                             <div key={item.product.id} className="mb-4 border-b pb-4 border-gray-100 last:border-0">
@@ -734,7 +743,7 @@ export default function CheckoutPage() {
 
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Tạm tính</span>
-                                        <span>{getSelectedTotal().toLocaleString('vi-VN')}đ</span>
+                                        <span>{subtotal.toLocaleString('vi-VN')}đ</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Phí vận chuyển:</span>

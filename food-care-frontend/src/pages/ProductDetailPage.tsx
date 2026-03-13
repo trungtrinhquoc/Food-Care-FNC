@@ -126,6 +126,35 @@ export default function ProductDetailPage() {
     });
   };
 
+  const handleBuyNow = () => {
+    if (product.stockQuantity <= 0) {
+      toast.error('Sản phẩm đã hết hàng');
+      return;
+    }
+    if (quantity > product.stockQuantity) {
+      toast.error(`Chỉ còn ${product.stockQuantity} sản phẩm trong kho`);
+      setQuantity(product.stockQuantity);
+      return;
+    }
+    const isSubscription = subscriptionType === 'subscription';
+    const freq = isSubscription ? frequency : undefined;
+
+    // Build the item payload to send directly to checkout bypassing cart
+    const checkoutItem = {
+      product,
+      quantity,
+      selected: true,
+      isSubscription,
+      subscription: isSubscription && freq ? {
+        frequency: freq,
+        discount: subscriptionDiscounts[freq] || 0
+      } : undefined
+    };
+    
+    // Navigate directly to checkout with state
+    navigate('/checkout', { state: { items: [checkoutItem] } });
+  };
+
   const inStock = product.stockQuantity > 0;
 
   return (
@@ -343,7 +372,7 @@ export default function ProductDetailPage() {
                 <Button
                   variant="outline"
                   className="h-10 text-sm font-semibold border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-                  onClick={() => { handleAddToCart(); navigate('/cart'); }}
+                  onClick={handleBuyNow}
                   disabled={!inStock}
                 >
                   Mua ngay
