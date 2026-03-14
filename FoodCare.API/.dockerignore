@@ -1,0 +1,13 @@
+.git
+.github
+.vs
+.vscode
+bin
+obj
+logs
+*.user
+*.lock.json
+food-care-frontend
+migrations
+scripts
+story-generator-479404-ef2e8236954d.json
