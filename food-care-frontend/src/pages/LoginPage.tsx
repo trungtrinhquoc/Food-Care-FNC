@@ -80,7 +80,12 @@ export default function LoginPage() {
             } else if (userRole === 'supplier') {
                 navigate('/supplier');
             } else if (userRole === 'staff') {
-                navigate('/staff');
+                // Check if staff is a shipper
+                if (response?.user?.staffPositionEnum?.toLowerCase() === 'shipper') {
+                    navigate('/shipper');
+                } else {
+                    navigate('/staff');
+                }
             } else {
                 navigate('/');
             }
@@ -166,7 +171,11 @@ export default function LoginPage() {
                 } else if (userRole === 'supplier') {
                     navigate('/supplier', { replace: true });
                 } else if (userRole === 'staff') {
-                    navigate('/staff', { replace: true });
+                    if (response?.user?.staffPositionEnum?.toLowerCase() === 'shipper') {
+                        navigate('/shipper', { replace: true });
+                    } else {
+                        navigate('/staff', { replace: true });
+                    }
                 } else {
                     navigate('/', { replace: true });
                 }

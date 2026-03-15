@@ -23,6 +23,7 @@ import StaffDashboardPage from './pages/staff/StaffDashboardPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import NotificationsPage from './pages/NotificationsPage';
+import ShipperDashboardPage from './pages/shipper/ShipperDashboardPage';
 
 // Warehouse Receiving Components
 import ReceivingDashboard from './components/staff/ReceivingDashboard';
@@ -131,12 +132,28 @@ const StaffRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Shipper Route - requires staff role + Shipper position
+const ShipperRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const isShipper =
+    user?.role?.toLowerCase() === 'staff' &&
+    user?.staffPositionEnum?.toLowerCase() === 'shipper';
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isShipper) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 function AppRoutes() {
   const location = useLocation();
   const isStaffRoute = location.pathname.startsWith('/staff');
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isSupplierRoute = location.pathname.startsWith('/supplier');
-  const isDashboardRoute = isStaffRoute || isAdminRoute || isSupplierRoute;
+  const isShipperRoute = location.pathname.startsWith('/shipper');
+  const isDashboardRoute = isStaffRoute || isAdminRoute || isSupplierRoute || isShipperRoute;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -151,146 +168,69 @@ function AppRoutes() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/checkout" element={
-            <ProtectedRoute>
-              <CheckoutPage />
-            </ProtectedRoute>
+            <ProtectedRoute><CheckoutPage /></ProtectedRoute>
+          } />
+          <Route path="/cart" element={
+            <ProtectedRoute><CartPage /></ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute><ProfilePage /></ProtectedRoute>
+          } />
+          <Route path="/subscriptions" element={
+            <ProtectedRoute><SubscriptionsPage /></ProtectedRoute>
+          } />
+          <Route path="/vouchers" element={
+            <ProtectedRoute><VoucherCenterPage /></ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute><NotificationsPage /></ProtectedRoute>
           } />
 
+          <Route path="/admin" element={
+            <AdminRoute><AdminDashboardPage /></AdminRoute>
+          } />
+          <Route path="/supplier" element={
+            <SupplierRoute><SupplierDashboardPage /></SupplierRoute>
+          } />
+          <Route path="/supplier/shipments" element={
+            <SupplierRoute><SupplierShipmentManagement /></SupplierRoute>
+          } />
+          <Route path="/staff" element={
+            <StaffRoute><StaffDashboardPage /></StaffRoute>
+          } />
+          <Route path="/staff/receiving" element={
+            <StaffRoute><ReceivingDashboard /></StaffRoute>
+          } />
+          <Route path="/staff/receipts/:receiptId" element={
+            <StaffRoute><ReceiptInspectionPage /></StaffRoute>
+          } />
+          <Route path="/staff/shipments/:shipmentId" element={
+            <StaffRoute><ShipmentDetailPage /></StaffRoute>
+          } />
+          <Route path="/staff/inventory" element={
+            <StaffRoute><InventoryManagement /></StaffRoute>
+          } />
+          <Route path="/staff/discrepancies" element={
+            <StaffRoute><DiscrepancyManagement /></StaffRoute>
+          } />
+          <Route path="/staff/returns" element={
+            <StaffRoute><ReturnManagement /></StaffRoute>
+          } />
 
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <CartPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/subscriptions"
-            element={
-              <ProtectedRoute>
-                <SubscriptionsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vouchers"
-            element={
-              <ProtectedRoute>
-                <VoucherCenterPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <NotificationsPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Shipper Route */}
+          <Route path="/shipper" element={
+            <ShipperRoute><ShipperDashboardPage /></ShipperRoute>
+          } />
 
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminDashboardPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/supplier"
-            element={
-              <SupplierRoute>
-                <SupplierDashboardPage />
-              </SupplierRoute>
-            }
-          />
-          {/* Supplier Shipment Routes */}
-          <Route
-            path="/supplier/shipments"
-            element={
-              <SupplierRoute>
-                <SupplierShipmentManagement />
-              </SupplierRoute>
-            }
-          />
-          <Route
-            path="/staff"
-            element={
-              <StaffRoute>
-                <StaffDashboardPage />
-              </StaffRoute>
-            }
-          />
-          {/* Staff Warehouse Routes */}
-          <Route
-            path="/staff/receiving"
-            element={
-              <StaffRoute>
-                <ReceivingDashboard />
-              </StaffRoute>
-            }
-          />
-          <Route
-            path="/staff/receipts/:receiptId"
-            element={
-              <StaffRoute>
-                <ReceiptInspectionPage />
-              </StaffRoute>
-            }
-          />
-          <Route
-            path="/staff/shipments/:shipmentId"
-            element={
-              <StaffRoute>
-                <ShipmentDetailPage />
-              </StaffRoute>
-            }
-          />
-          <Route
-            path="/staff/inventory"
-            element={
-              <StaffRoute>
-                <InventoryManagement />
-              </StaffRoute>
-            }
-          />
-          <Route
-            path="/staff/discrepancies"
-            element={
-              <StaffRoute>
-                <DiscrepancyManagement />
-              </StaffRoute>
-            }
-          />
-          <Route
-            path="/staff/returns"
-            element={
-              <StaffRoute>
-                <ReturnManagement />
-              </StaffRoute>
-            }
-          />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
 
           {/* 404 catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
       </main>
 
       {!isDashboardRoute && <Footer />}
-
       {/* Chat Widget - only show when logged in and not on dashboard routes */}
       {!isDashboardRoute && <ChatWidgetWrapper />}
     </div>
@@ -301,7 +241,6 @@ function AppRoutes() {
 function ChatWidgetWrapper() {
   return <ChatWidget />;
 }
-
 
 function App() {
   return (

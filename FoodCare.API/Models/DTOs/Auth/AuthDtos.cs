@@ -79,6 +79,8 @@ public class UserDto
     public MemberTierDto? MemberTier { get; set; }
     public decimal TotalSpent { get; set; } = 0;
     public DateTime? CreatedAt { get; set; }
+    /// <summary>Chức vụ staff (null nếu không phải staff). Dùng để detect Shipper.</summary>
+    public string? StaffPositionEnum { get; set; }
 }
 
 public class MemberTierDto
