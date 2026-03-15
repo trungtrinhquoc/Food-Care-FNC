@@ -25,5 +25,8 @@ public enum StaffPosition
     WarehouseStaff = 5,
 
     /// <summary>Nhân viên bốc xếp / vận hành thiết bị — Xe nâng, bốc dỡ</summary>
-    Loader = 6
+    Loader = 6,
+
+    /// <summary>Nhân viên giao hàng — Nhận và giao đơn hàng đến khách hàng</summary>
+    Shipper = 7
 }

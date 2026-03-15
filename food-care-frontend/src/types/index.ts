@@ -50,13 +50,14 @@ export interface User {
     id: string;
     email: string;
     fullName: string;
-    phoneNumber?: string; // Changed from phone
+    phoneNumber?: string;
     avatarUrl?: string;
     role: 'customer' | 'admin' | 'supplier' | 'staff';
     memberTier?: MemberTier;
-    totalSpent?: number; // Optional as not in DTO yet
+    totalSpent?: number;
     loyaltyPoints: number;
     createdAt?: string;
+    staffPositionEnum?: string; // 'Shipper' | 'WarehouseManager' | etc.
     providerInfo?: {
         storeName: string;
         level: string;

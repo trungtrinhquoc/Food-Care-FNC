@@ -173,8 +173,10 @@ builder.Services.AddScoped<ISupplierInboundService, SupplierInboundService>();
 // Background service: auto-close expired inbound sessions
 builder.Services.AddHostedService<FoodCare.API.Services.Background.InboundSessionExpiryService>();
 
-// Register Shipping Flow Service (Supplier → Staff → User)
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
+
+// Register Shipper Service
+builder.Services.AddScoped<IShipperService, ShipperService>();
 
 var app = builder.Build();
 
@@ -233,8 +235,32 @@ using (var scope = app.Services.CreateScope())
             CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
         ";
         await cmd.ExecuteNonQueryAsync();
+
+        // === ADD SHIPPER COLUMNS TO ORDERS (if not exists) ===
+        using var cmd2 = conn.CreateCommand();
+        cmd2.CommandText = @"
+            DO $$
+            BEGIN
+                -- Thêm column shipper_id vào orders nếu chưa có
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'orders' AND column_name = 'shipper_id'
+                ) THEN
+                    ALTER TABLE public.orders ADD COLUMN shipper_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
+                END IF;
+
+                -- Thêm column warehouse_id vào orders nếu chưa có
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'orders' AND column_name = 'warehouse_id'
+                ) THEN
+                    ALTER TABLE public.orders ADD COLUMN warehouse_id UUID REFERENCES public.warehouses(id) ON DELETE SET NULL;
+                END IF;
+            END $$;
+        ";
+        await cmd2.ExecuteNonQueryAsync();
         await conn.CloseAsync();
-        Console.WriteLine("✅ Tables coupons/coupon_usage/transactions ensured.");
+        Console.WriteLine("✅ Tables/columns ensured (coupons, transactions, shipper columns).");
     }
     catch (Exception ex)
     {

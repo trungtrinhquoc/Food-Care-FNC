@@ -37,6 +37,7 @@ public class AdminWarehouseController : ControllerBase
             StaffPosition.InventoryController => "Nhân viên kiểm soát tồn kho",
             StaffPosition.WarehouseStaff => "Nhân viên kho",
             StaffPosition.Loader => "Nhân viên bốc xếp",
+            StaffPosition.Shipper => "Nhân viên giao hàng (Shipper)",
             _ => "Chưa xác định"
         };
     }
@@ -66,6 +67,7 @@ public class AdminWarehouseController : ControllerBase
                 StaffPosition.InventoryController => "Theo dõi số lượng tồn, kiểm kê định kỳ, đối chiếu dữ liệu hệ thống với thực tế",
                 StaffPosition.WarehouseStaff => "Nhập hàng, xuất hàng, sắp xếp hàng hóa, đóng gói, dán nhãn",
                 StaffPosition.Loader => "Vận hành xe nâng, bốc dỡ hàng hóa, hỗ trợ nhập/xuất",
+                StaffPosition.Shipper => "Giao hàng, thu tiền COD, cập nhật trạng thái đơn",
                 _ => ""
             }
         });
