@@ -299,11 +299,22 @@ public class AuthService : IAuthService
 
         _logger.LogInformation("User logged in successfully: {Email}", user.Email);
 
+        var userDto = _mapper.Map<UserDto>(user);
+
+        // Attach staffPositionEnum if user is staff
+        if (user.Role.ToString().ToLower() == "staff")
+        {
+            var staffMember = await _context.StaffMembers
+                .FirstOrDefaultAsync(s => s.UserId == user.Id && s.IsActive);
+            if (staffMember?.StaffPositionEnum != null)
+                userDto.StaffPositionEnum = staffMember.StaffPositionEnum.ToString();
+        }
+
         return new AuthResponseDto
         {
             Token = token,
             RefreshToken = refreshToken,
-            User = _mapper.Map<UserDto>(user)
+            User = userDto
         };
     }
     
@@ -555,7 +566,20 @@ public class AuthService : IAuthService
             .Include(u => u.Orders)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        return user == null ? null : _mapper.Map<UserDto>(user);
+        if (user == null) return null;
+
+        var dto = _mapper.Map<UserDto>(user);
+
+        // Attach staffPositionEnum
+        if (user.Role.ToString().ToLower() == "staff")
+        {
+            var staffMember = await _context.StaffMembers
+                .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive);
+            if (staffMember?.StaffPositionEnum != null)
+                dto.StaffPositionEnum = staffMember.StaffPositionEnum.ToString();
+        }
+
+        return dto;
     }
 
     public async Task<bool> VerifyEmailAsync(string token)

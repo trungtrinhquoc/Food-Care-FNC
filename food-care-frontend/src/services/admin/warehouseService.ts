@@ -13,7 +13,8 @@ export type StaffPositionEnum =
   | 'Supervisor'
   | 'InventoryController'
   | 'WarehouseStaff'
-  | 'Loader';
+  | 'Loader'
+  | 'Shipper';
 
 export interface StaffPositionInfo {
   value: StaffPositionEnum;
@@ -31,6 +32,7 @@ export const STAFF_POSITION_LABELS: Record<StaffPositionEnum, string> = {
   InventoryController: 'NV kiểm soát tồn kho',
   WarehouseStaff: 'Nhân viên kho',
   Loader: 'NV bốc xếp',
+  Shipper: 'Nhân viên giao hàng (Shipper)',
 };
 
 // Which positions can login to the staff system

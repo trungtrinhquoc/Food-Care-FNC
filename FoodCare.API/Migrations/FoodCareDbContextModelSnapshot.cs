@@ -38,12 +38,12 @@ namespace FoodCare.API.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "inventory_type", new[] { "available", "reserved", "quarantine", "damaged", "expired" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "movement_type", new[] { "inbound", "outbound", "transfer", "adjustment", "return_in", "return_out", "quarantine_in", "quarantine_out", "expired", "damaged", "reserved", "unreserved" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "order_status", new[] { "pending", "confirmed", "shipping", "delivered", "cancelled", "returned" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "payment_status", new[] { "unpaid", "paid", "refunded", "payment_failed" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "payment_status", new[] { "unpaid", "paid", "refunded" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "receipt_status", new[] { "pending", "inspecting", "accepted", "partial", "rejected", "quarantine", "completed" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "shipment_status", new[] { "preparing", "delivering", "received", "success", "cancelled" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "sub_frequency", new[] { "weekly", "biweekly", "monthly", "custom" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "sub_status", new[] { "active", "paused", "cancelled" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "user_role", new[] { "customer", "admin", "staff", "supplier" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "user_role", new[] { "customer", "admin", "staff", "supplier", "shipper" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" });
@@ -592,6 +592,10 @@ namespace FoodCare.API.Migrations
                         .HasDefaultValue(PaymentStatus.unpaid)
                         .HasColumnName("payment_status");
 
+                    b.Property<Guid?>("ShipperId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shipper_id");
+
                     b.Property<string>("ShippingAddressSnapshot")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -644,10 +648,18 @@ namespace FoodCare.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
                     b.HasKey("Id")
                         .HasName("orders_pkey");
 
+                    b.HasIndex("ShipperId");
+
                     b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("WarehouseId");
 
                     b.HasIndex(new[] { "CreatedAt" }, "idx_orders_created_at")
                         .IsDescending();
@@ -4338,10 +4350,16 @@ namespace FoodCare.API.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
                     b.HasKey("Id")
                         .HasName("users_pkey");
 
                     b.HasIndex("TierId");
+
+                    b.HasIndex("WarehouseId");
 
                     b.ToTable("users", (string)null);
                 });
@@ -4598,6 +4616,11 @@ namespace FoodCare.API.Migrations
 
             modelBuilder.Entity("FoodCare.API.Models.Order", b =>
                 {
+                    b.HasOne("FoodCare.API.Models.User", "Shipper")
+                        .WithMany()
+                        .HasForeignKey("ShipperId")
+                        .HasConstraintName("orders_shipper_id_fkey");
+
                     b.HasOne("FoodCare.API.Models.Subscription", "Subscription")
                         .WithMany("Orders")
                         .HasForeignKey("SubscriptionId")
@@ -4609,9 +4632,18 @@ namespace FoodCare.API.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("orders_user_id_fkey");
 
+                    b.HasOne("FoodCare.API.Models.Staff.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .HasConstraintName("orders_warehouse_id_fkey");
+
+                    b.Navigation("Shipper");
+
                     b.Navigation("Subscription");
 
                     b.Navigation("User");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("FoodCare.API.Models.OrderItem", b =>
@@ -5495,7 +5527,14 @@ namespace FoodCare.API.Migrations
                         .HasForeignKey("TierId")
                         .HasConstraintName("users_tier_id_fkey");
 
+                    b.HasOne("FoodCare.API.Models.Staff.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .HasConstraintName("users_warehouse_id_fkey");
+
                     b.Navigation("Tier");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("FoodCare.API.Models.WalletTransaction", b =>

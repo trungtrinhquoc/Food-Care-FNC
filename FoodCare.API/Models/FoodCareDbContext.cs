@@ -274,6 +274,12 @@ public partial class FoodCareDbContext : DbContext {
 
             entity.HasOne(d => d.Subscription).WithMany(p => p.Orders).HasForeignKey(d => d.SubscriptionId).HasConstraintName("orders_subscription_id_fkey");
             entity.HasOne(d => d.User).WithMany(p => p.Orders).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_user_id_fkey");
+
+            // Shipper assignment FK (columns được tạo bởi SQL trong Program.cs)
+            entity.Property(e => e.ShipperId).HasColumnName("shipper_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.HasOne(d => d.Shipper).WithMany().HasForeignKey(d => d.ShipperId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_shipper_id_fkey");
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_warehouse_id_fkey");
         });
 
         modelBuilder.Entity<OrderItem>(entity => {
