@@ -56,16 +56,16 @@ export function AdminDeliveryKpiTab() {
   const totals = kpis.reduce(
     (acc, k) => ({
       totalDeliveries: acc.totalDeliveries + k.totalDeliveries,
-      pendingApproval: acc.pendingApproval + k.pendingApproval,
-      completed: acc.completed + k.completed,
-      rejected: acc.rejected + k.rejected,
-      onHold: acc.onHold + k.onHold,
+      approvedCount: acc.approvedCount + k.approvedCount,
+      completedCount: acc.completedCount + k.completedCount,
+      cancelledCount: acc.cancelledCount + k.cancelledCount,
+      onHoldCount: acc.onHoldCount + k.onHoldCount,
     }),
-    { totalDeliveries: 0, pendingApproval: 0, completed: 0, rejected: 0, onHold: 0 }
+    { totalDeliveries: 0, approvedCount: 0, completedCount: 0, cancelledCount: 0, onHoldCount: 0 }
   );
 
   const avgCompliance = kpis.length > 0
-    ? kpis.reduce((sum, k) => sum + k.complianceRate, 0) / kpis.length
+    ? kpis.reduce((sum, k) => sum + k.supplierComplianceRate, 0) / kpis.length
     : 0;
   const avgOnTime = kpis.length > 0
     ? kpis.reduce((sum, k) => sum + k.onTimeDeliveryRate, 0) / kpis.length
@@ -130,28 +130,28 @@ export function AdminDeliveryKpiTab() {
         <Card>
           <CardContent className="p-4 text-center">
             <Clock className="w-6 h-6 mx-auto text-yellow-500 mb-1" />
-            <p className="text-2xl font-bold">{totals.pendingApproval}</p>
+            <p className="text-2xl font-bold">{totals.approvedCount}</p>
             <p className="text-xs text-slate-500">Chờ duyệt</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <CheckCircle2 className="w-6 h-6 mx-auto text-green-500 mb-1" />
-            <p className="text-2xl font-bold">{totals.completed}</p>
+            <p className="text-2xl font-bold">{totals.completedCount}</p>
             <p className="text-xs text-slate-500">Hoàn tất</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <XCircle className="w-6 h-6 mx-auto text-red-500 mb-1" />
-            <p className="text-2xl font-bold">{totals.rejected}</p>
+            <p className="text-2xl font-bold">{totals.cancelledCount}</p>
             <p className="text-xs text-slate-500">Từ chối</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <AlertTriangle className="w-6 h-6 mx-auto text-amber-500 mb-1" />
-            <p className="text-2xl font-bold">{totals.onHold}</p>
+            <p className="text-2xl font-bold">{totals.onHoldCount}</p>
             <p className="text-xs text-slate-500">Tạm dừng</p>
           </CardContent>
         </Card>
@@ -222,19 +222,19 @@ export function AdminDeliveryKpiTab() {
                   <TableRow key={k.warehouseId}>
                     <TableCell className="font-medium">{k.warehouseName}</TableCell>
                     <TableCell className="text-right">{k.totalDeliveries}</TableCell>
-                    <TableCell className="text-right">{k.pendingApproval}</TableCell>
-                    <TableCell className="text-right">{k.approved}</TableCell>
-                    <TableCell className="text-right">{k.rejected}</TableCell>
-                    <TableCell className="text-right">{k.completed}</TableCell>
-                    <TableCell className={`text-right font-medium ${getComplianceColor(k.complianceRate)}`}>
-                      {formatPercent(k.complianceRate)}
+                    <TableCell className="text-right">{k.approvedCount}</TableCell>
+                    <TableCell className="text-right">{k.approvedCount}</TableCell>
+                    <TableCell className="text-right">{k.cancelledCount}</TableCell>
+                    <TableCell className="text-right">{k.completedCount}</TableCell>
+                    <TableCell className={`text-right font-medium ${getComplianceColor(k.supplierComplianceRate)}`}>
+                      {formatPercent(k.supplierComplianceRate)}
                     </TableCell>
                     <TableCell className="text-right text-red-600">{formatPercent(k.rejectRate)}</TableCell>
                     <TableCell className="text-right text-orange-600">{formatPercent(k.disputeRate)}</TableCell>
                     <TableCell className={`text-right font-medium ${getComplianceColor(k.onTimeDeliveryRate)}`}>
                       {formatPercent(k.onTimeDeliveryRate)}
                     </TableCell>
-                    <TableCell className="text-right">{formatHours(k.avgApprovalTimeHours)}</TableCell>
+                    <TableCell className="text-right">{formatHours(k.avgApprovalTimeMinutes)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

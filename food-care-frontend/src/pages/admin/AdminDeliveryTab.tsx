@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -59,7 +59,7 @@ export function AdminDeliveryTab() {
       setLoading(true);
       const data = await adminDeliveryApi.getPendingDeliveries(pendingPage, PAGE_SIZE);
       setPendingDeliveries(data.items || []);
-      setPendingTotal(data.totalCount ?? data.totalItems ?? 0);
+      setPendingTotal(data.totalItems ?? 0);
     } catch (error) {
       console.error('Error loading pending deliveries:', error);
       toast.error('Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch \u0111ang giao');
@@ -78,7 +78,7 @@ export function AdminDeliveryTab() {
         search: searchTerm || undefined,
       });
       setAllDeliveries(data.items || []);
-      setAllTotal(data.totalCount ?? data.totalItems ?? 0);
+      setAllTotal(data.totalItems ?? 0);
     } catch (error) {
       console.error('Error loading deliveries:', error);
       toast.error('Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch giao h\u00e0ng');

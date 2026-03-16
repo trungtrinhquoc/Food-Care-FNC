@@ -55,7 +55,7 @@ export function AdminAuditLogTab() {
         toDate: toDate || undefined,
       });
       setLogs(data.items || []);
-      setTotal(data.totalCount ?? data.totalItems ?? 0);
+      setTotal(data.totalItems ?? 0);
     } catch (error) {
       console.error('Error loading audit log:', error);
       toast.error('Không thể tải nhật ký');
