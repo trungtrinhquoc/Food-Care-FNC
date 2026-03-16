@@ -102,7 +102,7 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
   const [loadingStreet, setLoadingStreet] = useState(false);
 
   // Debounce timer ref
-  const streetDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const streetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Load provinces on mount ────────────────────────────────────────────────
 

@@ -176,7 +176,7 @@ export const SupplierShipmentManagement: React.FC = () => {
 
   const handleDispatch = async (id: string) => {
     try {
-      await shipmentsApi.dispatchShipment(id);
+      await shipmentsApi.startDelivering(id);
       await loadShipments();
       toast.success('Shipment dispatched');
     } catch (error) {
@@ -187,7 +187,7 @@ export const SupplierShipmentManagement: React.FC = () => {
 
   const handleSubmitForApproval = async (id: string) => {
     try {
-      await shipmentsApi.submitForApproval(id);
+      await shipmentsApi.startDelivering(id);
       await loadShipments();
       toast.success('Đã gửi yêu cầu duyệt lô hàng');
     } catch (error: unknown) {
