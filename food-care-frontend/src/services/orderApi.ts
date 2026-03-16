@@ -16,4 +16,8 @@ export const orderApi = {
         const response = await api.get<Order[]>('/orders/my-orders');
         return response.data;
     },
+
+    markAsPaid: async (orderId: string): Promise<void> => {
+        await api.patch(`/orders/${orderId}/mark-paid`);
+    },
 };

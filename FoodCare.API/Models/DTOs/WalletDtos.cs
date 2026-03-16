@@ -35,3 +35,12 @@ public class AdjustBalanceDto
     public Guid? ReferenceId { get; set; }
     public string? Description { get; set; }
 }
+
+/// <summary>
+/// Request body cho endpoint thanh toán đơn hàng bằng ví FNC Pay
+/// </summary>
+public class WalletPayOrderRequestDto
+{
+    public Guid OrderId { get; set; }
+}
+

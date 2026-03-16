@@ -34,4 +34,9 @@ export const walletApi = {
         const res = await api.post('/wallet/deduct', { amount, referenceId, description });
         return res.data;
     },
+
+    payOrder: async (orderId: string): Promise<{ message: string, transaction: WalletTransaction }> => {
+        const res = await api.post('/wallet/pay-order', { orderId });
+        return res.data;
+    },
 };

@@ -25,4 +25,10 @@ public interface IWalletService
 
     /// <summary>Kiểm tra user có đủ số dư không</summary>
     Task<bool> HasSufficientBalanceAsync(Guid userId, decimal amount);
+
+    /// <summary>
+    /// Thanh toán đơn hàng bằng ví FNC Pay (atomic transaction).
+    /// Trừ tiền ví + cập nhật trạng thái đơn hàng trong cùng 1 database transaction.
+    /// </summary>
+    Task<WalletTransactionDto> PayOrderWithWalletAsync(Guid userId, Guid orderId);
 }

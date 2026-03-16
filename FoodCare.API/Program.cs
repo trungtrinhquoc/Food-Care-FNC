@@ -173,6 +173,9 @@ builder.Services.AddScoped<ISupplierInboundService, SupplierInboundService>();
 // Background service: auto-close expired inbound sessions
 builder.Services.AddHostedService<FoodCare.API.Services.Background.InboundSessionExpiryService>();
 
+// Background service: auto-process subscription payments via FNC Pay
+builder.Services.AddHostedService<FoodCare.API.Jobs.SubscriptionPaymentJob>();
+
 // Register Shipping Flow Service (Supplier → Staff → User)
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
 
@@ -233,6 +236,28 @@ using (var scope = app.Services.CreateScope())
             CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
         ";
         await cmd.ExecuteNonQueryAsync();
+
+        // Thêm giá trị 'payment_failed' vào PostgreSQL enum nếu chưa có
+        try 
+        {
+            using var enumCmd = conn.CreateCommand();
+            enumCmd.CommandText = "ALTER TYPE payment_status ADD VALUE IF NOT EXISTS 'payment_failed';";
+            await enumCmd.ExecuteNonQueryAsync();
+            Console.WriteLine("✅ Enum payment_status updated with payment_failed.");
+            
+            // Bắt buộc Npgsql tải lại definitions từ database ngay lập tức để nhận enum mới
+            await ((Npgsql.NpgsqlConnection)conn).ReloadTypesAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42710") 
+        {
+            // 42710 là mã lỗi khi Type 'payment_failed' đã tồn tại (một số version Postgres không hỗ trợ IF NOT EXISTS)
+            Console.WriteLine("✅ Enum payment_status already has payment_failed.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Failed to add 'payment_failed' to enum: {ex.Message}");
+        }
+
         await conn.CloseAsync();
         Console.WriteLine("✅ Tables coupons/coupon_usage/transactions ensured.");
     }

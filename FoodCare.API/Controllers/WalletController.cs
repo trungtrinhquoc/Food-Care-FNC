@@ -94,4 +94,36 @@ public class WalletController : ControllerBase
         var tx = await _walletService.RefundAsync(userId, request.Amount, request.ReferenceId, request.Description);
         return Ok(tx);
     }
+
+    /// <summary>
+    /// POST /api/wallet/pay-order – Thanh toán đơn hàng bằng ví FNC Pay (ATOMIC).
+    /// Endpoint này thay thế flow cũ (2 bước: deduct + mark-paid).
+    /// Đảm bảo trừ tiền ví + cập nhật order status trong cùng 1 transaction.
+    /// </summary>
+    [HttpPost("pay-order")]
+    public async Task<IActionResult> PayOrderWithWallet([FromBody] WalletPayOrderRequestDto request)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var tx = await _walletService.PayOrderWithWalletAsync(userId, request.OrderId);
+            return Ok(new
+            {
+                message = "Thanh toán thành công bằng FNC Pay.",
+                transaction = tx
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
 }

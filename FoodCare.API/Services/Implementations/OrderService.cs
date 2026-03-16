@@ -237,6 +237,7 @@ namespace FoodCare.API.Services.Implementations
                 "MOMO" => "Ví MoMo",
                 "VNPAY" => "VNPay",
                 "BANKING" => "Chuyển khoản ngân hàng",
+                "WALLET" => "FNC Pay",
                 _ => "Thanh toán khi nhận hàng"
             };
         }
@@ -289,6 +290,31 @@ namespace FoodCare.API.Services.Implementations
             }
 
             return result;
+        }
+
+        public async Task<bool> MarkOrderAsPaidAsync(Guid orderId, Guid userId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null) return false;
+
+            // Security: ensure the order belongs to the calling user
+            if (order.UserId != userId) return false;
+
+            order.PaymentStatus = PaymentStatus.paid;
+            // Update the payment method snapshot to reflect wallet payment
+            order.PaymentMethodSnapshot = JsonSerializer.Serialize(new { method = "wallet" });
+
+            // Update payment log if exists
+            var paymentLog = await _context.PaymentLogs.FirstOrDefaultAsync(p => p.OrderId == orderId);
+            if (paymentLog != null)
+            {
+                paymentLog.Status = "paid";
+                paymentLog.PaymentMethod = "wallet";
+                paymentLog.PaymentMethodName = "FNC Pay";
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<List<OrdersDto>> GetOrdersByUserIdAsync(Guid userId)

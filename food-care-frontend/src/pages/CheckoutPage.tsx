@@ -299,7 +299,7 @@ export default function CheckoutPage() {
                     return;
                 }
                 try {
-                    await walletApi.deductBalance(finalTotal, order.id, `Payment for Order #${order.id.slice(0, 8)}`);
+                    await walletApi.payOrder(order.id);
                 } catch {
                     toast.error('Could not process payment from FNC Pay, please try again');
                     return;

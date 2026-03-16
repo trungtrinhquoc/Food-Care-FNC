@@ -150,9 +150,11 @@ export function OrderDetailDialog({ open, onOpenChange, order, onReviewSuccess }
       COD: 'Thanh toán khi nhận hàng',
       MOMO: 'Ví MoMo',
       VNPAY: 'VNPay',
-      BANKING: 'Chuyển khoản ngân hàng'
+      BANKING: 'Chuyển khoản ngân hàng',
+      WALLET: 'FNC Pay',
+      wallet: 'FNC Pay',
     };
-    return methodMap[method.toUpperCase()] || method;
+    return methodMap[method.toUpperCase()] || methodMap[method] || method;
   };
 
   if (!order) return null;

@@ -1,4 +1,4 @@
-﻿using FoodCare.API.Models.DTOs.Orders;
+using FoodCare.API.Models.DTOs.Orders;
 
 namespace FoodCare.API.Services.Interfaces
 {
@@ -7,5 +7,6 @@ namespace FoodCare.API.Services.Interfaces
         Task<OrdersDto> CreateOrderAsync(CreateOrderDto dto);
         Task<OrdersDto?> GetOrderByIdAsync(Guid id);
         Task<List<OrdersDto>> GetOrdersByUserIdAsync(Guid userId);
+        Task<bool> MarkOrderAsPaidAsync(Guid orderId, Guid userId);
     }
 }

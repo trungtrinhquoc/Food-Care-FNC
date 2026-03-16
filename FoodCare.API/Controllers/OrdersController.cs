@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using FoodCare.API.Models.DTOs.Orders;
 using FoodCare.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -75,6 +75,29 @@ namespace FoodCare.API.Controllers
             {
                 _logger.LogError(ex, "Error getting user orders");
                 return StatusCode(500, new { message = "An error occurred while getting orders" });
+            }
+        }
+
+        [Authorize]
+        [HttpPatch("{id}/mark-paid")]
+        public async Task<IActionResult> MarkOrderAsPaid(Guid id)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var success = await _orderService.MarkOrderAsPaidAsync(id, userId);
+                if (!success)
+                    return NotFound(new { message = "Đơn hàng không tìm thấy hoặc không thuộc về bạn." });
+                return Ok(new { message = "Đã cập nhật trạng thái thanh toán thành công." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking order as paid");
+                return StatusCode(500, new { message = "An error occurred while updating payment status" });
             }
         }
     }
