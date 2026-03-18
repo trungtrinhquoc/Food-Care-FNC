@@ -29,16 +29,16 @@ public class AdminStatsService : IAdminStatsService
 
         var now = DateTime.UtcNow;
         var currentMonthRevenue = await _context.Orders
-            .Where(o => o.Status == OrderStatus.delivered && 
+            .Where(o => o.Status == OrderStatus.delivered &&
                    o.CreatedAt.HasValue &&
-                   o.CreatedAt.Value.Month == now.Month && 
+                   o.CreatedAt.Value.Month == now.Month &&
                    o.CreatedAt.Value.Year == now.Year)
             .SumAsync(o => (decimal?)o.TotalAmount) ?? 0;
 
         var lastMonthRevenue = await _context.Orders
-            .Where(o => o.Status == OrderStatus.delivered && 
+            .Where(o => o.Status == OrderStatus.delivered &&
                    o.CreatedAt.HasValue &&
-                   o.CreatedAt.Value.Month == now.AddMonths(-1).Month && 
+                   o.CreatedAt.Value.Month == now.AddMonths(-1).Month &&
                    o.CreatedAt.Value.Year == now.AddMonths(-1).Year)
             .SumAsync(o => (decimal?)o.TotalAmount) ?? 0;
 
@@ -48,12 +48,69 @@ public class AdminStatsService : IAdminStatsService
 
         var pendingOrders = await _context.Orders
             .CountAsync(o => o.Status == OrderStatus.pending);
-        
+
         var lowStockProducts = await _context.Products
-            .CountAsync(p => p.StockQuantity.HasValue && 
+            .CountAsync(p => p.StockQuantity.HasValue &&
                         p.LowStockThreshold.HasValue &&
-                        p.StockQuantity <= p.LowStockThreshold && 
+                        p.StockQuantity <= p.LowStockThreshold &&
                         p.IsActive == true);
+
+        // OrdersToday
+        var today = now.Date;
+        var tomorrow = today.AddDays(1);
+        var ordersToday = await _context.Orders
+            .CountAsync(o => o.CreatedAt.HasValue && o.CreatedAt.Value >= today && o.CreatedAt.Value < tomorrow);
+
+        // PendingComplaints
+        int pendingComplaints = 0;
+        try
+        {
+            pendingComplaints = await _context.Complaints.CountAsync(c => c.Status == "pending");
+        }
+        catch { pendingComplaints = 0; }
+
+        // GMV = SUM total_amount for confirmed/delivered orders this month
+        var gmv = await _context.Orders
+            .Where(o => o.CreatedAt.HasValue &&
+                        o.CreatedAt.Value.Month == now.Month &&
+                        o.CreatedAt.Value.Year == now.Year &&
+                        (o.Status == OrderStatus.confirmed || o.Status == OrderStatus.delivered))
+            .SumAsync(o => (decimal?)o.TotalAmount) ?? 0;
+
+        // F&C Revenue = GMV * average commission rate
+        var avgCommissionRate = await _context.Suppliers
+            .Where(s => s.IsActive == true)
+            .AverageAsync(s => (double?)s.CommissionRate) ?? 15.0;
+        var fAndCRevenue = gmv * (decimal)(avgCommissionRate / 100);
+
+        // ActiveMarts = suppliers with IsActive = true
+        var activeMarts = await _context.Suppliers.CountAsync(s => s.IsActive == true);
+
+        // ActiveUsers = users who logged in within last 30 days
+        var thirtyDaysAgo = now.AddDays(-30);
+        var activeUsersCount = await _context.LoginLogs
+            .Where(l => l.LoginAt.HasValue && l.LoginAt.Value >= thirtyDaysAgo && l.Success == true)
+            .Select(l => l.UserId)
+            .Distinct()
+            .CountAsync();
+
+        // ActiveSubscriptions
+        var activeSubscriptions = await _context.Subscriptions
+            .CountAsync(s => s.Status == SubStatus.active);
+
+        // ChurnRate = % subscriptions cancelled this month vs total created this month
+        var totalSubsThisMonth = await _context.Subscriptions
+            .CountAsync(s => s.CreatedAt.HasValue &&
+                             s.CreatedAt.Value.Month == now.Month &&
+                             s.CreatedAt.Value.Year == now.Year);
+        var cancelledSubsThisMonth = await _context.Subscriptions
+            .CountAsync(s => s.CreatedAt.HasValue &&
+                             s.CreatedAt.Value.Month == now.Month &&
+                             s.CreatedAt.Value.Year == now.Year &&
+                             s.Status == SubStatus.cancelled);
+        var churnRate = totalSubsThisMonth > 0
+            ? (decimal)cancelledSubsThisMonth / totalSubsThisMonth * 100
+            : 0;
 
         return new AdminStatsDto
         {
@@ -63,7 +120,15 @@ public class AdminStatsService : IAdminStatsService
             TotalProducts = totalProducts,
             MonthlyGrowth = monthlyGrowth,
             PendingOrders = pendingOrders,
-            LowStockProducts = lowStockProducts
+            LowStockProducts = lowStockProducts,
+            OrdersToday = ordersToday,
+            PendingComplaints = pendingComplaints,
+            Gmv = gmv,
+            FAndCRevenue = fAndCRevenue,
+            ActiveMarts = activeMarts,
+            ActiveUsersCount = activeUsersCount,
+            ActiveSubscriptions = activeSubscriptions,
+            ChurnRate = churnRate
         };
     }
 

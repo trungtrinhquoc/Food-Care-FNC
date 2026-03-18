@@ -438,3 +438,91 @@ export interface AdjustPointsRequest {
   points: number;
   description?: string;
 }
+
+// ==================== COMPLAINTS ====================
+export interface Complaint {
+  id: string;
+  orderNumber: string;
+  orderId?: string;
+  customerName: string;
+  customerAddress: string;
+  supplierName: string;
+  type: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'pending' | 'investigating' | 'resolved' | 'rejected';
+  description: string;
+  imageUrls?: string[];
+  adminNote?: string;
+  refundAmount?: number;
+  createdAt: string;
+  elapsedMinutes: number;
+  reportedBy?: string;
+}
+
+export interface ComplaintFilter {
+  status?: string;
+  priority?: string;
+  type?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ResolveComplaintDto {
+  action: 'approve' | 'reject' | 'investigate';
+  adminNote?: string;
+  refundAmount?: number;
+}
+
+// ==================== MART SLA ====================
+export interface MartSummary {
+  id: number;
+  storeName: string;
+  logoUrl?: string;
+  rating: number;
+  slaComplianceRate: number;
+  monthlyOrders: number;
+  isTop: boolean;
+  hasSlaWarning: boolean;
+  isActive: boolean;
+}
+
+// ==================== FINANCE ====================
+export interface FinanceSummary {
+  gmv: number;
+  fAndCRevenue: number;
+  totalWalletBalance: number;
+  totalRefunded: number;
+  walletReserveMin: number;
+  month: number;
+  year: number;
+}
+
+export interface MartSettlement {
+  supplierId: number;
+  storeName: string;
+  totalSales: number;
+  commissionRate: number;
+  commissionAmount: number;
+  amountDue: number;
+  isPaid: boolean;
+}
+
+// ==================== MOBILE STATS ====================
+export interface AdminStatsMobile {
+  ordersToday: number;
+  pendingComplaints: number;
+  gmv: number;
+  fAndCRevenue: number;
+  activeMarts: number;
+  activeUsersCount: number;
+  activeSubscriptions: number;
+  churnRate: number;
+  // also keep existing fields
+  totalRevenue?: number;
+  totalOrders?: number;
+  totalCustomers?: number;
+  totalProducts?: number;
+  monthlyGrowth?: number;
+  pendingOrders?: number;
+  lowStockProducts?: number;
+}

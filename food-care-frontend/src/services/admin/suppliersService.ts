@@ -3,7 +3,7 @@
 // =============================================
 
 import api from '../api';
-import type { PagedResult } from '../../types/admin';
+import type { PagedResult, MartSummary } from '../../types/admin';
 import type {
   CreateSupplierDto,
   Supplier,
@@ -129,12 +129,18 @@ export const deleteSupplier = async (id: string): Promise<void> => {
   await api.delete(`/admin/suppliers/${id}`);
 };
 
+export const getMartList = async (): Promise<MartSummary[]> => {
+  const response = await api.get<MartSummary[]>('/admin/suppliers/mart-list');
+  return response.data;
+};
+
 export const suppliersService = {
   getSuppliers,
   getSupplierDetail,
   createSupplier,
   updateSupplier,
   deleteSupplier,
+  getMartList,
 };
 
 export default suppliersService;

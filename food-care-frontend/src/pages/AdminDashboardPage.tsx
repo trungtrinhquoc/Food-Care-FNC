@@ -15,285 +15,322 @@ import {
   Home,
   CheckCircle,
   Ticket,
+  AlertCircle,
+  Store,
+  DollarSign,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 // Hooks
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
-// Lazy load tab components for better performance
-const OverviewTab = lazy(() => import("./admin/OverviewTab").then(m => ({ default: m.OverviewTab })));
-const ProductsTab = lazy(() => import("./admin/ProductsTab").then(m => ({ default: m.ProductsTab })));
-const OrdersTab = lazy(() => import("./admin/OrdersTab").then(m => ({ default: m.OrdersTab })));
-const SuppliersTab = lazy(() => import("./admin/SuppliersTab").then(m => ({ default: m.SuppliersTab })));
-const ZaloTab = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.ZaloTab })));
-const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
-const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
-const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
-const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
-const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
-const AdminCouponsPage = lazy(() => import("./admin/AdminCouponsPage"));
+// ── Lazy-load all tab components ──────────────────────────────────────────────
+const OverviewTab       = lazy(() => import("./admin/OverviewTab").then(m => ({ default: m.OverviewTab })));
+const ProductsTab       = lazy(() => import("./admin/ProductsTab").then(m => ({ default: m.ProductsTab })));
+const OrdersTab         = lazy(() => import("./admin/OrdersTab").then(m => ({ default: m.OrdersTab })));
+const SuppliersTab      = lazy(() => import("./admin/SuppliersTab").then(m => ({ default: m.SuppliersTab })));
+const ZaloTab           = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.ZaloTab })));
+const ReviewsTab        = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
+const UsersTab          = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
+const CustomersTab      = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
+const ApprovalsTab      = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
+const SubscriptionsTab  = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
+const AdminCouponsPage  = lazy(() => import("./admin/AdminCouponsPage"));
+// ── 3 new operational tabs ────────────────────────────────────────────────────
+const ComplaintsTab     = lazy(() => import("./admin/ComplaintsTab").then(m => ({ default: m.ComplaintsTab })));
+const MartTab           = lazy(() => import("./admin/MartTab").then(m => ({ default: m.MartTab })));
+const FinanceTab        = lazy(() => import("./admin/FinanceTab").then(m => ({ default: m.FinanceTab })));
 
-// Tab configuration
+// Responsive bottom-nav (used only on < lg screens)
+import { AdminBottomNav } from "../components/admin/AdminBottomNav";
+
+// ── Sidebar tab configuration ─────────────────────────────────────────────────
 const TABS = [
-  { value: "overview", label: "Tổng quan", icon: BarChart3 },
-  { value: "products", label: "Sản phẩm", icon: Box },
-  { value: "orders", label: "Đơn hàng", icon: ShoppingCart },
-  { value: "customers", label: "Khách hàng", icon: Users },
-  { value: "users", label: "Người dùng", icon: UserCog },
-  { value: "reviews", label: "Đánh giá", icon: Star },
-  { value: "suppliers", label: "NCC", icon: Package },
-  { value: "subscriptions", label: "Gói Đăng ký", icon: CheckCircle },
-  { value: "coupons", label: "Mã giảm giá", icon: Ticket },
-  { value: "approvals", label: "Phê duyệt", icon: CheckCircle },
-  { value: "zalo", label: "Zalo", icon: MessageSquare },
+  // ── Core monitoring ──────────────────────────────────────────────────────
+  { value: "overview",       label: "Tổng quan",      icon: BarChart3,    group: "monitor" },
+  { value: "complaints",     label: "Khiếu nại",      icon: AlertCircle,  group: "monitor" },
+  { value: "mart",           label: "Quản lý Mart",   icon: Store,        group: "monitor" },
+  { value: "finance",        label: "Tài chính",      icon: DollarSign,   group: "monitor" },
+  // ── Operations ───────────────────────────────────────────────────────────
+  { value: "products",       label: "Sản phẩm",       icon: Box,          group: "ops" },
+  { value: "orders",         label: "Đơn hàng",       icon: ShoppingCart, group: "ops" },
+  { value: "customers",      label: "Khách hàng",     icon: Users,        group: "ops" },
+  { value: "subscriptions",  label: "Gói Đăng ký",    icon: CheckCircle,  group: "ops" },
+  { value: "approvals",      label: "Phê duyệt",      icon: CheckCircle,  group: "ops" },
+  // ── System ───────────────────────────────────────────────────────────────
+  { value: "users",          label: "Người dùng",     icon: UserCog,      group: "sys" },
+  { value: "reviews",        label: "Đánh giá",       icon: Star,         group: "sys" },
+  { value: "suppliers",      label: "NCC",            icon: Package,      group: "sys" },
+  { value: "coupons",        label: "Mã giảm giá",    icon: Ticket,       group: "sys" },
+  { value: "zalo",           label: "Zalo",           icon: MessageSquare,group: "sys" },
 ] as const;
 
-// Loading fallback component
+type TabValue = typeof TABS[number]["value"];
+
+const GROUP_LABELS: Record<string, string> = {
+  monitor: "Vận hành",
+  ops: "Quản lý",
+  sys: "Hệ thống",
+};
+
+// Loading fallback
 const TabLoader = () => (
-  <div className="flex items-center justify-center py-10">
+  <div className="flex items-center justify-center py-16">
     <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-    <span className="ml-2 text-gray-600">Đang tải...</span>
+    <span className="ml-2 text-gray-500 text-sm">Đang tải...</span>
   </div>
 );
 
+// ── Sidebar nav group ─────────────────────────────────────────────────────────
+function SidebarGroup({
+  group,
+  tabs,
+  selected,
+  onSelect,
+  pendingComplaints,
+}: {
+  group: string;
+  tabs: typeof TABS[number][];
+  selected: string;
+  onSelect: (v: string) => void;
+  pendingComplaints: number;
+}) {
+  return (
+    <div>
+      <p className="px-3 mb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+        {GROUP_LABELS[group]}
+      </p>
+      {tabs.map(({ value, label, icon: Icon }) => (
+        <button
+          key={value}
+          onClick={() => onSelect(value)}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 mb-0.5 relative ${
+            selected === value
+              ? "bg-orange-50 text-orange-700 font-semibold"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          <Icon className={`w-4 h-4 flex-shrink-0 ${selected === value ? "text-orange-600" : "text-slate-400"}`} />
+          <span className="truncate text-sm">{label}</span>
+          {/* Badge for complaints */}
+          {value === "complaints" && pendingComplaints > 0 && (
+            <span className="ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {pendingComplaints > 99 ? "99+" : pendingComplaints}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Tab content renderer ──────────────────────────────────────────────────────
+function TabContent({
+  tab,
+  formattedStats,
+  formattedRevenueData,
+  statsLoading,
+  statsError,
+}: {
+  tab: TabValue;
+  formattedStats: ReturnType<typeof buildFormattedStats>;
+  formattedRevenueData: { month: string; revenue: number }[];
+  statsLoading: boolean;
+  statsError: string | null;
+}) {
+  if (tab === "overview") {
+    if (statsLoading) return <TabLoader />;
+    if (statsError) return <div className="text-center py-10 text-red-500">Lỗi: {statsError}</div>;
+    if (formattedStats) return <OverviewTab stats={formattedStats} revenueData={formattedRevenueData} totalProducts={formattedStats.totalProducts} />;
+    return null;
+  }
+  if (tab === "complaints")    return <ComplaintsTab />;
+  if (tab === "mart")          return <MartTab />;
+  if (tab === "finance")       return <FinanceTab />;
+  if (tab === "products")      return <ProductsTab />;
+  if (tab === "orders")        return <OrdersTab />;
+  if (tab === "customers")     return <CustomersTab />;
+  if (tab === "users")         return <UsersTab />;
+  if (tab === "reviews")       return <ReviewsTab />;
+  if (tab === "suppliers")     return <SuppliersTab />;
+  if (tab === "subscriptions") return <SubscriptionsTab />;
+  if (tab === "coupons")       return <AdminCouponsPage />;
+  if (tab === "approvals")     return <ApprovalsTab />;
+  if (tab === "zalo")          return <ZaloTab />;
+  return null;
+}
+
+function buildFormattedStats(stats: ReturnType<typeof useDashboardStats>["stats"]) {
+  if (!stats) return null;
+  return {
+    totalRevenue:       stats.totalRevenue,
+    totalOrders:        stats.totalOrders,
+    totalCustomers:     stats.totalCustomers,
+    totalProducts:      stats.totalProducts,
+    monthlyGrowth:      stats.monthlyGrowth,
+    activeSubscriptions: stats.pendingOrders,
+    pendingOrders:      stats.pendingOrders,
+    lowStockProducts:   stats.lowStockProducts,
+  };
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedTab, setSelectedTab]   = useState<TabValue>("overview");
+  const [sidebarOpen, setSidebarOpen]   = useState(true);
+  const [mobileTab,   setMobileTab]     = useState<"overview" | "complaints" | "mart" | "finance">("overview");
 
-  // Dashboard stats from API - only fetches when needed
   const { stats, revenueData, isLoading: statsLoading, error: statsError } = useDashboardStats();
 
-  // Memoized stats object to prevent unnecessary re-renders
-  const formattedStats = useMemo(() => {
-    if (!stats) return null;
-    return {
-      totalRevenue: stats.totalRevenue,
-      totalOrders: stats.totalOrders,
-      totalCustomers: stats.totalCustomers,
-      totalProducts: stats.totalProducts,
-      monthlyGrowth: stats.monthlyGrowth,
-      activeSubscriptions: stats.pendingOrders,
-      pendingOrders: stats.pendingOrders,
-      lowStockProducts: stats.lowStockProducts,
-    };
-  }, [stats]);
-
-  // Memoized revenue data
-  const formattedRevenueData = useMemo(() =>
-    revenueData.map(r => ({ month: r.month, revenue: r.revenue })),
-    [revenueData]
+  const formattedStats = useMemo(() => buildFormattedStats(stats), [stats]);
+  const formattedRevenueData = useMemo(
+    () => revenueData.map(r => ({ month: r.month, revenue: r.revenue })),
+    [revenueData],
   );
+  const handleTabChange = useCallback((value: string) => setSelectedTab(value as TabValue), []);
+  const handleLogout    = useCallback(() => { localStorage.removeItem("token"); navigate("/login"); }, [navigate]);
 
-  // Memoized tab change handler
-  const handleTabChange = useCallback((value: string) => {
-    setSelectedTab(value);
+  const pendingComplaints: number = (stats as any)?.pendingComplaints ?? 0;
+
+  // Group sidebar tabs
+  const groupedTabs = useMemo(() => {
+    const groups: Record<string, typeof TABS[number][]> = {};
+    for (const t of TABS) {
+      if (!groups[t.group]) groups[t.group] = [];
+      groups[t.group].push(t);
+    }
+    return groups;
   }, []);
 
-  // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex text-sm text-slate-800 antialiased font-sans">
+    <>
+      {/* ════════════════════════════════════════════════════════════════════
+          DESKTOP LAYOUT  (lg and above)
+      ════════════════════════════════════════════════════════════════════ */}
+      <div className="hidden lg:flex min-h-screen bg-slate-50 text-sm text-slate-800 antialiased font-sans">
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm transition-opacity"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+        {/* Sidebar backdrop (only on medium screens when sidebar is toggled) */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-slate-900/40 z-30 xl:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed left-0 top-0 h-full bg-white border-r border-slate-200 shadow-sm transition-transform duration-300 z-40
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          w-64`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-100 h-[72px]">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Package className="w-5 h-5 text-orange-600" />
-              </div>
-              Food & Care
-            </h2>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors lg:hidden text-slate-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Sidebar */}
+        <aside className={`fixed left-0 top-0 h-full bg-white border-r border-slate-200 shadow-sm z-40 w-56 transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+          <div className="flex flex-col h-full">
 
-          {/* Navigation Menu */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-            {TABS.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => handleTabChange(value)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${selectedTab === value
-                  ? "bg-orange-50 text-orange-700 font-semibold"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-              >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${selectedTab === value ? "text-orange-600" : "text-slate-400"}`} />
-                <span className="truncate">{label}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* Logout Button */}
-          <div className="p-4 border-t border-slate-100">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200"
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              <span className="font-medium">Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className={`flex-1 transition-all min-w-0 duration-300 lg:ml-64 pt-4 lg:pt-0`}>
-        <div className="min-h-screen pb-6">
-          {/* Mobile Header Bar */}
-          <div className="lg:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 h-[72px] flex items-center mb-6">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 -ml-2 hover:bg-slate-100 rounded-lg text-slate-600"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <h1 className="ml-3 text-lg font-bold text-slate-800">Food & Care</h1>
-          </div>
-
-          <div className="container mx-auto px-4 lg:px-6 lg:pt-6">
-            {/* Header */}
-            <header className="mb-6 bg-white rounded-2xl p-4 lg:p-6 shadow-sm border border-slate-200 sticky top-0 lg:top-6 z-20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                      <BarChart3 className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <h1 className="text-xl lg:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-                  </div>
-                  <p className="text-slate-500 text-sm ml-13">Quản lý và thống kê hệ thống Food & Care</p>
+            {/* Logo */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Package className="w-4 h-4 text-orange-600" />
                 </div>
-                <button
-                  onClick={() => navigate("/")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors text-sm font-medium"
-                >
-                  <Home className="w-4 h-4" />
-                  <span className="hidden sm:inline">Trang chủ</span>
-                </button>
+                <span className="font-bold text-slate-800">Food &amp; Care</span>
               </div>
-            </header>
+              <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 xl:hidden">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-            {/* Tab Content */}
-            <div className="space-y-6">
+            {/* Nav */}
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+              {Object.entries(groupedTabs).map(([group, tabs]) => (
+                <SidebarGroup
+                  key={group}
+                  group={group}
+                  tabs={tabs}
+                  selected={selectedTab}
+                  onSelect={handleTabChange}
+                  pendingComplaints={pendingComplaints}
+                />
+              ))}
+            </nav>
+
+            {/* Logout */}
+            <div className="px-3 py-3 border-t border-slate-100">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-sm"
+              >
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium">Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 min-w-0 lg:ml-56">
+          <div className="min-h-screen pb-8">
+
+            {/* Top bar */}
+            <div className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 h-14 flex items-center gap-4 shadow-sm">
+              <button onClick={() => setSidebarOpen(v => !v)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 xl:hidden">
+                <Menu className="w-5 h-5" />
+              </button>
+              <h1 className="text-base font-semibold text-slate-800 flex-1">
+                {TABS.find(t => t.value === selectedTab)?.label ?? "Admin Dashboard"}
+              </h1>
+              {pendingComplaints > 0 && (
+                <button
+                  onClick={() => handleTabChange("complaints")}
+                  className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors font-medium"
+                >
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  {pendingComplaints} khiếu nại chờ
+                </button>
+              )}
+              <button
+                onClick={() => navigate("/")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors text-xs font-medium"
+              >
+                <Home className="w-3.5 h-3.5" />
+                Trang chủ
+              </button>
+            </div>
+
+            {/* Tab content */}
+            <div className="px-6 py-6">
               <Suspense fallback={<TabLoader />}>
-                {/* Overview Tab */}
-                {selectedTab === "overview" && (
-                  <div>
-                    {statsLoading ? (
-                      <TabLoader />
-                    ) : statsError ? (
-                      <div className="text-center py-10 text-red-500">
-                        <p>Lỗi: {statsError}</p>
-                      </div>
-                    ) : formattedStats ? (
-                      <OverviewTab
-                        stats={formattedStats}
-                        revenueData={formattedRevenueData}
-                        totalProducts={formattedStats.totalProducts}
-                      />
-                    ) : null}
-                  </div>
-                )}
-
-                {/* Products Tab */}
-                {selectedTab === "products" && (
-                  <div>
-                    <ProductsTab />
-                  </div>
-                )}
-
-                {/* Orders Tab */}
-                {selectedTab === "orders" && (
-                  <div>
-                    <OrdersTab />
-                  </div>
-                )}
-
-                {/* Customers Tab */}
-                {selectedTab === "customers" && (
-                  <div>
-                    <CustomersTab />
-                  </div>
-                )}
-
-                {/* Users Tab */}
-                {selectedTab === "users" && (
-                  <div>
-                    <UsersTab />
-                  </div>
-                )}
-
-                {/* Reviews Tab */}
-                {selectedTab === "reviews" && (
-                  <div>
-                    <ReviewsTab />
-                  </div>
-                )}
-
-                {/* Suppliers Tab */}
-                {selectedTab === "suppliers" && (
-                  <div>
-                    <SuppliersTab />
-                  </div>
-                )}
-
-                {/* Subscriptions Tab */}
-                {selectedTab === "subscriptions" && (
-                  <div>
-                    <SubscriptionsTab />
-                  </div>
-                )}
-
-                {/* Coupons Tab */}
-                {selectedTab === "coupons" && (
-                  <div>
-                    <AdminCouponsPage />
-                  </div>
-                )}
-
-                {/* Approvals Tab */}
-                {selectedTab === "approvals" && (
-                  <div>
-                    <ApprovalsTab />
-                  </div>
-                )}
-
-                {/* Zalo Tab */}
-                {selectedTab === "zalo" && (
-                  <div>
-                    <ZaloTab />
-                  </div>
-                )}
+                <TabContent
+                  tab={selectedTab}
+                  formattedStats={formattedStats}
+                  formattedRevenueData={formattedRevenueData}
+                  statsLoading={statsLoading}
+                  statsError={statsError}
+                />
               </Suspense>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          MOBILE LAYOUT  (below lg)  — bottom navigation
+      ════════════════════════════════════════════════════════════════════ */}
+      <div className="lg:hidden">
+        <AdminBottomNav
+          activeTab={mobileTab}
+          onTabChange={tab => setMobileTab(tab as typeof mobileTab)}
+          pendingComplaints={pendingComplaints}
+        >
+          <div className="p-4">
+            <Suspense fallback={<TabLoader />}>
+              {mobileTab === "overview"   && (
+                statsLoading ? <TabLoader /> :
+                formattedStats ? <OverviewTab stats={formattedStats} revenueData={formattedRevenueData} totalProducts={formattedStats.totalProducts} /> :
+                null
+              )}
+              {mobileTab === "complaints" && <ComplaintsTab />}
+              {mobileTab === "mart"       && <MartTab />}
+              {mobileTab === "finance"    && <FinanceTab />}
+            </Suspense>
+          </div>
+        </AdminBottomNav>
+      </div>
+    </>
   );
 }

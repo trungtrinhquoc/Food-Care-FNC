@@ -56,3 +56,16 @@ public class AdminUpsertSupplierDto
     public Guid? UserId { get; set; }
 }
 
+public class MartSummaryDto
+{
+    public int Id { get; set; }
+    public string StoreName { get; set; } = string.Empty;
+    public string? LogoUrl { get; set; }
+    public decimal Rating { get; set; }
+    public decimal SlaComplianceRate { get; set; }
+    public int MonthlyOrders { get; set; }
+    public bool IsTop { get; set; }
+    public bool HasSlaWarning { get; set; }
+    public bool IsActive { get; set; }
+}
+

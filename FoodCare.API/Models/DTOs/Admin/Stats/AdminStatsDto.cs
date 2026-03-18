@@ -9,6 +9,14 @@ public class AdminStatsDto
     public decimal MonthlyGrowth { get; set; }
     public int PendingOrders { get; set; }
     public int LowStockProducts { get; set; }
+    public int OrdersToday { get; set; }
+    public int PendingComplaints { get; set; }
+    public decimal Gmv { get; set; }
+    public decimal FAndCRevenue { get; set; }
+    public int ActiveMarts { get; set; }
+    public int ActiveUsersCount { get; set; }
+    public int ActiveSubscriptions { get; set; }
+    public decimal ChurnRate { get; set; }
 }
 
 public class RevenueDataDto

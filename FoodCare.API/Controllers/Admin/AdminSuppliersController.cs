@@ -110,4 +110,19 @@ public class AdminSuppliersController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while deleting the supplier" });
         }
     }
+
+    [HttpGet("mart-list")]
+    public async Task<ActionResult> GetMartList()
+    {
+        try
+        {
+            var result = await _supplierService.GetMartListAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving mart list");
+            return StatusCode(500, new { message = "Lỗi khi lấy danh sách mart" });
+        }
+    }
 }

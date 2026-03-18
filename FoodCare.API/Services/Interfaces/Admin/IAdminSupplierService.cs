@@ -10,4 +10,5 @@ public interface IAdminSupplierService
     Task<AdminSupplierDetailDto> CreateSupplierAsync(AdminUpsertSupplierDto dto);
     Task<AdminSupplierDetailDto?> UpdateSupplierAsync(int id, AdminUpsertSupplierDto dto);
     Task<bool> DeleteSupplierAsync(int id);
+    Task<List<MartSummaryDto>> GetMartListAsync();
 }

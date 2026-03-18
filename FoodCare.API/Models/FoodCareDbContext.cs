@@ -49,6 +49,7 @@ public partial class FoodCareDbContext : DbContext {
 
     public DbSet<ChatFaq> ChatFaqs { get; set; }
     public DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
+    public DbSet<Complaint> Complaints { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
@@ -847,6 +848,40 @@ public partial class FoodCareDbContext : DbContext {
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Complaint>(entity => {
+            entity.HasKey(e => e.Id).HasName("complaints_pkey");
+            entity.ToTable("complaints");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.OrderNumber).HasMaxLength(50).HasColumnName("order_number");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.Type).HasMaxLength(100).HasColumnName("type");
+            entity.Property(e => e.Priority).HasMaxLength(20).HasDefaultValue("medium").HasColumnName("priority");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("pending").HasColumnName("status");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.ImageUrls).HasColumnName("image_urls");
+            entity.Property(e => e.AdminNote).HasColumnName("admin_note");
+            entity.Property(e => e.RefundAmount).HasPrecision(15, 2).HasColumnName("refund_amount");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("complaints_user_id_fkey");
+
+            entity.HasOne(d => d.Order).WithMany()
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("complaints_order_id_fkey");
+
+            entity.HasOne(d => d.Supplier).WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("complaints_supplier_id_fkey");
         });
 
     }

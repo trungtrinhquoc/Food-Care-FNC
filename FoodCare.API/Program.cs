@@ -122,6 +122,8 @@ builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>();
+builder.Services.AddScoped<IAdminComplaintService, AdminComplaintService>();
+builder.Services.AddScoped<IAdminFinanceService, AdminFinanceService>();
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
