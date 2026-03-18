@@ -14,12 +14,7 @@ import {
   X,
   Home,
   CheckCircle,
-  Warehouse,
   Ticket,
-  HardHat,
-  ClipboardList,
-  Truck,
-  FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -36,14 +31,8 @@ const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default:
 const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
 const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
 const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
-const WarehousesTab = lazy(() => import("./admin/WarehousesTab").then(m => ({ default: m.WarehousesTab })));
-const StaffManagementTab = lazy(() => import("./admin/StaffManagementTab").then(m => ({ default: m.StaffManagementTab })));
 const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
 const AdminCouponsPage = lazy(() => import("./admin/AdminCouponsPage"));
-const AdminInboundSessionsTab = lazy(() => import("./admin/AdminInboundSessionsTab").then(m => ({ default: m.AdminInboundSessionsTab })));
-const AdminDeliveryTab = lazy(() => import("./admin/AdminDeliveryTab").then(m => ({ default: m.AdminDeliveryTab })));
-const AdminDeliveryKpiTab = lazy(() => import("./admin/AdminDeliveryKpiTab").then(m => ({ default: m.AdminDeliveryKpiTab })));
-const AdminAuditLogTab = lazy(() => import("./admin/AdminAuditLogTab").then(m => ({ default: m.AdminAuditLogTab })));
 
 // Tab configuration
 const TABS = [
@@ -54,12 +43,6 @@ const TABS = [
   { value: "users", label: "Người dùng", icon: UserCog },
   { value: "reviews", label: "Đánh giá", icon: Star },
   { value: "suppliers", label: "NCC", icon: Package },
-  { value: "warehouses", label: "Kho hàng", icon: Warehouse },
-  { value: "inbound", label: "Nhập kho", icon: ClipboardList },
-  { value: "deliveries", label: "Giao hàng", icon: Truck },
-  { value: "delivery-kpi", label: "KPI GH", icon: BarChart3 },
-  { value: "audit-log", label: "Nhật ký", icon: FileText },
-  { value: "staff-mgmt", label: "Nhân viên", icon: HardHat },
   { value: "subscriptions", label: "Gói Đăng ký", icon: CheckCircle },
   { value: "coupons", label: "Mã giảm giá", icon: Ticket },
   { value: "approvals", label: "Phê duyệt", icon: CheckCircle },
@@ -127,8 +110,8 @@ export default function AdminDashboardPage() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-white border-r border-slate-200 shadow-sm transition-transform duration-300 z-40 
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} 
+        className={`fixed left-0 top-0 h-full bg-white border-r border-slate-200 shadow-sm transition-transform duration-300 z-40
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           w-64`}
       >
         <div className="flex flex-col h-full">
@@ -276,48 +259,6 @@ export default function AdminDashboardPage() {
                 {selectedTab === "suppliers" && (
                   <div>
                     <SuppliersTab />
-                  </div>
-                )}
-
-                {/* Warehouses Tab */}
-                {selectedTab === "warehouses" && (
-                  <div>
-                    <WarehousesTab />
-                  </div>
-                )}
-
-                {/* Inbound Sessions Tab */}
-                {selectedTab === "inbound" && (
-                  <div>
-                    <AdminInboundSessionsTab />
-                  </div>
-                )}
-
-                {/* Delivery Governance Tab */}
-                {selectedTab === "deliveries" && (
-                  <div>
-                    <AdminDeliveryTab />
-                  </div>
-                )}
-
-                {/* Delivery KPI Tab */}
-                {selectedTab === "delivery-kpi" && (
-                  <div>
-                    <AdminDeliveryKpiTab />
-                  </div>
-                )}
-
-                {/* Audit Log Tab */}
-                {selectedTab === "audit-log" && (
-                  <div>
-                    <AdminAuditLogTab />
-                  </div>
-                )}
-
-                {/* Staff Management Tab */}
-                {selectedTab === "staff-mgmt" && (
-                  <div>
-                    <StaffManagementTab />
                   </div>
                 )}
 

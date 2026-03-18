@@ -19,19 +19,10 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
 import VoucherCenterPage from './pages/VoucherCenterPage';
 import SupplierDashboardPage from './pages/supplier/supplierDashboardPage';
-import StaffDashboardPage from './pages/staff/StaffDashboardPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import NotificationsPage from './pages/NotificationsPage';
-import ShipperDashboardPage from './pages/shipper/ShipperDashboardPage';
 
-// Warehouse Receiving Components
-import ReceivingDashboard from './components/staff/ReceivingDashboard';
-import ReceiptInspectionPage from './components/staff/ReceiptInspectionPage';
-import ShipmentDetailPage from './components/staff/ShipmentDetailPage';
-import InventoryManagement from './components/staff/InventoryManagement';
-import DiscrepancyManagement from './components/staff/DiscrepancyManagement';
-import ReturnManagement from './components/staff/ReturnManagement';
 import SupplierShipmentManagement from './components/supplier/SupplierShipmentManagement';
 
 // Components
@@ -112,48 +103,11 @@ const SupplierRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Staff Route Component - requires staff or admin role
-const StaffRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user, loading } = useAuth();
-  const isStaff = user?.role?.toLowerCase() === 'staff' || user?.role?.toLowerCase() === 'admin';
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isStaff) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// Shipper Route - requires staff role + Shipper position
-const ShipperRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user, loading } = useAuth();
-  const isShipper =
-    user?.role?.toLowerCase() === 'staff' &&
-    user?.staffPositionEnum?.toLowerCase() === 'shipper';
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!isShipper) return <Navigate to="/" replace />;
-  return <>{children}</>;
-};
-
 function AppRoutes() {
   const location = useLocation();
-  const isStaffRoute = location.pathname.startsWith('/staff');
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isSupplierRoute = location.pathname.startsWith('/supplier');
-  const isShipperRoute = location.pathname.startsWith('/shipper');
-  const isDashboardRoute = isStaffRoute || isAdminRoute || isSupplierRoute || isShipperRoute;
+  const isDashboardRoute = isAdminRoute || isSupplierRoute;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -194,32 +148,6 @@ function AppRoutes() {
           } />
           <Route path="/supplier/shipments" element={
             <SupplierRoute><SupplierShipmentManagement /></SupplierRoute>
-          } />
-          <Route path="/staff" element={
-            <StaffRoute><StaffDashboardPage /></StaffRoute>
-          } />
-          <Route path="/staff/receiving" element={
-            <StaffRoute><ReceivingDashboard /></StaffRoute>
-          } />
-          <Route path="/staff/receipts/:receiptId" element={
-            <StaffRoute><ReceiptInspectionPage /></StaffRoute>
-          } />
-          <Route path="/staff/shipments/:shipmentId" element={
-            <StaffRoute><ShipmentDetailPage /></StaffRoute>
-          } />
-          <Route path="/staff/inventory" element={
-            <StaffRoute><InventoryManagement /></StaffRoute>
-          } />
-          <Route path="/staff/discrepancies" element={
-            <StaffRoute><DiscrepancyManagement /></StaffRoute>
-          } />
-          <Route path="/staff/returns" element={
-            <StaffRoute><ReturnManagement /></StaffRoute>
-          } />
-
-          {/* Shipper Route */}
-          <Route path="/shipper" element={
-            <ShipperRoute><ShipperDashboardPage /></ShipperRoute>
           } />
 
           <Route path="/privacy" element={<PrivacyPolicyPage />} />

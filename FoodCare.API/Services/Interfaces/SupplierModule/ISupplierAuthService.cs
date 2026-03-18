@@ -27,5 +27,4 @@ public interface ISupplierAuthService
     // Business Registration
     Task<SupplierRegistrationDto?> GetRegistrationStatusAsync(string userId);
     Task<SupplierRegistrationDto?> SubmitRegistrationAsync(string userId, SubmitRegistrationDto dto);
-    Task<IEnumerable<object>> GetAvailableWarehousesAsync(string userId);
 }

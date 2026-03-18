@@ -3,10 +3,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Admin;
 using FoodCare.API.Models.DTOs.Admin.Users;
 using FoodCare.API.Models.Enums;
-using FoodCare.API.Models.Staff;
 using FoodCare.API.Services.Interfaces.Admin;
-using FoodCare.API.Helpers;
-using Microsoft.Extensions.Logging;
 
 namespace FoodCare.API.Services.Implementations.Admin;
 
@@ -35,17 +32,15 @@ public class AdminUserService : IAdminUserService
             .Include(u => u.Reviews)
             .AsQueryable();
 
-        // Search filter
         if (!string.IsNullOrEmpty(filter.Search))
         {
             var searchLower = filter.Search.ToLower();
-            query = query.Where(u => 
+            query = query.Where(u =>
                 (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
                 (u.FullName != null && u.FullName.ToLower().Contains(searchLower)) ||
                 (u.PhoneNumber != null && u.PhoneNumber.Contains(searchLower)));
         }
 
-        // Role filter
         if (!string.IsNullOrEmpty(filter.Role))
         {
             if (Enum.TryParse<UserRole>(filter.Role, true, out var role))
@@ -54,19 +49,16 @@ public class AdminUserService : IAdminUserService
             }
         }
 
-        // Active status filter
         if (filter.IsActive.HasValue)
         {
             query = query.Where(u => u.IsActive == filter.IsActive.Value);
         }
 
-        // Tier filter
         if (filter.TierId.HasValue)
         {
             query = query.Where(u => u.TierId == filter.TierId.Value);
         }
 
-        // Sorting
         query = filter.SortBy?.ToLower() switch
         {
             "email" => filter.SortDesc ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
@@ -94,28 +86,12 @@ public class AdminUserService : IAdminUserService
             .Select(g => new { UserId = g.Key, LastLoginAt = g.Max(l => l.LoginAt) })
             .ToListAsync();
 
-        // Fetch staff info for staff users
-        var staffUsers = users.Where(u => u.Role == UserRole.staff).Select(u => u.Id).ToList();
-        var staffInfos = staffUsers.Count > 0 ? await _context.StaffMembers
-            .Include(s => s.Warehouse)
-            .Where(s => staffUsers.Contains(s.UserId) && s.IsActive)
-            .ToListAsync() : new List<StaffMember>();
-
-        // Apply last login dates and staff info to items
         foreach (var item in items)
         {
             var lastLogin = lastLogins.FirstOrDefault(l => l.UserId == item.Id);
             if (lastLogin != null)
             {
                 item.LastLoginAt = lastLogin.LastLoginAt;
-            }
-
-            var staffInfo = staffInfos.FirstOrDefault(s => s.UserId == item.Id);
-            if (staffInfo != null)
-            {
-                item.WarehouseId = staffInfo.WarehouseId;
-                item.WarehouseName = staffInfo.Warehouse?.Name;
-                item.EmployeeCode = staffInfo.EmployeeCode;
             }
         }
 
@@ -140,7 +116,6 @@ public class AdminUserService : IAdminUserService
 
         if (user == null) return null;
 
-        // Get last successful login
         var lastLogin = await _context.LoginLogs
             .Where(l => l.UserId == id && l.Success == true)
             .OrderByDescending(l => l.LoginAt)
@@ -151,10 +126,7 @@ public class AdminUserService : IAdminUserService
         dto.LastLoginAt = lastLogin;
         dto.ActiveSubscriptions = user.Subscriptions?.Count(s => s.Status == Models.Enums.SubStatus.active) ?? 0;
         dto.EmailVerified = user.EmailVerified;
-        
-        // Enrich with staff info
-        await EnrichWithStaffInfo(dto, user.Id);
-        
+
         return dto;
     }
 
@@ -183,22 +155,19 @@ public class AdminUserService : IAdminUserService
 
     public async Task<AdminUserDto> CreateUserAsync(CreateUserDto dto)
     {
-        // Check if email already exists
         var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
         if (existingUser != null)
         {
             throw new InvalidOperationException("Email đã tồn tại trong hệ thống");
         }
 
-        // Parse role
         if (!Enum.TryParse<UserRole>(dto.Role, true, out var role))
         {
             role = UserRole.customer;
         }
 
-        // First, create user in Supabase Auth to get valid ID
         _logger.LogInformation("Creating user in Supabase Auth for email: {Email}", dto.Email);
-        
+
         try
         {
             var session = await _supabaseClient.Auth.SignUp(dto.Email, dto.Password);
@@ -209,11 +178,9 @@ public class AdminUserService : IAdminUserService
                 throw new InvalidOperationException("Không thể tạo tài khoản. Vui lòng kiểm tra email và mật khẩu hợp lệ.");
             }
 
-            // Get real ID from Supabase
             var supabaseUserId = Guid.Parse(session.User.Id);
             _logger.LogInformation("Successfully created user in Supabase Auth with ID: {UserId}", supabaseUserId);
 
-            // Get default tier
             var defaultTier = await _context.MemberTiers.FirstOrDefaultAsync(mt => mt.Id == 1);
             if (defaultTier == null)
             {
@@ -231,7 +198,7 @@ public class AdminUserService : IAdminUserService
 
             var user = new User
             {
-                Id = supabaseUserId, // Use Supabase's ID to satisfy foreign key constraint
+                Id = supabaseUserId,
                 Email = dto.Email,
                 FullName = dto.FullName,
                 Role = role,
@@ -247,23 +214,13 @@ public class AdminUserService : IAdminUserService
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // If role is staff, create StaffMember and assign to warehouse
-            if (role == UserRole.staff)
-            {
-                await HandleStaffAssignment(user, dto.WarehouseId);
-                await _context.SaveChangesAsync();
-            }
-
-            // Load tier for mapping
             await _context.Entry(user).Reference(u => u.Tier).LoadAsync();
 
-            var result = MapToDto(user);
-            await EnrichWithStaffInfo(result, user.Id);
-            return result;
+            return MapToDto(user);
         }
         catch (InvalidOperationException)
         {
-            throw; // Re-throw our own exceptions
+            throw;
         }
         catch (Exception ex)
         {
@@ -290,101 +247,16 @@ public class AdminUserService : IAdminUserService
         if (dto.LoyaltyPoints.HasValue) user.LoyaltyPoints = dto.LoyaltyPoints;
         user.IsActive = dto.IsActive;
 
-        UserRole? newRole = null;
         if (!string.IsNullOrEmpty(dto.Role) && Enum.TryParse<UserRole>(dto.Role, true, out var role))
         {
-            newRole = role;
             user.Role = role;
         }
 
         user.UpdatedAt = DateTime.UtcNow;
 
-        // Handle staff role assignment: create/update StaffMember + warehouse assignment
-        if (newRole == UserRole.staff || (newRole == null && user.Role == UserRole.staff && dto.WarehouseId.HasValue))
-        {
-            await HandleStaffAssignment(user, dto.WarehouseId);
-        }
-        // If role changed FROM staff to something else, deactivate staff member
-        else if (newRole.HasValue && newRole != UserRole.staff)
-        {
-            var existingStaff = await _context.StaffMembers.FirstOrDefaultAsync(s => s.UserId == user.Id);
-            if (existingStaff != null)
-            {
-                existingStaff.IsActive = false;
-                existingStaff.UpdatedAt = DateTime.UtcNow;
-            }
-        }
-
         await _context.SaveChangesAsync();
 
-        var result = MapToDto(user);
-        // Load staff info for response
-        await EnrichWithStaffInfo(result, user.Id);
-        return result;
-    }
-
-    /// <summary>
-    /// Create or update StaffMember when user role is set to staff
-    /// </summary>
-    private async Task HandleStaffAssignment(User user, Guid? warehouseId)
-    {
-        var existingStaff = await _context.StaffMembers
-            .FirstOrDefaultAsync(s => s.UserId == user.Id);
-
-        if (existingStaff != null)
-        {
-            // Re-activate and update warehouse
-            existingStaff.IsActive = true;
-            existingStaff.UpdatedAt = DateTime.UtcNow;
-            if (warehouseId.HasValue)
-            {
-                existingStaff.WarehouseId = warehouseId.Value;
-            }
-        }
-        else
-        {
-            // Create new staff member with auto-generated employee code
-            var staffCount = await _context.StaffMembers.CountAsync();
-            var employeeCode = $"EMP{(staffCount + 1):D4}";
-
-            var staffMember = new StaffMember
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                EmployeeCode = employeeCode,
-                WarehouseId = warehouseId,
-                Department = "General",
-                Position = "Staff",
-                CanApproveReceipts = false,
-                CanAdjustInventory = false,
-                CanOverrideFifo = false,
-                IsActive = true,
-                HireDate = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.StaffMembers.Add(staffMember);
-        }
-    }
-
-    /// <summary>
-    /// Enrich AdminUserDto with staff/warehouse info if applicable
-    /// </summary>
-    private async Task EnrichWithStaffInfo(AdminUserDto dto, Guid userId)
-    {
-        if (dto.Role?.ToLower() == "staff")
-        {
-            var staffMember = await _context.StaffMembers
-                .Include(s => s.Warehouse)
-                .FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive);
-
-            if (staffMember != null)
-            {
-                dto.WarehouseId = staffMember.WarehouseId;
-                dto.WarehouseName = staffMember.Warehouse?.Name;
-                dto.EmployeeCode = staffMember.EmployeeCode;
-            }
-        }
+        return MapToDto(user);
     }
 
     public async Task<bool> ChangePasswordAsync(Guid id, AdminChangePasswordDto dto)
@@ -392,13 +264,9 @@ public class AdminUserService : IAdminUserService
         var user = await _context.Users.FindAsync(id);
         if (user == null) return false;
 
-        // Here you would hash the new password and update
-        // This depends on how you store passwords (UserCredential table, etc.)
-        // For now, we return true assuming the operation would succeed
-        
         user.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        
+
         return true;
     }
 
@@ -425,7 +293,6 @@ public class AdminUserService : IAdminUserService
         var user = await _context.Users.FindAsync(id);
         if (user == null) return false;
 
-        // Soft delete - set inactive
         user.IsActive = false;
         user.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();

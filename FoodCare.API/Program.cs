@@ -11,8 +11,6 @@ using FoodCare.API.Services.Interfaces.Admin;
 using FoodCare.API.Services.Implementations.Admin;
 using FoodCare.API.Services.Interfaces.SupplierModule;
 using FoodCare.API.Services.Implementations.SupplierModule;
-using FoodCare.API.Services.Interfaces.StaffModule;
-using FoodCare.API.Services.Implementations.StaffModule;
 using System.Text.Json.Serialization;
 using FoodCare.API.Models;
 
@@ -42,17 +40,6 @@ dataSourceBuilder.MapEnum<OrderStatus>("order_status");
 dataSourceBuilder.MapEnum<PaymentStatus>("payment_status");
 dataSourceBuilder.MapEnum<SubFrequency>("sub_frequency");
 dataSourceBuilder.MapEnum<SubStatus>("sub_status");
-
-// Staff Module Enums
-dataSourceBuilder.MapEnum<ShipmentStatus>("shipment_status");
-dataSourceBuilder.MapEnum<ReceiptStatus>("receipt_status");
-dataSourceBuilder.MapEnum<MovementType>("movement_type");
-dataSourceBuilder.MapEnum<DiscrepancyType>("discrepancy_type");
-dataSourceBuilder.MapEnum<InventoryType>("inventory_type");
-
-// Inbound Session Enums
-dataSourceBuilder.MapEnum<InboundSessionStatus>("inbound_session_status");
-dataSourceBuilder.MapEnum<InboundReceiptStatus>("inbound_receipt_status");
 
 dataSourceBuilder.EnableDynamicJson();
 
@@ -135,7 +122,7 @@ builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>();
-builder.Services.AddScoped<IAdminDeliveryService, AdminDeliveryService>();
+
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
 builder.Services.AddScoped<IReviewService, ReviewService>();
@@ -159,27 +146,10 @@ builder.Services.AddScoped<ISupplierAuthService, SupplierAuthService>();
 builder.Services.AddHttpClient<FoodCare.API.Services.Implementations.NominatimGeocodingService>();
 builder.Services.AddScoped<FoodCare.API.Services.Interfaces.IGeocodingService, FoodCare.API.Services.Implementations.NominatimGeocodingService>();
 
-// Register Staff Module Services
-builder.Services.AddScoped<IWarehouseService, WarehouseService>();
-builder.Services.AddScoped<IStaffMemberService, StaffMemberService>();
-builder.Services.AddScoped<IShipmentService, ShipmentService>();
-builder.Services.AddScoped<IReceiptService, ReceiptService>();
-builder.Services.AddScoped<IInventoryService, InventoryService>();
-builder.Services.AddScoped<IDiscrepancyService, DiscrepancyService>();
-builder.Services.AddScoped<IReturnService, ReturnService>();
-builder.Services.AddScoped<IInboundSessionService, InboundSessionService>();
-builder.Services.AddScoped<ISupplierInboundService, SupplierInboundService>();
-
-// Background service: auto-close expired inbound sessions
-builder.Services.AddHostedService<FoodCare.API.Services.Background.InboundSessionExpiryService>();
-
 // Background service: auto-process subscription payments via FNC Pay
 builder.Services.AddHostedService<FoodCare.API.Jobs.SubscriptionPaymentJob>();
 
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
-
-// Register Shipper Service
-builder.Services.AddScoped<IShipperService, ShipperService>();
 
 var app = builder.Build();
 
@@ -261,31 +231,8 @@ using (var scope = app.Services.CreateScope())
         }
 
 
-        // === ADD SHIPPER COLUMNS TO ORDERS (if not exists) ===
-        using var cmd2 = conn.CreateCommand();
-        cmd2.CommandText = @"
-            DO $$
-            BEGIN
-                -- Thêm column shipper_id vào orders nếu chưa có
-                IF NOT EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name = 'orders' AND column_name = 'shipper_id'
-                ) THEN
-                    ALTER TABLE public.orders ADD COLUMN shipper_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
-                END IF;
-
-                -- Thêm column warehouse_id vào orders nếu chưa có
-                IF NOT EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name = 'orders' AND column_name = 'warehouse_id'
-                ) THEN
-                    ALTER TABLE public.orders ADD COLUMN warehouse_id UUID REFERENCES public.warehouses(id) ON DELETE SET NULL;
-                END IF;
-            END $$;
-        ";
-        await cmd2.ExecuteNonQueryAsync();
         await conn.CloseAsync();
-        Console.WriteLine("✅ Tables/columns ensured (coupons, transactions, shipper columns).");
+        Console.WriteLine("✅ Tables/columns ensured (coupons, transactions).");
     }
     catch (Exception ex)
     {

@@ -1,11 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
-using FoodCare.API.Models.DTOs.Staff;
 using FoodCare.API.Services.Interfaces.SupplierModule;
-using FoodCare.API.Services.Interfaces.StaffModule;
 using System.Security.Claims;
 
 namespace FoodCare.API.Controllers.supplier;
@@ -16,23 +13,16 @@ namespace FoodCare.API.Controllers.supplier;
 public class SupplierController : ControllerBase
 {
     private readonly ISupplierAuthService _supplierAuthService;
-    private readonly ISupplierInboundService _supplierInboundService;
-    private readonly FoodCareDbContext _context;
 
-    public SupplierController(
-        ISupplierAuthService supplierAuthService,
-        ISupplierInboundService supplierInboundService,
-        FoodCareDbContext context)
+    public SupplierController(ISupplierAuthService supplierAuthService)
     {
         _supplierAuthService = supplierAuthService;
-        _supplierInboundService = supplierInboundService;
-        _context = context;
     }
 
     [HttpGet("profile")]
     public async Task<ActionResult<SupplierProfileDto>> GetProfile()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -46,7 +36,7 @@ public class SupplierController : ControllerBase
     [HttpPut("profile")]
     public async Task<ActionResult<SupplierProfileDto>> UpdateProfile(UpdateSupplierDto updateDto)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -60,7 +50,7 @@ public class SupplierController : ControllerBase
     [HttpGet("products")]
     public async Task<ActionResult<IEnumerable<SupplierProductDto>>> GetProducts()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -71,7 +61,7 @@ public class SupplierController : ControllerBase
     [HttpGet("orders")]
     public async Task<ActionResult<IEnumerable<SupplierOrderDto>>> GetOrders()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -82,7 +72,7 @@ public class SupplierController : ControllerBase
     [HttpGet("stats")]
     public async Task<ActionResult<SupplierStatsDto>> GetStats()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -93,7 +83,7 @@ public class SupplierController : ControllerBase
     [HttpGet("revenue")]
     public async Task<ActionResult<RevenueDataDto>> GetRevenue([FromQuery] int? months = 6)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -104,7 +94,7 @@ public class SupplierController : ControllerBase
     [HttpGet("reviews")]
     public async Task<ActionResult<IEnumerable<SupplierReviewDto>>> GetReviews()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -115,7 +105,7 @@ public class SupplierController : ControllerBase
     [HttpGet("reviews/stats")]
     public async Task<ActionResult<ReviewStatsDto>> GetReviewStats()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -126,7 +116,7 @@ public class SupplierController : ControllerBase
     [HttpPost("reviews/{reviewId}/respond")]
     public async Task<ActionResult> RespondToReview(Guid reviewId, [FromBody] RespondToReviewDto dto)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -142,7 +132,7 @@ public class SupplierController : ControllerBase
     [HttpPost("products")]
     public async Task<ActionResult<SupplierProductDto>> CreateProduct([FromBody] CreateSupplierProductDto dto)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -163,7 +153,7 @@ public class SupplierController : ControllerBase
     [HttpPut("products/{productId}")]
     public async Task<ActionResult<SupplierProductDto>> UpdateProduct(Guid productId, [FromBody] UpdateSupplierProductDto dto)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -184,7 +174,7 @@ public class SupplierController : ControllerBase
     [HttpDelete("products/{productId}")]
     public async Task<ActionResult> DeleteProduct(Guid productId)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -198,7 +188,7 @@ public class SupplierController : ControllerBase
     [HttpPost("products/{productId}/submit")]
     public async Task<ActionResult> SubmitProductForApproval(Guid productId)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -214,7 +204,7 @@ public class SupplierController : ControllerBase
     [HttpGet("registration")]
     public async Task<ActionResult<SupplierRegistrationDto>> GetRegistrationStatus()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -228,7 +218,7 @@ public class SupplierController : ControllerBase
     [HttpPost("registration")]
     public async Task<ActionResult<SupplierRegistrationDto>> SubmitRegistration([FromBody] SubmitRegistrationDto dto)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
@@ -244,98 +234,5 @@ public class SupplierController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
-    }
-
-    [HttpGet("warehouses")]
-    public async Task<ActionResult> GetAvailableWarehouses()
-    {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var warehouses = await _supplierAuthService.GetAvailableWarehousesAsync(userId);
-        return Ok(warehouses);
-    }
-
-    // ===== INBOUND SESSIONS =====
-
-    /// <summary>
-    /// Get available inbound sessions (invited/registered) for current supplier
-    /// </summary>
-    [HttpGet("inbound-sessions")]
-    public async Task<ActionResult<List<SupplierInboundSessionDto>>> GetInboundSessions()
-    {
-        var supplierId = await GetSupplierIntIdAsync();
-        if (supplierId == null) return Unauthorized(new { message = "Supplier profile not found" });
-
-        var sessions = await _supplierInboundService.GetAvailableSessionsForSupplierAsync(supplierId.Value);
-        return Ok(sessions);
-    }
-
-    /// <summary>
-    /// Register for an inbound session
-    /// </summary>
-    [HttpPost("inbound-sessions/{sessionId}/register")]
-    public async Task<ActionResult<SupplierInboundSessionDto>> RegisterForSession(
-        Guid sessionId, [FromBody] SupplierRegisterInboundRequest request)
-    {
-        var supplierId = await GetSupplierIntIdAsync();
-        if (supplierId == null) return Unauthorized(new { message = "Supplier profile not found" });
-
-        try
-        {
-            var result = await _supplierInboundService.RegisterForSessionAsync(sessionId, supplierId.Value, request);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Decline an inbound session invitation
-    /// </summary>
-    [HttpPost("inbound-sessions/{sessionId}/decline")]
-    public async Task<ActionResult> DeclineSession(Guid sessionId)
-    {
-        var supplierId = await GetSupplierIntIdAsync();
-        if (supplierId == null) return Unauthorized(new { message = "Supplier profile not found" });
-
-        try
-        {
-            await _supplierInboundService.DeclineSessionAsync(sessionId, supplierId.Value);
-            return Ok(new { message = "Đã từ chối lời mời" });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    // ===== HELPER METHODS =====
-
-    private Guid? GetCurrentUserGuid()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value;
-        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
-    }
-
-    private async Task<int?> GetSupplierIntIdAsync()
-    {
-        var userId = GetCurrentUserGuid();
-        if (userId == null) return null;
-
-        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId.Value);
-        return supplier?.Id;
     }
 }
