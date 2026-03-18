@@ -16,7 +16,6 @@ import {
   X,
   LogOut,
   ShieldCheck,
-  Warehouse,
   Lock,
 } from 'lucide-react';
 
@@ -35,7 +34,6 @@ export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout,
   const menuItems = [
     { id: 'overview', label: 'Tổng quan', icon: Home },
     { id: 'registration', label: 'Đăng ký kinh doanh', icon: ShieldCheck },
-    { id: 'inbound', label: 'Nhập kho', icon: Warehouse, badge: badges.inbound, requiresApproval: true },
     { id: 'orders', label: 'Quản lý đơn hàng', icon: ShoppingCart, badge: badges.orders, requiresApproval: true },
     { id: 'products', label: 'Sản phẩm', icon: Package, badge: badges.products, requiresApproval: true },
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, requiresApproval: true },

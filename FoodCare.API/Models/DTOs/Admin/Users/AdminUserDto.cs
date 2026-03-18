@@ -29,10 +29,6 @@ public class AdminUserDto
     public int TotalSubscriptions { get; set; }
     public int TotalReviews { get; set; }
     
-    // Staff/Warehouse info
-    public Guid? WarehouseId { get; set; }
-    public string? WarehouseName { get; set; }
-    public string? EmployeeCode { get; set; }
 }
 
 /// <summary>
@@ -47,10 +43,6 @@ public class CreateUserDto
     public string? PhoneNumber { get; set; }
     public string? AvatarUrl { get; set; }
     
-    /// <summary>
-    /// Required when Role = "staff". The warehouse to assign the staff member to.
-    /// </summary>
-    public Guid? WarehouseId { get; set; }
 }
 
 /// <summary>
@@ -65,11 +57,6 @@ public class UpdateUserDto
     public int? TierId { get; set; }
     public int? LoyaltyPoints { get; set; }
     public bool IsActive { get; set; }
-    
-    /// <summary>
-    /// Required when Role = "staff". The warehouse to assign the staff member to.
-    /// </summary>
-    public Guid? WarehouseId { get; set; }
 }
 
 /// <summary>

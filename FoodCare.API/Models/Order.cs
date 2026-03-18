@@ -57,18 +57,5 @@ public partial class Order
 
     public virtual User? User { get; set; }
 
-    // Shipper assignment
-    [Column("shipper_id")]
-    public Guid? ShipperId { get; set; }
-
-    [Column("warehouse_id")]
-    public Guid? WarehouseId { get; set; }
-
-    [ForeignKey("ShipperId")]
-    public virtual User? Shipper { get; set; }
-
-    [ForeignKey("WarehouseId")]
-    public virtual FoodCare.API.Models.Staff.Warehouse? Warehouse { get; set; }
-
     public virtual ICollection<ZaloMessagesLog> ZaloMessagesLogs { get; set; } = new List<ZaloMessagesLog>();
 }

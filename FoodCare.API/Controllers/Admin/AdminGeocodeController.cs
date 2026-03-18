@@ -78,46 +78,12 @@ public class AdminGeocodeController : ControllerBase
             }
         }
 
-        // --- Warehouses ---
-        var warehousesToGeocode = await _context.Warehouses
-            .Where(w => w.AddressCity != null
-                && (!w.Latitude.HasValue || !w.Longitude.HasValue))
-            .ToListAsync();
-
-        int wProcessed = 0, wUpdated = 0, wFailed = 0;
-
-        foreach (var warehouse in warehousesToGeocode)
-        {
-            wProcessed++;
-            try
-            {
-                var (lat, lng) = await _geocodingService.GeocodeAddressAsync(
-                    warehouse.AddressWard, warehouse.AddressDistrict, warehouse.AddressCity);
-                if (lat.HasValue && lng.HasValue)
-                {
-                    warehouse.Latitude = lat.Value;
-                    warehouse.Longitude = lng.Value;
-                    warehouse.UpdatedAt = DateTime.UtcNow;
-                    wUpdated++;
-                }
-                else
-                {
-                    wFailed++;
-                }
-            }
-            catch
-            {
-                wFailed++;
-            }
-        }
-
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
             message = "Geocode backfill completed",
-            suppliers = new { processed = sProcessed, updated = sUpdated, failed = sFailed },
-            warehouses = new { processed = wProcessed, updated = wUpdated, failed = wFailed }
+            suppliers = new { processed = sProcessed, updated = sUpdated, failed = sFailed }
         });
     }
 
@@ -134,16 +100,9 @@ public class AdminGeocodeController : ControllerBase
                 && (!s.Latitude.HasValue || !s.Longitude.HasValue))
             .CountAsync();
 
-        var warehousesTotal = await _context.Warehouses.CountAsync();
-        var warehousesMissing = await _context.Warehouses
-            .Where(w => w.AddressCity != null
-                && (!w.Latitude.HasValue || !w.Longitude.HasValue))
-            .CountAsync();
-
         return Ok(new
         {
-            suppliers = new { total = suppliersTotal, missingCoordinates = suppliersMissing },
-            warehouses = new { total = warehousesTotal, missingCoordinates = warehousesMissing }
+            suppliers = new { total = suppliersTotal, missingCoordinates = suppliersMissing }
         });
     }
 }

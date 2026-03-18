@@ -2,7 +2,6 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
-using FoodCare.API.Models.Staff;
 using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Interfaces.SupplierModule;
 using System.Text.Json;
@@ -606,40 +605,6 @@ public class SupplierAuthService : ISupplierAuthService
         await _context.SaveChangesAsync();
 
         return await GetRegistrationStatusAsync(userId);
-    }
-
-    public async Task<IEnumerable<object>> GetAvailableWarehousesAsync(string userId)
-    {
-        var userGuid = Guid.Parse(userId);
-        var supplier = await _context.Suppliers
-            .Where(s => s.IsDeleted == false && s.UserId == userGuid)
-            .FirstOrDefaultAsync();
-
-        if (supplier == null || supplier.RegistrationStatus != "approved")
-            return Enumerable.Empty<object>();
-
-        // Return warehouses in the supplier's operating region
-        var query = _context.Warehouses
-            .Where(w => w.IsActive);
-
-        if (!string.IsNullOrEmpty(supplier.OperatingRegion))
-        {
-            query = query.Where(w => w.Region == supplier.OperatingRegion);
-        }
-
-        var warehouses = await query
-            .Select(w => new
-            {
-                w.Id,
-                w.Code,
-                w.Name,
-                w.Region,
-                w.AddressCity,
-                w.AddressDistrict
-            })
-            .ToListAsync();
-
-        return warehouses;
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { usersService, customersService, warehouseService } from '../../services/admin';
+import { usersService, customersService } from '../../services/admin';
 import type {
   AdminUser,
   CreateUserDto,
@@ -26,7 +26,6 @@ import type {
   MemberTierInfo,
   RoleOption,
 } from '../../types/admin';
-import type { WarehouseDropdownItem } from '../../services/admin/warehouseService';
 
 interface UserDialogProps {
   open: boolean;
@@ -45,7 +44,6 @@ interface FormData {
   tierId: string;
   loyaltyPoints: string;
   isActive: boolean;
-  warehouseId: string;
 }
 
 const initialFormData: FormData = {
@@ -58,7 +56,6 @@ const initialFormData: FormData = {
   tierId: '',
   loyaltyPoints: '0',
   isActive: true,
-  warehouseId: '',
 };
 
 export function UserDialog({
@@ -72,8 +69,6 @@ export function UserDialog({
   const [tiersLoading, setTiersLoading] = useState(false);
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
-  const [warehouses, setWarehouses] = useState<WarehouseDropdownItem[]>([]);
-  const [warehousesLoading, setWarehousesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadTiers = useCallback(async () => {
@@ -98,23 +93,11 @@ export function UserDialog({
       // Fallback to default roles if API fails
       setRoles([
         { value: 'customer', label: 'Khách hàng', description: 'Người dùng thông thường' },
-        { value: 'staff', label: 'Nhân viên', description: 'Nhân viên quản lý' },
-        { value: 'admin', label: 'Admin', description: 'Quản trị viên' }
+        { value: 'admin', label: 'Admin', description: 'Quản trị viên' },
+        { value: 'supplier', label: 'Nhà cung cấp', description: 'Nhà cung cấp sản phẩm' },
       ]);
     } finally {
       setRolesLoading(false);
-    }
-  }, []);
-
-  const loadWarehouses = useCallback(async () => {
-    setWarehousesLoading(true);
-    try {
-      const data = await warehouseService.getWarehousesDropdown();
-      setWarehouses(data);
-    } catch (error) {
-      console.error('Failed to load warehouses:', error);
-    } finally {
-      setWarehousesLoading(false);
     }
   }, []);
 
@@ -122,7 +105,6 @@ export function UserDialog({
     if (open) {
       loadTiers();
       loadRoles();
-      loadWarehouses();
       if (user) {
         setFormData({
           email: user.email,
@@ -134,13 +116,12 @@ export function UserDialog({
           tierId: user.tierId?.toString() || '',
           loyaltyPoints: user.loyaltyPoints?.toString() || '0',
           isActive: user.isActive,
-          warehouseId: user.warehouseId || '',
         });
       } else {
         setFormData(initialFormData);
       }
     }
-  }, [open, user, loadTiers, loadRoles, loadWarehouses]);
+  }, [open, user, loadTiers, loadRoles]);
 
   const handleSubmit = async () => {
     if (!formData.email.trim()) {
@@ -165,7 +146,6 @@ export function UserDialog({
           tierId: formData.tierId ? parseInt(formData.tierId) : null,
           loyaltyPoints: parseInt(formData.loyaltyPoints) || 0,
           isActive: formData.isActive,
-          warehouseId: formData.role === 'staff' && formData.warehouseId ? formData.warehouseId : undefined,
         };
         await usersService.updateUser(user.id, updateData);
       } else {
@@ -177,7 +157,6 @@ export function UserDialog({
           role: formData.role,
           phoneNumber: formData.phoneNumber || undefined,
           avatarUrl: formData.avatarUrl || undefined,
-          warehouseId: formData.role === 'staff' && formData.warehouseId ? formData.warehouseId : undefined,
         };
         await usersService.createUser(createData);
       }
@@ -273,33 +252,6 @@ export function UserDialog({
             </div>
           </div>
 
-          {/* Warehouse picker - shown when role is staff */}
-          {formData.role === 'staff' && (
-            <div>
-              <Label>Kho hàng *</Label>
-              <Select
-                value={formData.warehouseId}
-                onValueChange={(value) => updateForm('warehouseId', value === 'none' ? '' : value)}
-                disabled={warehousesLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={warehousesLoading ? 'Đang tải...' : 'Chọn kho hàng'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Chưa gán kho</SelectItem>
-                  {warehouses.map((wh) => (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      {wh.name} ({wh.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                Nhân viên sẽ được gán vào kho hàng này
-              </p>
-            </div>
-          )}
-
           <div>
             <Label>URL Avatar</Label>
             <Input
@@ -316,7 +268,7 @@ export function UserDialog({
               <Select
                 value={formData.tierId}
                 onValueChange={(value) => updateForm('tierId', value === 'none' ? '' : value)}
-                disabled={tiersLoading || formData.role === 'staff' || formData.role === 'admin'}
+                disabled={tiersLoading || formData.role === 'admin'}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn hạng" />
@@ -330,7 +282,7 @@ export function UserDialog({
                   ))}
                 </SelectContent>
               </Select>
-              {(formData.role === 'staff' || formData.role === 'admin') && (
+              {formData.role === 'admin' && (
                 <p className="text-xs text-gray-500 mt-1">
                   Hạng thành viên chỉ áp dụng cho khách hàng
                 </p>
@@ -345,7 +297,7 @@ export function UserDialog({
                   value={formData.loyaltyPoints}
                   onChange={(e) => updateForm('loyaltyPoints', e.target.value)}
                   placeholder="0"
-                  disabled={formData.role === 'staff' || formData.role === 'admin'}
+                  disabled={formData.role === 'admin'}
                 />
               </div>
             )}

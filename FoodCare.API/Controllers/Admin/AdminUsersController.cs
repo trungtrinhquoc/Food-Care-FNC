@@ -69,7 +69,7 @@ public class AdminUsersController : ControllerBase
         var roles = new List<RoleDto>
         {
             new RoleDto { Value = "customer", Label = "Khách hàng", Description = "Người dùng thông thường có thể mua hàng" },
-            new RoleDto { Value = "staff", Label = "Nhân viên", Description = "Nhân viên quản lý đơn hàng và sản phẩm" },
+            new RoleDto { Value = "supplier", Label = "Nhà cung cấp", Description = "Mini mart tự quản lý sản phẩm và đơn hàng" },
             new RoleDto { Value = "admin", Label = "Admin", Description = "Quản trị viên hệ thống" }
         };
         return Ok(roles);
