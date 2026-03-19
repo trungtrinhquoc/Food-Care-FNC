@@ -32,10 +32,13 @@ import {
 import { toast } from 'sonner';
 import {
     productsApi,
+    nearExpiryApi,
     type SupplierProduct,
+    type NearExpiryProduct,
     type CreateProductRequest,
     type UpdateProductRequest,
 } from '../../services/supplier/supplierApi';
+import { CreateBlindBoxDialog } from './CreateBlindBoxDialog';
 import { categoriesApi, type Category } from '../../services/categoriesApi';
 import { uploadToCloudinary } from '../../utils/cloudinary';
 
@@ -77,8 +80,17 @@ export function ProductsSection({
     const [categories, setCategories] = useState<Category[]>([]);
     const [uploading, setUploading] = useState(false);
 
+    // Near-expiry state
+    const [nearExpiryProducts, setNearExpiryProducts] = useState<NearExpiryProduct[]>([]);
+    const [nearExpiryExpanded, setNearExpiryExpanded] = useState(false);
+
+    // Blind Box dialog state
+    const [blindBoxDialogOpen, setBlindBoxDialogOpen] = useState(false);
+    const [blindBoxProduct, setBlindBoxProduct] = useState<NearExpiryProduct | null>(null);
+
     useEffect(() => {
         categoriesApi.getCategories().then(setCategories).catch(console.error);
+        nearExpiryApi.getProducts().then(setNearExpiryProducts).catch(() => setNearExpiryProducts([]));
     }, []);
 
     const formatCurrency = (amount: number) => {
@@ -276,6 +288,57 @@ export function ProductsSection({
                     </div>
                 }
             />
+
+            {/* Near-Expiry Banner */}
+            {nearExpiryProducts.length > 0 && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm font-medium text-amber-800">
+                                {nearExpiryProducts.length} sản phẩm sắp hết hạn (&lt; 45 ngày) — Cân nhắc đăng lên Blind Box để giảm lãng phí
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setNearExpiryExpanded(!nearExpiryExpanded)}
+                            className="text-xs font-medium text-amber-700 hover:text-amber-900 whitespace-nowrap underline underline-offset-2 flex-shrink-0"
+                        >
+                            {nearExpiryExpanded ? 'Ẩn' : 'Xem chi tiết'}
+                        </button>
+                    </div>
+
+                    {nearExpiryExpanded && (
+                        <div className="space-y-2">
+                            {nearExpiryProducts.map((p) => (
+                                <div
+                                    key={p.id}
+                                    className="flex items-center justify-between bg-white rounded-lg px-4 py-3 border border-amber-200"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        {p.imageUrl ? (
+                                            <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                                <Package className="h-5 w-5 text-amber-500" />
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-sm text-gray-900 truncate">{p.name}</p>
+                                            <p className="text-xs text-gray-500">Tồn kho: {p.stockQuantity} • Còn {p.daysUntilExpiry} ngày</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => { setBlindBoxProduct(product); setBlindBoxDialogOpen(true); }}
+                                        className="flex-shrink-0 ml-4 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
+                                    >
+                                        Tạo Blind Box
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -628,6 +691,17 @@ export function ProductsSection({
                     </div>
                 </div>
             )}
+
+            {/* Blind Box Creation Dialog */}
+            <CreateBlindBoxDialog
+                open={blindBoxDialogOpen}
+                onClose={() => setBlindBoxDialogOpen(false)}
+                product={blindBoxProduct}
+                onSuccess={() => {
+                    setBlindBoxDialogOpen(false);
+                    toast.success('Blind Box đã được gửi để Admin phê duyệt!');
+                }}
+            />
         </div>
     );
 }

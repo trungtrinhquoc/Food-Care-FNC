@@ -484,6 +484,7 @@ export interface MartSummary {
   isTop: boolean;
   hasSlaWarning: boolean;
   isActive: boolean;
+  commissionRate?: number;
 }
 
 // ==================== FINANCE ====================

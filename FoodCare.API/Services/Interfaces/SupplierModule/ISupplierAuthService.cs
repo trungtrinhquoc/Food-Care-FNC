@@ -27,4 +27,13 @@ public interface ISupplierAuthService
     // Business Registration
     Task<SupplierRegistrationDto?> GetRegistrationStatusAsync(string userId);
     Task<SupplierRegistrationDto?> SubmitRegistrationAsync(string userId, SubmitRegistrationDto dto);
+
+    // Order status management
+    Task<bool> UpdateOrderStatusAsync(Guid orderId, Guid userId, UpdateOrderStatusDto dto);
+
+    // Near-expiry products
+    Task<List<NearExpiryProductDto>> GetNearExpiryProductsAsync(Guid userId, int days = 45);
+
+    // SLA metrics
+    Task<SupplierSlaDto> GetSlaMetricsAsync(Guid userId);
 }

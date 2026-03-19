@@ -40,6 +40,7 @@ const AdminCouponsPage  = lazy(() => import("./admin/AdminCouponsPage"));
 const ComplaintsTab     = lazy(() => import("./admin/ComplaintsTab").then(m => ({ default: m.ComplaintsTab })));
 const MartTab           = lazy(() => import("./admin/MartTab").then(m => ({ default: m.MartTab })));
 const FinanceTab        = lazy(() => import("./admin/FinanceTab").then(m => ({ default: m.FinanceTab })));
+const BlindBoxTab       = lazy(() => import("./admin/BlindBoxTab").then(m => ({ default: m.BlindBoxTab })));
 
 // Responsive bottom-nav (used only on < lg screens)
 import { AdminBottomNav } from "../components/admin/AdminBottomNav";
@@ -50,6 +51,7 @@ const TABS = [
   { value: "overview",       label: "Tổng quan",      icon: BarChart3,    group: "monitor" },
   { value: "complaints",     label: "Khiếu nại",      icon: AlertCircle,  group: "monitor" },
   { value: "mart",           label: "Quản lý Mart",   icon: Store,        group: "monitor" },
+  { value: "blindbox",       label: "Blind Box",      icon: Box,          group: "monitor" },
   { value: "finance",        label: "Tài chính",      icon: DollarSign,   group: "monitor" },
   // ── Operations ───────────────────────────────────────────────────────────
   { value: "products",       label: "Sản phẩm",       icon: Box,          group: "ops" },
@@ -146,6 +148,7 @@ function TabContent({
   }
   if (tab === "complaints")    return <ComplaintsTab />;
   if (tab === "mart")          return <MartTab />;
+  if (tab === "blindbox")      return <BlindBoxTab />;
   if (tab === "finance")       return <FinanceTab />;
   if (tab === "products")      return <ProductsTab />;
   if (tab === "orders")        return <OrdersTab />;

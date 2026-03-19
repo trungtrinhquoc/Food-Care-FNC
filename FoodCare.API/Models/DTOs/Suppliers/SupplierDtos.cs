@@ -114,6 +114,7 @@ public class CreateSupplierProductDto
     public int? CategoryId { get; set; }
     public string[]? Images { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTime? ExpiryDate { get; set; }
 }
 
 public class UpdateSupplierProductDto
@@ -129,6 +130,7 @@ public class UpdateSupplierProductDto
     public int? CategoryId { get; set; }
     public string[]? Images { get; set; }
     public bool? IsActive { get; set; }
+    public DateTime? ExpiryDate { get; set; }
 }
 
 public class UpdateStockDto
@@ -211,6 +213,8 @@ public class UpdateOrderStatusDto
 {
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
+    public string? DeliveryPhotoUrl { get; set; }  // Required when Status = "delivered"
+    public string? Reason { get; set; }             // Required when Status = "cancelled"
 }
 
 public class AddShippingInfoDto
@@ -428,4 +432,45 @@ public class PendingSupplierDto
     public string? RegistrationNotes { get; set; }
     public DateTime? SubmittedAt { get; set; }
     public DateTime? CreatedAt { get; set; }
+}
+
+// ===== NEAR-EXPIRY & SLA DTOs =====
+
+public class NearExpiryProductDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int StockQuantity { get; set; }
+    public DateTime ExpiryDate { get; set; }
+    public int DaysUntilExpiry { get; set; }
+    public string? ImageUrl { get; set; }
+    public decimal BasePrice { get; set; }
+}
+
+public class SupplierSlaDto
+{
+    public decimal SlaComplianceRate { get; set; }
+    public decimal Rating { get; set; }
+    public int TotalOrders { get; set; }
+    public int CompletedOrders { get; set; }
+    public int CancelledOrders { get; set; }
+    public decimal OrderSuccessRate { get; set; }
+    public int LateDeliveryCount { get; set; }
+    public int LateConfirmationCount { get; set; }
+    public decimal QualityScore { get; set; }
+    public decimal ReturnRate { get; set; }
+    public bool SlaCompliant { get; set; }
+    public bool RatingOk { get; set; }
+}
+
+public class CreateSupplierBlindBoxDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public decimal OriginalValue { get; set; }
+    public decimal BlindBoxPrice { get; set; }
+    public int Quantity { get; set; }
+    public DateTime ExpiryDate { get; set; }
+    public string? Contents { get; set; }
+    public string? ImageUrl { get; set; }
 }

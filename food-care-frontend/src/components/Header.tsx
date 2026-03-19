@@ -326,6 +326,11 @@ export default function Header() {
                                 <span className={navLinkUnderline(isActiveLink('/vouchers'))} />
                             </NavLink>
                         )}
+                        <NavLink to="/blind-boxes" className={({ isActive }) => navLinkClass(isActive)}>
+                            <Box className="w-4 h-4 text-orange-500 mr-1.5" />
+                            Blind Box
+                            <span className={navLinkUnderline(isActiveLink('/blind-boxes'))} />
+                        </NavLink>
                         {isAuthenticated && isAdmin && (
                             <Link to="/admin" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-orange-600 hover:bg-orange-50 transition-all">
                                 <Settings className="h-4 w-4" /> Admin
@@ -410,6 +415,10 @@ export default function Header() {
                     <div className="container mx-auto px-4 py-4 space-y-1">
                         <Link to="/" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Trang chủ</Link>
                         <Link to="/products" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/products') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Sản phẩm</Link>
+                        <Link to="/blind-boxes" className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/blind-boxes') ? 'bg-orange-50 text-orange-600' : 'text-gray-700'}`}>
+                            <Box className="h-4 w-4 text-orange-500" />
+                            Blind Box
+                        </Link>
                         {isAuthenticated && (
                             <>
                                 <Link to="/subscriptions" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/subscriptions') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Đơn định kỳ</Link>

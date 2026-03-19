@@ -385,9 +385,15 @@ export const ordersApi = {
     return response.data;
   },
 
-  // Update order status
+  // Update order status (legacy PUT)
   updateOrderStatus: async (id: string, status: string, notes?: string): Promise<SupplierOrder> => {
     const response = await supplierApi.put<SupplierOrder>(`/orders/${id}/status`, { status, notes });
+    return response.data;
+  },
+
+  // Update order status with delivery photo / cancel reason (PATCH)
+  patchOrderStatus: async (orderId: string, dto: { status: string; deliveryPhotoUrl?: string; reason?: string }) => {
+    const response = await supplierApi.patch(`/orders/${orderId}/status`, dto);
     return response.data;
   },
 };
@@ -792,6 +798,53 @@ export const inboundSessionsApi = {
   },
 };
 
+// =====================================================
+// NEAR-EXPIRY PRODUCTS API
+// =====================================================
+
+export interface NearExpiryProduct {
+  id: string;
+  name: string;
+  stockQuantity: number;
+  expiryDate: string;
+  daysUntilExpiry: number;
+  imageUrl?: string;
+  basePrice: number;
+}
+
+export const nearExpiryApi = {
+  getProducts: async (days = 45): Promise<NearExpiryProduct[]> => {
+    const response = await supplierApi.get<NearExpiryProduct[]>('/products/near-expiry', { params: { days } });
+    return response.data;
+  },
+};
+
+// =====================================================
+// SLA METRICS API
+// =====================================================
+
+export interface SupplierSlaMetrics {
+  slaComplianceRate: number;
+  rating: number;
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  orderSuccessRate: number;
+  lateDeliveryCount: number;
+  lateConfirmationCount: number;
+  qualityScore: number;
+  returnRate: number;
+  slaCompliant: boolean;
+  ratingOk: boolean;
+}
+
+export const slaApi = {
+  getMetrics: async (): Promise<SupplierSlaMetrics> => {
+    const response = await supplierApi.get<SupplierSlaMetrics>('/sla');
+    return response.data;
+  },
+};
+
 export default {
   profile: profileApi,
   products: productsApi,
@@ -803,4 +856,6 @@ export default {
   registration: registrationApi,
   warehouses: warehousesApi,
   inboundSessions: inboundSessionsApi,
+  nearExpiry: nearExpiryApi,
+  sla: slaApi,
 };

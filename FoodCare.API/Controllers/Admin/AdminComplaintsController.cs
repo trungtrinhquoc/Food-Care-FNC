@@ -102,4 +102,21 @@ public class ComplaintsController : ControllerBase
             return StatusCode(500, new { message = "Lỗi khi tạo khiếu nại" });
         }
     }
+
+    // GET /api/complaints/my  — customer views their own complaints
+    [HttpGet("my")]
+    public async Task<ActionResult> GetMyComplaints()
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            var result = await _complaintService.GetMyComplaintsAsync(userId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving user complaints");
+            return StatusCode(500, new { message = "Lỗi khi lấy danh sách khiếu nại" });
+        }
+    }
 }

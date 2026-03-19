@@ -96,6 +96,20 @@ public class AdminComplaintService : IAdminComplaintService
         return created!;
     }
 
+    public async Task<List<ComplaintDto>> GetMyComplaintsAsync(Guid userId)
+    {
+        var now = DateTime.UtcNow;
+        var complaints = await _context.Complaints
+            .Include(c => c.User)
+            .Include(c => c.Order)
+            .Include(c => c.Supplier)
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+
+        return complaints.Select(c => MapToDto(c, now)).ToList();
+    }
+
     public async Task<ComplaintDto?> ActionAsync(Guid id, ResolveComplaintDto dto)
     {
         var complaint = await _context.Complaints

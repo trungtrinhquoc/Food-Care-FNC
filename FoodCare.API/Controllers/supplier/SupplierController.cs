@@ -4,6 +4,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
 using FoodCare.API.Services.Interfaces.SupplierModule;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace FoodCare.API.Controllers.supplier;
 
@@ -13,10 +14,14 @@ namespace FoodCare.API.Controllers.supplier;
 public class SupplierController : ControllerBase
 {
     private readonly ISupplierAuthService _supplierAuthService;
+    private readonly FoodCareDbContext _context;
+    private readonly ILogger<SupplierController> _logger;
 
-    public SupplierController(ISupplierAuthService supplierAuthService)
+    public SupplierController(ISupplierAuthService supplierAuthService, FoodCareDbContext context, ILogger<SupplierController> logger)
     {
         _supplierAuthService = supplierAuthService;
+        _context = context;
+        _logger = logger;
     }
 
     [HttpGet("profile")]
@@ -197,6 +202,142 @@ public class SupplierController : ControllerBase
             return NotFound(new { message = "Product not found" });
 
         return Ok(new { message = "Product submitted for approval" });
+    }
+
+    // ===== ORDER STATUS UPDATE =====
+
+    [HttpPatch("orders/{orderId}/status")]
+    public async Task<IActionResult> UpdateOrderStatus(Guid orderId, [FromBody] UpdateOrderStatusDto dto)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+        try
+        {
+            var success = await _supplierAuthService.UpdateOrderStatusAsync(orderId, userId, dto);
+            if (!success) return NotFound(new { message = "Order not found or access denied." });
+            return Ok(new { message = "Order status updated successfully." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // GET /api/supplier/products/near-expiry?days=45
+    [HttpGet("products/near-expiry")]
+    public async Task<IActionResult> GetNearExpiryProducts([FromQuery] int days = 45)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+        var products = await _supplierAuthService.GetNearExpiryProductsAsync(userId, days);
+        return Ok(products);
+    }
+
+    // GET /api/supplier/sla
+    [HttpGet("sla")]
+    public async Task<IActionResult> GetSlaMetrics()
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+        var sla = await _supplierAuthService.GetSlaMetricsAsync(userId);
+        return Ok(sla);
+    }
+
+    // ===== BLIND BOX =====
+
+    // POST /api/supplier/blind-boxes  — supplier submits a blind box for admin approval
+    [HttpPost("blind-boxes")]
+    public async Task<IActionResult> CreateBlindBox([FromBody] CreateSupplierBlindBoxDto dto)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            // Resolve supplierId from userId
+            var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (supplier == null)
+                return NotFound(new { message = "Supplier profile not found" });
+
+            var blindBox = new BlindBox
+            {
+                Id = Guid.NewGuid(),
+                SupplierId = supplier.Id,
+                Title = dto.Title,
+                Description = dto.Description ?? string.Empty,
+                OriginalValue = dto.OriginalValue,
+                BlindBoxPrice = dto.BlindBoxPrice,
+                Quantity = dto.Quantity,
+                QuantitySold = 0,
+                ExpiryDate = dto.ExpiryDate,
+                Contents = dto.Contents,
+                ImageUrl = dto.ImageUrl,
+                Status = "pending",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+
+            _context.BlindBoxes.Add(blindBox);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = blindBox.Id,
+                message = "Blind Box đã được gửi để phê duyệt. Admin sẽ xem xét và phản hồi sớm."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating blind box for supplier {UserId}", userId);
+            return StatusCode(500, new { message = "Lỗi khi tạo Blind Box" });
+        }
+    }
+
+    // GET /api/supplier/blind-boxes  — list this supplier's blind boxes
+    [HttpGet("blind-boxes")]
+    public async Task<IActionResult> GetMyBlindBoxes()
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (supplier == null) return NotFound(new { message = "Supplier not found" });
+
+            var now = DateTime.UtcNow;
+            var boxes = await _context.BlindBoxes
+                .Where(b => b.SupplierId == supplier.Id)
+                .OrderByDescending(b => b.CreatedAt)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.Title,
+                    b.OriginalValue,
+                    b.BlindBoxPrice,
+                    b.Quantity,
+                    b.QuantitySold,
+                    QuantityAvailable = b.Quantity - b.QuantitySold,
+                    b.ExpiryDate,
+                    b.Status,
+                    b.RejectionReason,
+                    b.CreatedAt,
+                    DaysUntilExpiry = (int)(b.ExpiryDate - now).TotalDays,
+                })
+                .ToListAsync();
+
+            return Ok(boxes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching blind boxes for supplier");
+            return StatusCode(500, new { message = "Lỗi khi lấy danh sách Blind Box" });
+        }
     }
 
     // ===== BUSINESS REGISTRATION =====

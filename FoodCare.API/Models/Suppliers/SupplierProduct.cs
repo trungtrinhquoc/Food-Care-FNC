@@ -37,6 +37,8 @@ public partial class SupplierProduct
 
     public bool? IsActive { get; set; }
 
+    public DateTime? ExpiryDate { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
