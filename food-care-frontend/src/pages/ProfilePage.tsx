@@ -18,7 +18,7 @@ import {
     User, Package, Clock, MapPin, CreditCard, Settings,
     Crown, TrendingUp, Star, Phone, Mail, Edit,
     Truck, CheckCircle, XCircle, AlertCircle, Plus, Loader2,
-    Camera, Wallet
+    Camera, Wallet, MessageSquareWarning
 } from 'lucide-react';
 import { SimplePagination } from '../components/ui/pagination';
 import { AddressSelector } from '../components/AddressSelector';
@@ -27,6 +27,7 @@ import { ProductReviewDialog } from '../components/ProductReviewDialog';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { uploadToCloudinary } from '../utils/cloudinary';
 import { WalletTab } from '../components/WalletTab';
+import { ComplaintDialog } from '../components/user/ComplaintDialog';
 
 function parseImageUrl(imageUrl?: string | string[]): string[] {
     if (!imageUrl) return [];
@@ -124,6 +125,11 @@ export default function ProfilePage() {
         productId: '',
         productName: '',
         orderId: ''
+    });
+
+    // Complaint dialog state
+    const [complaintState, setComplaintState] = useState<{ open: boolean; orderId: string }>({
+        open: false, orderId: ''
     });
 
     // Orders filter & pagination
@@ -1146,6 +1152,21 @@ export default function ProfilePage() {
                                                                 Đang Xử Lý
                                                             </Button>
                                                         )}
+
+                                                        {order.status === 'delivered' && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="border-amber-300 text-amber-600 hover:bg-amber-50 min-w-[100px] h-9 text-xs font-semibold rounded-lg shadow-sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setComplaintState({ open: true, orderId: order.id });
+                                                                }}
+                                                            >
+                                                                <MessageSquareWarning className="h-3.5 w-3.5 mr-1" />
+                                                                Khiếu nại
+                                                            </Button>
+                                                        )}
                                                     </div>
 
 
@@ -1779,6 +1800,11 @@ export default function ProfilePage() {
                 onOpenChange={setIsDetailOpen}
                 order={selectedOrder}
                 onReviewSuccess={loadOrders}
+            />
+            <ComplaintDialog
+                open={complaintState.open}
+                onClose={() => setComplaintState({ open: false, orderId: '' })}
+                orderId={complaintState.orderId}
             />
         </div >
     );

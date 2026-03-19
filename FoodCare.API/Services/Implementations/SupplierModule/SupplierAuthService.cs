@@ -2,6 +2,8 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Suppliers;
+using FoodCare.API.Models.Enums;
+using FoodCare.API.Models.Suppliers;
 using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Interfaces.SupplierModule;
 using System.Text.Json;
@@ -605,6 +607,116 @@ public class SupplierAuthService : ISupplierAuthService
         await _context.SaveChangesAsync();
 
         return await GetRegistrationStatusAsync(userId);
+    }
+
+    // ===== ORDER STATUS UPDATE =====
+
+    public async Task<bool> UpdateOrderStatusAsync(Guid orderId, Guid userId, UpdateOrderStatusDto dto)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId && s.IsDeleted != true);
+        if (supplier == null) return false;
+
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .FirstOrDefaultAsync(o => o.Id == orderId &&
+                o.OrderItems.Any(oi => oi.Product != null && oi.Product.SupplierId == supplier.Id));
+        if (order == null) return false;
+
+        if (dto.Status == "delivered" && string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
+            throw new InvalidOperationException("Delivery photo is required when marking an order as delivered.");
+
+        order.Status = dto.Status switch
+        {
+            "confirmed" => OrderStatus.confirmed,
+            "shipping"  => OrderStatus.shipping,
+            "delivered" => OrderStatus.delivered,
+            "cancelled" => OrderStatus.cancelled,
+            _ => order.Status
+        };
+
+        if (dto.Status == "delivered" && !string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
+            order.DeliveryPhotoUrl = dto.DeliveryPhotoUrl;
+
+        order.UpdatedAt = DateTime.UtcNow;
+
+        if (dto.Status == "delivered")
+        {
+            supplier.CompletedOrders = (supplier.CompletedOrders ?? 0) + 1;
+            supplier.TotalRevenue = (supplier.TotalRevenue ?? 0) + order.TotalAmount;
+        }
+        else if (dto.Status == "cancelled")
+        {
+            supplier.CancelledOrders = (supplier.CancelledOrders ?? 0) + 1;
+        }
+
+        var completed = supplier.CompletedOrders ?? 0;
+        var cancelled = supplier.CancelledOrders ?? 0;
+        supplier.TotalOrders = completed + cancelled;
+        supplier.SlaComplianceRate = supplier.TotalOrders > 0
+            ? Math.Round((decimal)completed / supplier.TotalOrders.Value * 100, 2)
+            : 100;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    // ===== NEAR-EXPIRY PRODUCTS =====
+
+    public async Task<List<NearExpiryProductDto>> GetNearExpiryProductsAsync(Guid userId, int days = 45)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId && s.IsDeleted != true);
+        if (supplier == null) return new List<NearExpiryProductDto>();
+
+        var cutoff = DateTime.UtcNow.AddDays(days);
+        return await _context.SupplierProducts
+            .Where(p => p.SupplierId == supplier.Id
+                     && p.ExpiryDate != null
+                     && p.ExpiryDate <= cutoff
+                     && p.ExpiryDate > DateTime.UtcNow
+                     && p.IsActive == true)
+            .OrderBy(p => p.ExpiryDate)
+            .Select(p => new NearExpiryProductDto
+            {
+                Id              = p.Id,
+                Name            = p.Name,
+                StockQuantity   = p.StockQuantity,
+                ExpiryDate      = p.ExpiryDate!.Value,
+                DaysUntilExpiry = (int)(p.ExpiryDate!.Value - DateTime.UtcNow).TotalDays,
+                ImageUrl        = p.ImageUrl,
+                BasePrice       = p.BasePrice,
+            })
+            .ToListAsync();
+    }
+
+    // ===== SLA METRICS =====
+
+    public async Task<SupplierSlaDto> GetSlaMetricsAsync(Guid userId)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId && s.IsDeleted != true);
+        if (supplier == null) return new SupplierSlaDto();
+
+        var total = supplier.TotalOrders ?? 0;
+        var completed = supplier.CompletedOrders ?? 0;
+        var successRate = total > 0
+            ? Math.Round((decimal)completed / total * 100, 2)
+            : 100m;
+
+        return new SupplierSlaDto
+        {
+            SlaComplianceRate     = supplier.SlaComplianceRate ?? 100m,
+            Rating                = supplier.Rating ?? 0m,
+            TotalOrders           = total,
+            CompletedOrders       = completed,
+            CancelledOrders       = supplier.CancelledOrders ?? 0,
+            OrderSuccessRate      = successRate,
+            LateDeliveryCount     = supplier.LateDeliveryCount ?? 0,
+            LateConfirmationCount = supplier.LateConfirmationCount ?? 0,
+            QualityScore          = supplier.QualityScore ?? 0m,
+            ReturnRate            = supplier.ReturnRate ?? 0m,
+            SlaCompliant          = (supplier.SlaComplianceRate ?? 100m) >= 95m,
+            RatingOk              = (supplier.Rating ?? 0m) >= 4.0m,
+        };
     }
 
     /// <summary>

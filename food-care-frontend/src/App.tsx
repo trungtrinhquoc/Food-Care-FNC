@@ -22,6 +22,7 @@ import SupplierDashboardPage from './pages/supplier/supplierDashboardPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import NotificationsPage from './pages/NotificationsPage';
+import BlindBoxPage from './pages/BlindBoxPage';
 
 import SupplierShipmentManagement from './components/supplier/SupplierShipmentManagement';
 
@@ -139,6 +140,7 @@ function AppRoutes() {
           <Route path="/notifications" element={
             <ProtectedRoute><NotificationsPage /></ProtectedRoute>
           } />
+          <Route path="/blind-boxes" element={<BlindBoxPage />} />
 
           <Route path="/admin" element={
             <AdminRoute><AdminDashboardPage /></AdminRoute>

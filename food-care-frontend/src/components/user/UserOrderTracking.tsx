@@ -40,7 +40,9 @@ import {
     Star,
     Timer,
     ClipboardList,
+    MessageSquareWarning,
 } from 'lucide-react';
+import { ComplaintDialog } from './ComplaintDialog';
 import type {
     UserOrderTracking,
     ShippingTimelineItem,
@@ -51,26 +53,26 @@ import { ORDER_SHIPPING_STATUS_CONFIG } from '@/types/shipping';
 import api from '@/services/api';
 
 // Inline shipping API functions (previously in services/shipping/shippingApi)
-const getUserOrders = async (params?: { pageSize?: number }): Promise<{ items: UserOrderTracking[] }> => {
-    const response = await api.get('/shipping/orders', { params });
-    return response.data;
+const getUserOrders = async (params?: { pageSize?: number; status?: string }): Promise<UserOrderTracking[]> => {
+    const response = await api.get('/shipping/user/orders', { params });
+    return Array.isArray(response.data) ? response.data : (response.data?.items ?? []);
 };
 
 const getUserOrderTracking = async (orderId: string): Promise<UserOrderTracking> => {
-    const response = await api.get(`/shipping/orders/${orderId}/tracking`);
+    const response = await api.get(`/shipping/user/orders/${orderId}/tracking`);
     return response.data;
 };
 
 const confirmDelivery = async (data: UserConfirmDeliveryRequest): Promise<void> => {
-    await api.post(`/shipping/orders/${data.orderId}/confirm-delivery`, data);
+    await api.post(`/shipping/user/orders/${data.orderId}/confirm-delivery`, data);
 };
 
 const requestReturn = async (data: UserRequestReturnRequest): Promise<void> => {
-    await api.post(`/shipping/orders/${data.orderId}/return`, data);
+    await api.post(`/shipping/user/orders/${data.orderId}/return`, data);
 };
 
 const cancelUserOrder = async (orderId: string, reason: string): Promise<void> => {
-    await api.post(`/shipping/orders/${orderId}/cancel`, { reason });
+    await api.post(`/shipping/user/orders/${orderId}/cancel`, { reason });
 };
 
 // Status progress mapping
@@ -151,9 +153,10 @@ interface OrderCardProps {
     onConfirmDelivery: () => void;
     onRequestReturn: () => void;
     onCancel: () => void;
+    onComplain: () => void;
 }
 
-function OrderCard({ order, onViewDetails, onConfirmDelivery, onRequestReturn, onCancel }: OrderCardProps) {
+function OrderCard({ order, onViewDetails, onConfirmDelivery, onRequestReturn, onCancel, onComplain }: OrderCardProps) {
     const statusConfig = ORDER_SHIPPING_STATUS_CONFIG[order.shippingStatus || order.status];
     const progress = order.statusProgress || STATUS_PROGRESS[order.shippingStatus || order.status] || 0;
 
@@ -271,6 +274,13 @@ function OrderCard({ order, onViewDetails, onConfirmDelivery, onRequestReturn, o
                             Hủy đơn
                         </Button>
                     )}
+                    {/* Complaint button for delivered orders */}
+                    {['delivered', 'Delivered'].includes(order.status) && (
+                        <Button variant="outline" size="sm" onClick={onComplain} className="text-amber-600 border-amber-300 hover:bg-amber-50">
+                            <MessageSquareWarning className="h-4 w-4 mr-1" />
+                            Khiếu nại
+                        </Button>
+                    )}
                 </div>
             </CardContent>
         </Card>
@@ -290,6 +300,7 @@ export function UserOrderTrackingSection({ className }: UserOrderTrackingProps) 
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [complaintDialogOpen, setComplaintDialogOpen] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -309,7 +320,7 @@ export function UserOrderTrackingSection({ className }: UserOrderTrackingProps) 
         try {
             setLoading(true);
             const data = await getUserOrders({ pageSize: 50 });
-            setOrders(data.items || []);
+            setOrders(Array.isArray(data) ? data : []);
         } catch {
             toast.error('Không thể tải danh sách đơn hàng');
         } finally {
@@ -352,6 +363,11 @@ export function UserOrderTrackingSection({ className }: UserOrderTrackingProps) 
         setSelectedOrder(order);
         setCancelReason('');
         setCancelDialogOpen(true);
+    };
+
+    const openComplaintDialog = (order: UserOrderTracking) => {
+        setSelectedOrder(order);
+        setComplaintDialogOpen(true);
     };
 
     const handleConfirmDelivery = async () => {
@@ -486,6 +502,7 @@ export function UserOrderTrackingSection({ className }: UserOrderTrackingProps) 
                                 onConfirmDelivery={() => openConfirmDialog(order)}
                                 onRequestReturn={() => openReturnDialog(order)}
                                 onCancel={() => openCancelDialog(order)}
+                                onComplain={() => openComplaintDialog(order)}
                             />
                         ))}
                     </div>
@@ -508,6 +525,7 @@ export function UserOrderTrackingSection({ className }: UserOrderTrackingProps) 
                                 onConfirmDelivery={() => {}}
                                 onRequestReturn={() => openReturnDialog(order)}
                                 onCancel={() => {}}
+                                onComplain={() => openComplaintDialog(order)}
                             />
                         ))}
                     </div>
@@ -846,6 +864,15 @@ export function UserOrderTrackingSection({ className }: UserOrderTrackingProps) 
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Complaint Dialog */}
+            <ComplaintDialog
+                open={complaintDialogOpen}
+                onClose={() => setComplaintDialogOpen(false)}
+                orderId={selectedOrder?.orderId}
+                orderNumber={selectedOrder?.orderNumber}
+                onSuccess={loadOrders}
+            />
         </div>
     );
 }

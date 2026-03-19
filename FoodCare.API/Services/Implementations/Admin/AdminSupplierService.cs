@@ -161,4 +161,46 @@ public class AdminSupplierService : IAdminSupplierService
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<List<MartSummaryDto>> GetMartListAsync()
+    {
+        var now = DateTime.UtcNow;
+        var thisMonthStart = new DateTime(now.Year, now.Month, 1);
+        var nextMonthStart = thisMonthStart.AddMonths(1);
+
+        var suppliers = await _context.Suppliers
+            .Where(s => s.IsActive == true && s.IsDeleted != true)
+            .OrderByDescending(s => s.Rating)
+            .ToListAsync();
+
+        var result = new List<MartSummaryDto>();
+
+        foreach (var s in suppliers)
+        {
+            // Count monthly orders for this supplier via SupplierOrders
+            var monthlyOrders = await _context.SupplierOrders
+                .CountAsync(o => o.SupplierId == s.Id &&
+                                 o.CreatedAt.HasValue &&
+                                 o.CreatedAt.Value >= thisMonthStart &&
+                                 o.CreatedAt.Value < nextMonthStart);
+
+            var slaRate = s.SlaComplianceRate ?? 100m;
+            var rating = s.Rating ?? 0m;
+
+            result.Add(new MartSummaryDto
+            {
+                Id = s.Id,
+                StoreName = s.StoreName,
+                LogoUrl = s.StoreLogoUrl,
+                Rating = rating,
+                SlaComplianceRate = slaRate,
+                MonthlyOrders = monthlyOrders,
+                IsTop = rating >= 4.7m && slaRate >= 97m,
+                HasSlaWarning = slaRate < 95m,
+                IsActive = s.IsActive ?? false
+            });
+        }
+
+        return result;
+    }
 }

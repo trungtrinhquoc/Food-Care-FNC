@@ -35,6 +35,9 @@ public partial class Order
 
     public string? Note { get; set; }
 
+    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+    public string? DeliveryPhotoUrl { get; set; }
+
     public string? TrackingNumber { get; set; }
 
     public string? ShippingProvider { get; set; }

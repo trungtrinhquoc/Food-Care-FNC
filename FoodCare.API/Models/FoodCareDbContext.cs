@@ -49,6 +49,8 @@ public partial class FoodCareDbContext : DbContext {
 
     public DbSet<ChatFaq> ChatFaqs { get; set; }
     public DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
+    public DbSet<Complaint> Complaints { get; set; }
+    public DbSet<BlindBox> BlindBoxes { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
@@ -234,6 +236,8 @@ public partial class FoodCareDbContext : DbContext {
                   .HasDefaultValue(PaymentStatus.unpaid)
                   .HasColumnName("payment_status")
                   .HasColumnType("payment_status");
+
+            entity.Property(e => e.DeliveryPhotoUrl).HasMaxLength(500).HasColumnName("delivery_photo_url");
 
             entity.HasOne(d => d.Subscription).WithMany(p => p.Orders).HasForeignKey(d => d.SubscriptionId).HasConstraintName("orders_subscription_id_fkey");
             entity.HasOne(d => d.User).WithMany(p => p.Orders).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_user_id_fkey");
@@ -585,6 +589,7 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("CreatedAt");
             entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAt");
             entity.Property(e => e.SupplierId).HasColumnName("SupplierId");
+            entity.Property(e => e.ExpiryDate).HasColumnName("ExpiryDate");
 
             entity.HasOne(d => d.Supplier)
                 .WithMany(p => p.SupplierProducts)
@@ -846,6 +851,70 @@ public partial class FoodCareDbContext : DbContext {
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Complaint>(entity => {
+            entity.HasKey(e => e.Id).HasName("complaints_pkey");
+            entity.ToTable("complaints");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.OrderNumber).HasMaxLength(50).HasColumnName("order_number");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.Type).HasMaxLength(100).HasColumnName("type");
+            entity.Property(e => e.Priority).HasMaxLength(20).HasDefaultValue("medium").HasColumnName("priority");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("pending").HasColumnName("status");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.ImageUrls).HasColumnName("image_urls");
+            entity.Property(e => e.AdminNote).HasColumnName("admin_note");
+            entity.Property(e => e.RefundAmount).HasPrecision(15, 2).HasColumnName("refund_amount");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("complaints_user_id_fkey");
+
+            entity.HasOne(d => d.Order).WithMany()
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("complaints_order_id_fkey");
+
+            entity.HasOne(d => d.Supplier).WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("complaints_supplier_id_fkey");
+        });
+
+        modelBuilder.Entity<BlindBox>(entity => {
+            entity.HasKey(e => e.Id).HasName("blind_boxes_pkey");
+            entity.ToTable("blind_boxes");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.Title).HasMaxLength(200).HasColumnName("title");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.OriginalValue).HasColumnType("decimal(15,2)").HasColumnName("original_value");
+            entity.Property(e => e.BlindBoxPrice).HasColumnType("decimal(15,2)").HasColumnName("blind_box_price");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.QuantitySold).HasDefaultValue(0).HasColumnName("quantity_sold");
+            entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
+            entity.Property(e => e.Contents).HasColumnName("contents");
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url");
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("pending").HasColumnName("status");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasIndex(b => b.Status).HasDatabaseName("idx_blind_boxes_status");
+            entity.HasIndex(b => b.SupplierId).HasDatabaseName("idx_blind_boxes_supplier_id");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("fk_blind_boxes_suppliers")
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
