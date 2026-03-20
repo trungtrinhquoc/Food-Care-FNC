@@ -10,6 +10,8 @@ export { reviewsService } from './reviewsService';
 export { ordersService } from './ordersService';
 export { default as suppliersService } from './suppliersService';
 export { default as adminProductsService } from './adminProductsService';
+export { complaintsService } from './complaintsService';
+export { financeService } from './financeService';
 
 // Re-export individual functions for convenience
 export * from './customersService';
@@ -19,3 +21,5 @@ export * from './reviewsService';
 export * from './ordersService';
 export * from './suppliersService';
 export * from './adminProductsService';
+export * from './complaintsService';
+export * from './financeService';

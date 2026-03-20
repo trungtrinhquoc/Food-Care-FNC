@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { useState, useRef } from 'react';
+import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
@@ -32,14 +32,161 @@ import {
     Package,
     RefreshCw,
     Users,
+    Camera,
+    Link2,
 } from 'lucide-react';
-import type { SupplierOrder } from '../../services/supplier/supplierApi';
+import { toast } from 'sonner';
+import { ordersApi, type SupplierOrder } from '../../services/supplier/supplierApi';
 
 interface OrdersSectionProps {
     orders: SupplierOrder[];
     loading?: boolean;
     onUpdateStatus: (orderId: string, status: string) => Promise<void>;
     onRefresh: () => void;
+}
+
+// =====================================================
+// Delivery Confirmation Dialog
+// =====================================================
+interface DeliveryConfirmDialogProps {
+    open: boolean;
+    order: SupplierOrder | null;
+    onClose: () => void;
+    onConfirmed: () => void;
+}
+
+function DeliveryConfirmDialog({ open, order, onClose, onConfirmed }: DeliveryConfirmDialogProps) {
+    const [photoUrl, setPhotoUrl] = useState('');
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const objectUrl = URL.createObjectURL(file);
+        setPreviewUrl(objectUrl);
+        // Use the object URL as the photo URL (for dev/testing; in prod you'd upload to Cloudinary first)
+        setPhotoUrl(objectUrl);
+    };
+
+    const handleConfirm = async () => {
+        if (!order) return;
+        const finalUrl = photoUrl.trim();
+        if (!finalUrl) {
+            toast.error('Vui lòng cung cấp ảnh giao hàng trước khi xác nhận.');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await ordersApi.patchOrderStatus(order.id, { status: 'delivered', deliveryPhotoUrl: finalUrl });
+            toast.success('Đã xác nhận giao hàng thành công!');
+            onConfirmed();
+            handleClose();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể cập nhật trạng thái đơn hàng.';
+            toast.error(msg);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleClose = () => {
+        setPhotoUrl('');
+        setPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        onClose();
+    };
+
+    const canConfirm = photoUrl.trim().length > 0;
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Camera className="h-5 w-5 text-emerald-600" />
+                        Xác nhận đã giao hàng
+                    </DialogTitle>
+                    <DialogDescription>
+                        Đơn hàng <strong>{order?.orderNumber}</strong> — Vui lòng cung cấp ảnh bằng chứng giao hàng.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                    {/* URL input */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                            <Link2 className="h-4 w-4" />
+                            Nhập URL ảnh giao hàng
+                        </label>
+                        <Input
+                            placeholder="https://... (Cloudinary, Imgur, v.v.)"
+                            value={photoUrl}
+                            onChange={(e) => {
+                                setPhotoUrl(e.target.value);
+                                setPreviewUrl(e.target.value.trim() || null);
+                            }}
+                        />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        hoặc
+                        <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+
+                    {/* File upload */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                            <Camera className="h-4 w-4" />
+                            Tải ảnh từ thiết bị
+                        </label>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                        />
+                        <p className="text-xs text-gray-400">Ảnh được dùng làm bằng chứng (JPG, PNG). Khi dùng file, URL sẽ là URL tạm thời.</p>
+                    </div>
+
+                    {/* Preview */}
+                    {previewUrl && (
+                        <div className="rounded-lg overflow-hidden border border-gray-200">
+                            <img
+                                src={previewUrl}
+                                alt="Preview"
+                                className="w-full max-h-48 object-cover"
+                                onError={() => setPreviewUrl(null)}
+                            />
+                        </div>
+                    )}
+
+                    {!canConfirm && (
+                        <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                            Bắt buộc phải có ảnh giao hàng trước khi xác nhận.
+                        </p>
+                    )}
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={handleClose} disabled={submitting}>
+                        Hủy
+                    </Button>
+                    <Button
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                        onClick={handleConfirm}
+                        disabled={!canConfirm || submitting}
+                    >
+                        {submitting ? 'Đang xác nhận...' : 'Xác nhận đã giao'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -62,6 +209,7 @@ export function OrdersSection({
     const [selectedOrder, setSelectedOrder] = useState<SupplierOrder | null>(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [updating, setUpdating] = useState<string | null>(null);
+    const [deliveryDialogOrder, setDeliveryDialogOrder] = useState<SupplierOrder | null>(null);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', {
@@ -306,6 +454,18 @@ export function OrdersSection({
                                                         Giao
                                                     </Button>
                                                 )}
+                                                {order.status === 'shipped' && (
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                                        disabled={updating === order.id}
+                                                        onClick={() => setDeliveryDialogOrder(order)}
+                                                    >
+                                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                                        Đã giao
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -315,6 +475,14 @@ export function OrdersSection({
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delivery Confirmation Dialog */}
+            <DeliveryConfirmDialog
+                open={deliveryDialogOrder !== null}
+                order={deliveryDialogOrder}
+                onClose={() => setDeliveryDialogOrder(null)}
+                onConfirmed={() => { onRefresh(); }}
+            />
 
             {/* Order Detail Dialog */}
             <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>

@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Vite)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--host"],
+      "cwd": "food-care-frontend",
+      "port": 5173
+    },
+    {
+      "name": "Backend (ASP.NET Core)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "FoodCare.API/FoodCare.API.csproj"],
+      "cwd": ".",
+      "port": 5022
+    }
+  ]
+}
