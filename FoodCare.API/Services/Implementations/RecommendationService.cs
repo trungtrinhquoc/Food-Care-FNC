@@ -88,13 +88,17 @@ public class RecommendationService : IRecommendationService
 
     public async Task<List<ProductDto>> GetRepurchaseRecommendationsAsync(Guid userId, int limit = 8)
     {
-        // Get products the user has purchased before
-        var purchasedProducts = await _context.OrderItems
+        // Materialise first to avoid EF Core GroupBy translation issues
+        var rawItems = await _context.OrderItems
             .Include(oi => oi.Product)
                 .ThenInclude(p => p!.Category)
+            .Include(oi => oi.Order)
             .Where(oi => oi.Order!.UserId == userId &&
                         oi.Product!.IsActive == true &&
                         oi.Product.IsDeleted == false)
+            .ToListAsync();
+
+        var purchasedProducts = rawItems
             .GroupBy(oi => oi.ProductId)
             .Select(g => new
             {
@@ -104,7 +108,7 @@ public class RecommendationService : IRecommendationService
             })
             .OrderByDescending(x => x.LastPurchased)
             .Take(limit)
-            .ToListAsync();
+            .ToList();
 
         var products = purchasedProducts.Select(x => x.Product!).ToList();
         return _mapper.Map<List<ProductDto>>(products);
@@ -114,15 +118,19 @@ public class RecommendationService : IRecommendationService
     {
         var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90);
 
-        // Find products user has purchased 2+ times in the last 90 days
-        var frequentPurchases = await _context.OrderItems
+        // Materialise first to avoid EF Core GroupBy translation issues
+        var rawItems = await _context.OrderItems
             .Include(oi => oi.Product)
                 .ThenInclude(p => p!.Category)
+            .Include(oi => oi.Order)
             .Where(oi => oi.Order!.UserId == userId &&
                         oi.Order.CreatedAt >= ninetyDaysAgo &&
                         oi.Product!.IsActive == true &&
                         oi.Product.IsDeleted == false &&
                         oi.Product.IsSubscriptionAvailable == true)
+            .ToListAsync();
+
+        var frequentPurchases = rawItems
             .GroupBy(oi => oi.ProductId)
             .Select(g => new
             {
@@ -135,7 +143,7 @@ public class RecommendationService : IRecommendationService
             .OrderByDescending(x => x.PurchaseCount)
             .ThenByDescending(x => x.TotalSpent)
             .Take(limit)
-            .ToListAsync();
+            .ToList();
 
         var recommendations = new List<SubscriptionRecommendationDto>();
 
@@ -176,29 +184,37 @@ public class RecommendationService : IRecommendationService
             return await GetHighDiscountProductsAsync(limit);
         }
 
-        // Get products with high discounts that are popular among users in the same tier
-        var tierProducts = await _context.OrderItems
+        // Materialise first to avoid EF Core GroupBy translation issues;
+        // also load Order.User so the tier filter can be applied safely in memory
+        var rawItems = await _context.OrderItems
             .Include(oi => oi.Product)
                 .ThenInclude(p => p!.Category)
-            .Where(oi => oi.Order!.User!.TierId == user.TierId &&
+            .Include(oi => oi.Order)
+                .ThenInclude(o => o!.User)
+            .Where(oi => oi.Order != null &&
+                        oi.Order.User != null &&
+                        oi.Order.User.TierId == user.TierId &&
                         oi.Product!.IsActive == true &&
                         oi.Product.IsDeleted == false &&
                         oi.Product.OriginalPrice != null &&
                         oi.Product.OriginalPrice > oi.Product.BasePrice)
+            .ToListAsync();
+
+        var tierProducts = rawItems
             .GroupBy(oi => oi.ProductId)
             .Select(g => new
             {
                 ProductId = g.Key,
                 OrderCount = g.Count(),
                 Product = g.First().Product,
-                DiscountPercentage = (g.First().Product != null && g.First().Product!.OriginalPrice.HasValue && g.First().Product!.OriginalPrice!.Value != 0) 
-                    ? ((g.First().Product!.OriginalPrice!.Value - g.First().Product!.BasePrice) / g.First().Product!.OriginalPrice!.Value) * 100 
-                    : 0
+                DiscountPercentage = g.First().Product?.OriginalPrice is { } op && op != 0
+                    ? ((op - g.First().Product!.BasePrice) / op) * 100
+                    : 0m
             })
             .OrderByDescending(x => x.DiscountPercentage)
             .ThenByDescending(x => x.OrderCount)
             .Take(limit)
-            .ToListAsync();
+            .ToList();
 
         var products = tierProducts.Select(x => x.Product!).ToList();
         return _mapper.Map<List<ProductDto>>(products);

@@ -12,7 +12,7 @@ import {
 } from "../../components/ui/select";
 import {
   Store, AlertTriangle, Star, RefreshCw, Search, Plus, Loader2,
-  TrendingUp, ShieldCheck, ShieldAlert, X,
+  TrendingUp, ShieldCheck, ShieldAlert, X, KeyRound,
 } from "lucide-react";
 import api from "../../services/api";
 import type { MartSummary } from "../../types/admin";
@@ -287,6 +287,225 @@ function MartDetailDialog({ mart, onClose, onRefresh }: MartDetailDialogProps) {
   );
 }
 
+// ── Onboard Mart Dialog ──────────────────────────────────────────────────────
+interface OnboardMartDialogProps {
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function OnboardMartDialog({ onClose, onSuccess }: OnboardMartDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    contactEmail: "",
+    phone: "",
+    contactPerson: "",
+    addressStreet: "",
+    addressWard: "",
+    addressDistrict: "",
+    addressCity: "",
+    accountEmail: "",
+    accountPassword: "",
+    confirmPassword: "",
+    taxCode: "",
+    bankAccount: "",
+    bankName: "",
+    commissionRate: "",
+  });
+
+  const update = (field: string, value: string) =>
+    setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) {
+      toast.error("Vui lòng nhập tên mart");
+      return;
+    }
+    if (form.accountPassword && form.accountPassword.length < 8) {
+      toast.error("Mật khẩu phải có ít nhất 8 ký tự");
+      return;
+    }
+    if (form.accountPassword && form.accountPassword !== form.confirmPassword) {
+      toast.error("Mật khẩu xác nhận không khớp");
+      return;
+    }
+    if (form.accountEmail.trim() && !form.accountPassword) {
+      toast.error("Vui lòng nhập mật khẩu cho tài khoản");
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload: Record<string, unknown> = {
+        name: form.name.trim(),
+        isActive: true,
+      };
+      if (form.contactEmail.trim()) payload.contactEmail = form.contactEmail.trim();
+      if (form.phone.trim()) payload.phone = form.phone.trim();
+      if (form.contactPerson.trim()) payload.contactPerson = form.contactPerson.trim();
+      if (form.addressStreet.trim()) payload.addressStreet = form.addressStreet.trim();
+      if (form.addressWard.trim()) payload.addressWard = form.addressWard.trim();
+      if (form.addressDistrict.trim()) payload.addressDistrict = form.addressDistrict.trim();
+      if (form.addressCity.trim()) payload.addressCity = form.addressCity.trim();
+      if (form.taxCode.trim()) payload.taxCode = form.taxCode.trim();
+      if (form.bankAccount.trim()) payload.bankAccount = form.bankAccount.trim();
+      if (form.bankName.trim()) payload.bankName = form.bankName.trim();
+
+      // Build full address string from parts
+      const addressParts = [form.addressStreet, form.addressWard, form.addressDistrict, form.addressCity]
+        .map(p => p.trim()).filter(Boolean);
+      if (addressParts.length > 0) payload.address = addressParts.join(", ");
+
+      if (form.accountEmail.trim()) payload.accountEmail = form.accountEmail.trim();
+      if (form.accountPassword) payload.accountPassword = form.accountPassword;
+
+      if (form.commissionRate.trim()) {
+        const rate = parseFloat(form.commissionRate);
+        if (!isNaN(rate) && rate >= 0 && rate <= 100) payload.commissionRate = rate / 100;
+      }
+
+      await api.post("/admin/suppliers", payload);
+      const accountMsg = form.accountEmail.trim() ? ` Email xác thực đã gửi đến ${form.accountEmail.trim()}.` : "";
+      toast.success(`Mart "${form.name.trim()}" đã được tạo thành công.${accountMsg}`);
+      onSuccess();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 409) {
+        toast.error(axiosErr.response?.data?.message ?? "Email tài khoản đã tồn tại trong hệ thống");
+      } else {
+        toast.error("Không thể tạo mart. Vui lòng thử lại.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+              <Plus className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-800 text-lg">Onboard mart mới</h2>
+              <p className="text-xs text-gray-400">Tạo mart và kích hoạt ngay lập tức</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg text-gray-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Basic Info */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Thông tin cơ bản *</h3>
+            <Input
+              placeholder="Tên mart (bắt buộc)"
+              value={form.name}
+              onChange={e => update("name", e.target.value)}
+            />
+          </section>
+
+          {/* Contact */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Liên hệ</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Input placeholder="Email" value={form.contactEmail} onChange={e => update("contactEmail", e.target.value)} />
+              <Input placeholder="Số điện thoại" value={form.phone} onChange={e => update("phone", e.target.value)} />
+            </div>
+            <Input className="mt-3" placeholder="Người liên hệ" value={form.contactPerson} onChange={e => update("contactPerson", e.target.value)} />
+          </section>
+
+          {/* Address */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Địa chỉ</h3>
+            <div className="space-y-3">
+              <Input placeholder="Số nhà, đường" value={form.addressStreet} onChange={e => update("addressStreet", e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input placeholder="Phường/Xã" value={form.addressWard} onChange={e => update("addressWard", e.target.value)} />
+                <Input placeholder="Quận/Huyện" value={form.addressDistrict} onChange={e => update("addressDistrict", e.target.value)} />
+              </div>
+              <Input placeholder="Tỉnh/Thành phố" value={form.addressCity} onChange={e => update("addressCity", e.target.value)} />
+            </div>
+          </section>
+
+          {/* Account */}
+          <section className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+            <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5" /> Tài khoản hệ thống
+            </h3>
+            <p className="text-xs text-gray-500 mb-3">Tạo tài khoản đăng nhập cho mart. Email xác thực sẽ được gửi tự động.</p>
+            <div className="space-y-3">
+              <Input
+                type="email"
+                placeholder="Email đăng nhập (tùy chọn)"
+                value={form.accountEmail}
+                onChange={e => update("accountEmail", e.target.value)}
+              />
+              <Input
+                type="password"
+                placeholder="Mật khẩu (tối thiểu 8 ký tự)"
+                value={form.accountPassword}
+                onChange={e => update("accountPassword", e.target.value)}
+                disabled={!form.accountEmail.trim()}
+              />
+              <Input
+                type="password"
+                placeholder="Xác nhận mật khẩu"
+                value={form.confirmPassword}
+                onChange={e => update("confirmPassword", e.target.value)}
+                disabled={!form.accountEmail.trim()}
+              />
+              {form.accountPassword && form.confirmPassword && form.accountPassword !== form.confirmPassword && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Mật khẩu không khớp
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* Finance */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Tài chính</h3>
+            <div className="space-y-3">
+              <Input placeholder="Mã số thuế" value={form.taxCode} onChange={e => update("taxCode", e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input placeholder="Số tài khoản" value={form.bankAccount} onChange={e => update("bankAccount", e.target.value)} />
+                <Input placeholder="Tên ngân hàng" value={form.bankName} onChange={e => update("bankName", e.target.value)} />
+              </div>
+              <div className="relative">
+                <Input type="number" min={0} max={100} step={0.01} placeholder="Tỷ lệ hoa hồng (%)" value={form.commissionRate} onChange={e => update("commissionRate", e.target.value)} className="pr-8" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+            Hủy
+          </Button>
+          <Button
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            Tạo mart
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── main tab ─────────────────────────────────────────────────────────────────
 export function MartTab() {
   const [marts, setMarts] = useState<MartSummary[]>([]);
@@ -294,6 +513,7 @@ export function MartTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedMart, setSelectedMart] = useState<MartSummary | null>(null);
+  const [showOnboard, setShowOnboard] = useState(false);
   const [slaAlerts, setSlaAlerts] = useState<AdminAlert[]>([]);
   const debouncedSearch = useDebounce(search, 400);
 
@@ -457,7 +677,7 @@ export function MartTab() {
               <Button
                 size="sm"
                 className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => toast.info("Tính năng onboard mart đang phát triển")}
+                onClick={() => setShowOnboard(true)}
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Onboard mart mới
               </Button>
@@ -634,6 +854,14 @@ export function MartTab() {
           mart={selectedMart}
           onClose={() => setSelectedMart(null)}
           onRefresh={loadMarts}
+        />
+      )}
+
+      {/* Onboard dialog */}
+      {showOnboard && (
+        <OnboardMartDialog
+          onClose={() => setShowOnboard(false)}
+          onSuccess={() => { setShowOnboard(false); loadMarts(); }}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { MapPin, Loader2, Navigation } from 'lucide-react';
 import { SearchableSelect } from './ui/searchable-select';
 import { useAddressApi, type AddressValue } from '../hooks/useAddressApi';
@@ -49,40 +49,15 @@ export function AddressSelector({
         initialValue: value,
     });
 
-    // Ref to track whether initial sync has been done
-    const initialSyncDone = useRef(false);
-
-    // Sync external value changes (e.g., editing an existing address)
-    useEffect(() => {
-        if (initialSyncDone.current) return;
-
-        // If districts are loaded and value has district but hook hasn't matched yet
-        if (value.district && districts.length > 0 && !selectedDistrict) {
-            const match = districts.find((d) => d.name === value.district);
-            if (match) {
-                selectDistrict(match.code, match.name);
-            }
-        }
-
-        // If wards are loaded and value has ward but hook hasn't matched yet
-        if (value.ward && wards.length > 0 && !selectedWard) {
-            const match = wards.find((w) => w.name === value.ward);
-            if (match) {
-                selectWard(match.code, match.name);
-                initialSyncDone.current = true;
-            }
-        }
-
-        // Mark sync as done if we have no district/ward to sync
-        if (!value.district && !value.ward) {
-            initialSyncDone.current = true;
-        }
-    }, [value.district, value.ward, districts, wards, selectedDistrict, selectedWard, selectDistrict, selectWard]);
+    // Note: initial value sync is handled entirely by the useAddressApi hook
+    // via initialValue. No additional sync effect needed here.
 
     // Stable ref to onChange — prevents emitChange from recreating when
     // the parent passes an inline arrow function (avoids infinite re-render loop)
     const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
+    useLayoutEffect(() => {
+        onChangeRef.current = onChange;
+    });
 
     // Propagate changes to parent via onChange
     const prevAddressRef = useRef<string>('');

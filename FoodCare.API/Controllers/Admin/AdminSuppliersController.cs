@@ -1,5 +1,7 @@
 using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Admin.Suppliers;
+using FoodCare.API.Models.DTOs.Admin.Users;
+using FoodCare.API.Services.Interfaces;
 using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,15 +28,21 @@ public class AdminSuppliersController : ControllerBase
     private readonly IAdminSupplierService _supplierService;
     private readonly ILogger<AdminSuppliersController> _logger;
     private readonly FoodCareDbContext _context;
+    private readonly IAdminUserService _adminUserService;
+    private readonly IEmailService _emailService;
 
     public AdminSuppliersController(
         IAdminSupplierService supplierService,
         ILogger<AdminSuppliersController> logger,
-        FoodCareDbContext context)
+        FoodCareDbContext context,
+        IAdminUserService adminUserService,
+        IEmailService emailService)
     {
         _supplierService = supplierService;
         _logger = logger;
         _context = context;
+        _adminUserService = adminUserService;
+        _emailService = emailService;
     }
 
     [HttpGet]
@@ -77,8 +85,39 @@ public class AdminSuppliersController : ControllerBase
     {
         try
         {
+            // Create supplier user account if credentials are provided
+            if (!string.IsNullOrWhiteSpace(dto.AccountEmail) && !string.IsNullOrWhiteSpace(dto.AccountPassword))
+            {
+                var newUser = await _adminUserService.CreateUserAsync(new CreateUserDto
+                {
+                    Email = dto.AccountEmail,
+                    Password = dto.AccountPassword,
+                    FullName = dto.Name,
+                    Role = "supplier"
+                });
+
+                // Set email verification token
+                var verificationToken = Guid.NewGuid().ToString("N");
+                var user = await _context.Users.FindAsync(newUser.Id);
+                if (user != null)
+                {
+                    user.EmailVerificationToken = verificationToken;
+                    user.EmailVerificationExpiry = DateTime.UtcNow.AddHours(24);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Send verification email (non-blocking — failures are logged internally)
+                _ = _emailService.SendVerificationEmailAsync(dto.AccountEmail, verificationToken, dto.Name);
+
+                dto.UserId = newUser.Id;
+            }
+
             var supplier = await _supplierService.CreateSupplierAsync(dto);
             return CreatedAtAction(nameof(GetSupplierDetail), new { id = supplier.Id }, supplier);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Email đã tồn tại"))
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {

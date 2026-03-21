@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/admin/Button';
@@ -26,6 +27,7 @@ import { TopProductsPanel, type TopProduct } from '../../components/admin/TopPro
 import { AlertsPanel, type SystemAlert } from '../../components/admin/AlertsPanel';
 import { DashboardSkeleton } from '../../components/admin/DashboardSkeleton';
 import type { AdminStats, RevenueData } from '../../types/admin';
+import { adminStatsApi } from '../../services/adminStatsApi';
 import { useOverviewData } from '../../hooks/useOverviewData';
 import { alertsService, type AdminAlert } from '../../services/admin/alertsService';
 
@@ -35,6 +37,20 @@ interface OverviewTabProps {
   totalProducts: number;
   isLoading?: boolean;
 }
+
+const dateRangeToMonths: Record<string, number> = {
+  '7d': 1,
+  '30d': 1,
+  '6m': 6,
+  '1y': 12,
+};
+
+const dateRangeLabel: Record<string, string> = {
+  '7d': '7 ngày gần nhất',
+  '30d': '30 ngày gần nhất',
+  '6m': '6 tháng gần nhất',
+  '1y': '12 tháng gần nhất',
+};
 
 // Extract sparkline data from orders chart (real API data)
 function getOrdersSparkline(ordersChart: { total: number }[]): number[] {
@@ -134,6 +150,16 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     '1y': 365,
   };
 
+  // Fetch revenue data filtered by the selected date range
+  const revenueMonths = dateRangeToMonths[dateRange] ?? 6;
+  const { data: revenueChartData } = useQuery({
+    queryKey: ['revenue-data', revenueMonths],
+    queryFn: () => adminStatsApi.getRevenueData(revenueMonths),
+    staleTime: 30_000,
+    placeholderData: revenueData,
+  });
+  const activeRevenueData = revenueChartData ?? revenueData;
+
   // Fetch overview data from API
   const {
     ordersChart,
@@ -195,9 +221,38 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
   };
 
   // Handle quick actions
-  const handleExportReport = async () => {
-    // TODO: Implement real export functionality
-  };
+  const handleExportReport = useCallback(async () => {
+    const rows: (string | number)[][] = [
+      ['Chỉ số', 'Giá trị'],
+      ['Tổng doanh thu (đ)', stats.totalRevenue ?? 0],
+      ['Doanh thu hôm nay (đ)', stats.todayRevenue ?? 0],
+      ['Tổng đơn hàng', stats.totalOrders],
+      ['Đơn hôm nay', stats.ordersToday],
+      ['Đơn chờ xử lý', stats.pendingOrders],
+      ['Đơn đã xác nhận', stats.confirmedOrders],
+      ['Đơn đang giao', stats.shippingOrders],
+      ['Đơn hoàn thành', stats.completedOrders],
+      ['Đơn đã hủy', stats.cancelledOrders],
+      ['Tổng khách hàng', stats.totalCustomers],
+      ['Khách mới tuần này', stats.newCustomersThisWeek],
+      ['Tổng sản phẩm', stats.totalProducts],
+      ['Sản phẩm sắp hết hàng', stats.lowStockProducts],
+      ['Đăng ký đang hoạt động', stats.activeSubscriptions],
+      ['Tăng trưởng tháng (%)', stats.monthlyGrowth],
+    ];
+    const csv = rows
+      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `bao-cao-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [stats]);
 
   const handleSendNotification = () => {
     navigate('/admin?tab=zalo');
@@ -211,11 +266,13 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     return <DashboardSkeleton />;
   }
 
-  // Calculate order status breakdown from stats
-  const completedOrders = stats.totalOrders - (stats.pendingOrders || 0);
+  // Order status breakdown using real per-status counts from API
   const orderBreakdown = [
-    { label: 'Đang chờ', value: stats.pendingOrders || 0, color: '#fbbf24' },
-    { label: 'Đã xử lý', value: completedOrders > 0 ? completedOrders : 0, color: '#10b981' },
+    { label: 'Chờ xử lý',   value: stats.pendingOrders   || 0, color: '#fbbf24' },
+    { label: 'Đã xác nhận', value: stats.confirmedOrders || 0, color: '#3b82f6' },
+    { label: 'Đang giao',   value: stats.shippingOrders  || 0, color: '#a855f7' },
+    { label: 'Hoàn thành',  value: stats.completedOrders || 0, color: '#10b981' },
+    { label: 'Đã hủy',      value: stats.cancelledOrders || 0, color: '#ef4444' },
   ];
 
   return (
@@ -233,7 +290,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Doanh thu"
-          value={`${stats.totalRevenue.toLocaleString('vi-VN')}đ`}
+          value={`${(stats.totalRevenue ?? 0).toLocaleString('vi-VN')}đ`}
           icon={DollarSign}
           iconColor="text-emerald-600"
           iconBgColor="bg-emerald-100"
@@ -280,10 +337,10 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
         {/* Revenue Chart */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-semibold">Doanh thu 6 tháng gần nhất</CardTitle>
+            <CardTitle className="text-lg font-semibold">Doanh thu {dateRangeLabel[dateRange]}</CardTitle>
           </CardHeader>
           <CardContent>
-            <RevenueChart data={revenueData} />
+            <RevenueChart data={activeRevenueData} />
           </CardContent>
         </Card>
 
@@ -421,7 +478,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
                 <div className="flex justify-between">
                   <span className="text-gray-500">Doanh thu hôm nay</span>
                   <span className="font-medium text-gray-900">
-                    {stats.todayRevenue.toLocaleString('vi-VN')}đ
+                    {(stats.todayRevenue ?? 0).toLocaleString('vi-VN')}đ
                   </span>
                 </div>
                 <div className="flex justify-between">
