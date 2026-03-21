@@ -14,7 +14,7 @@ import { AddressSelector } from '../components/AddressSelector';
 import { orderApi } from '../services/orderApi';
 import { paymentApi } from '../services/paymentApi';
 import { profileApi } from '../services/api';
-import type { Address, CreateOrderRequest } from '../types';
+import type { Address, CartItem, CreateOrderRequest } from '../types';
 import { couponApi } from '../services/couponApi';
 import type { CouponDto } from '../services/couponApi';
 import { cloudinaryResize } from '../utils/cloudinary';
@@ -32,7 +32,7 @@ export default function CheckoutPage() {
     });
     const navigate = useNavigate();
     const location = useLocation();
-    const { getSelectedItems, getSelectedTotal, clearSelectedItems } = useCart();
+    const { getSelectedItems, clearSelectedItems } = useCart();
     const { user } = useAuth();
 
     const selectedItems = getSelectedItems();
@@ -60,8 +60,7 @@ export default function CheckoutPage() {
 
     // Chỉ giao hàng Đà Nẵng
     const DA_NANG_NAMES = ['Thành phố Đà Nẵng', 'Đà Nẵng', 'Da Nang', 'TP. Đà Nẵng', 'TP Đà Nẵng'];
-    const isDaNangAddress = (addr: Address) =>
-        DA_NANG_NAMES.some(n => addr.city?.toLowerCase().includes('đà nẵng') || addr.city?.toLowerCase().includes('da nang'));
+    void DA_NANG_NAMES;
 
     // Coupon state
     const [couponCode, setCouponCode] = useState('');
@@ -69,6 +68,28 @@ export default function CheckoutPage() {
     const [couponError, setCouponError] = useState('');
     const [availableCoupons, setAvailableCoupons] = useState<CouponDto[]>([]);
     const [showCouponModal, setShowCouponModal] = useState(false);
+
+    /* =======================
+       HANDLERS
+    ======================= */
+    const handleSelectAddress = (addr: Address) => {
+        setSelectedAddressId(addr.id);
+        setFormData(prev => ({
+            ...prev,
+            fullName: addr.recipientName,
+            phone: addr.phoneNumber,
+            address: addr.addressLine1,
+            city: addr.city,
+            district: addr.district || '',
+            ward: addr.ward || '',
+        }));
+        setAddress({
+            province: addr.city,
+            district: addr.district || '',
+            ward: addr.ward || '',
+        });
+        setShowNewAddressForm(false);
+    };
 
     /* =======================
        GUARD PAGE
@@ -140,11 +161,8 @@ export default function CheckoutPage() {
 
         // Load wallet balance
         walletApi.getBalance().then(d => setWalletBalance(d.balance)).catch(() => { });
-    }, [user, navigate]);
+    }, [user, navigate, checkoutItems.length]);
 
-    /* =======================
-       HANDLERS
-    ======================= */
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
@@ -153,27 +171,9 @@ export default function CheckoutPage() {
             [e.target.name]: e.target.value,
         }));
     };
-    const handleSelectAddress = (addr: Address) => {
-        setSelectedAddressId(addr.id);
-        setFormData(prev => ({
-            ...prev,
-            fullName: addr.recipientName,
-            phone: addr.phoneNumber,
-            address: addr.addressLine1,
-            city: addr.city,
-            district: addr.district || '',
-            ward: addr.ward || '',
-        }));
-        setAddress({
-            province: addr.city,
-            district: addr.district || '',
-            ward: addr.ward || '',
-        });
-        setShowNewAddressForm(false);
-    };
 
     // Calculate final totals
-    const subtotal = checkoutItems.reduce((total: number, i: any) => {
+    const subtotal = checkoutItems.reduce((total: number, i: CartItem) => {
         const price = i.subscription
             ? i.product.basePrice * (1 - (i.subscription.discount || 0) / 100)
             : i.product.basePrice;
@@ -192,7 +192,7 @@ export default function CheckoutPage() {
             };
             fetchCoupons();
         }
-    }, [user, subtotal]);
+    }, [user, subtotal, checkoutItems.length]);
 
     const fullAddress = [formData.address, address.ward, address.district, address.province]
         .filter(part => part && part.trim() !== '')
@@ -205,9 +205,10 @@ export default function CheckoutPage() {
             const result = await couponApi.validateCoupon(couponCode, subtotal);
             setAppliedCoupon(result);
             toast.success('Áp dụng mã giảm giá thành công');
-        } catch (error: any) {
+        } catch (error: unknown) {
             setAppliedCoupon(null);
-            setCouponError(error.response?.data?.message || 'Mã giảm giá không hợp lệ');
+            const apiErr = error as { response?: { data?: { message?: string } } };
+            setCouponError(apiErr.response?.data?.message || 'Mã giảm giá không hợp lệ');
         }
     };
 
@@ -254,7 +255,7 @@ export default function CheckoutPage() {
                 martId: user.selectedMartId ?? undefined,
                 note: formData.notes,
                 couponCode: appliedCoupon?.code,
-                items: checkoutItems.map((item: any) => ({
+                items: checkoutItems.map((item: CartItem) => ({
                     productId: item.product.id,
                     productName: item.product.name,
                     quantity: item.quantity,
@@ -316,8 +317,9 @@ export default function CheckoutPage() {
                         window.location.href = paymentResponse.checkoutUrl;
                         return; // Stop here, browser will redirect
                     }
-                } catch (payError: any) {
-                    const serverMsg = payError?.response?.data?.message || payError?.response?.data?.detail || payError?.message || 'Unknown error';
+                } catch (payError: unknown) {
+                    const pe = payError as { response?: { data?: { message?: string; detail?: string } }; message?: string };
+                    const serverMsg = pe?.response?.data?.message || pe?.response?.data?.detail || pe?.message || 'Unknown error';
                     console.error('Payment redirect error:', payError);
                     console.error('Server error message:', serverMsg);
                     toast.error(`❌ Lỗi tạo link thanh toán: ${serverMsg}`);
@@ -328,7 +330,7 @@ export default function CheckoutPage() {
             toast.success('Đặt hàng thành công 🎉');
             clearSelectedItems();
             navigate('/');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
             toast.error('Đặt hàng thất bại, vui lòng thử lại');
         }
@@ -346,10 +348,10 @@ export default function CheckoutPage() {
         custom: 'Tùy chỉnh',
     };
 
-    const getSubscriptionText = (item: any) => {
+    const getSubscriptionText = (item: CartItem) => {
         if (!item.subscription) return '';
-        if (item.subscription.frequency === 'custom') {
-            const { value, unit } = item.subscription.customInterval;
+        if ((item.subscription.frequency as string) === 'custom') {
+            const { value, unit } = item.subscription.customInterval ?? { value: 1, unit: 'weeks' as const };
             const unitText =
                 unit === 'days' ? 'ngày' : unit === 'weeks' ? 'tuần' : 'tháng';
             return `Mỗi ${value} ${unitText}`;
@@ -704,7 +706,7 @@ export default function CheckoutPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {checkoutItems.map((item: any) => {
+                                    {checkoutItems.map((item: CartItem) => {
                                         const price = item.product.basePrice;
                                         return (
                                             <div key={item.product.id} className="mb-4 border-b pb-4 border-gray-100 last:border-0">

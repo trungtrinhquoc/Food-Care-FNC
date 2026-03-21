@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { MapPin, Loader2, Navigation } from 'lucide-react';
 import { SearchableSelect } from './ui/searchable-select';
 import { useAddressApi, type AddressValue } from '../hooks/useAddressApi';
@@ -55,7 +55,9 @@ export function AddressSelector({
     // Stable ref to onChange — prevents emitChange from recreating when
     // the parent passes an inline arrow function (avoids infinite re-render loop)
     const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
+    useLayoutEffect(() => {
+        onChangeRef.current = onChange;
+    });
 
     // Propagate changes to parent via onChange
     const prevAddressRef = useRef<string>('');

@@ -137,6 +137,7 @@ export interface CartItem {
     subscription?: {
         frequency: SubscriptionFrequency;
         discount: number;
+        customInterval?: { value: number; unit: 'days' | 'weeks' | 'months' };
     };
 }
 
