@@ -50,10 +50,21 @@ public class AdminUpsertSupplierDto
     public string? ContactEmail { get; set; }
     public string? Phone { get; set; }
     public string? Address { get; set; }
+    public string? AddressStreet { get; set; }
+    public string? AddressWard { get; set; }
+    public string? AddressDistrict { get; set; }
+    public string? AddressCity { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
     public string? ContactPerson { get; set; }
     public string? TaxCode { get; set; }
+    public string? BankAccount { get; set; }
+    public string? BankName { get; set; }
+    public decimal? CommissionRate { get; set; }
     public bool IsActive { get; set; } = true;
     public Guid? UserId { get; set; }
+    public string? AccountEmail { get; set; }
+    public string? AccountPassword { get; set; }
 }
 
 public class MartSummaryDto

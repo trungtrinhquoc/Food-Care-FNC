@@ -83,6 +83,9 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
   const isProvinceLocked = !!lockProvince;
   const initialValueApplied = useRef(false);
 
+  // Capture initialValue once to avoid re-triggering effects when parent re-renders
+  const initialValueRef = useRef(options.initialValue);
+
   // Data lists
   const [provinces, setProvinces] = useState<VNProvince[]>([]);
   const [districts, setDistricts] = useState<VNDistrict[]>([]);
@@ -157,9 +160,9 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
         setDistricts(data);
 
         // If initialValue has district name, try to match
-        if (!initialValueApplied.current && options.initialValue?.district) {
+        if (!initialValueApplied.current && initialValueRef.current?.district) {
           const match = data.find(
-            (d) => d.name === options.initialValue!.district,
+            (d) => d.name === initialValueRef.current!.district,
           );
           if (match) {
             setSelectedDistrict({ code: match.code, name: match.name });
@@ -194,9 +197,9 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
         setWards(data);
 
         // If initialValue has ward name, try to match
-        if (!initialValueApplied.current && options.initialValue?.ward) {
+        if (!initialValueApplied.current && initialValueRef.current?.ward) {
           const match = data.find(
-            (w) => w.name === options.initialValue!.ward,
+            (w) => w.name === initialValueRef.current!.ward,
           );
           if (match) {
             setSelectedWard({ code: match.code, name: match.name });
@@ -215,13 +218,13 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDistrict?.code]);
 
-  // ─── Initialize street from initial value ──────────────────────────────────
+  // ─── Initialize street from initial value (one-time) ───────────────────────
 
   useEffect(() => {
-    if (options.initialValue?.street && !initialValueApplied.current) {
-      setStreetValueState(options.initialValue.street);
+    if (initialValueRef.current?.street && !initialValueApplied.current) {
+      setStreetValueState(initialValueRef.current.street);
     }
-  }, [options.initialValue?.street]);
+  }, []);
 
   // ─── Actions ──────────────────────────────────────────────────────────────────
 

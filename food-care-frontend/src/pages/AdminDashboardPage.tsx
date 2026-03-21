@@ -319,6 +319,7 @@ export default function AdminDashboardPage() {
             <Suspense fallback={<TabLoader />}>
               {mobileTab === "overview"   && (
                 statsLoading ? <TabLoader /> :
+                statsError ? <div className="text-center py-10 text-red-500">Lỗi: {statsError}</div> :
                 formattedStats ? <OverviewTab stats={formattedStats} revenueData={formattedRevenueData} totalProducts={formattedStats.totalProducts} /> :
                 null
               )}
