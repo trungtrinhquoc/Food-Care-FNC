@@ -46,34 +46,11 @@ import { ComplaintDialog } from './ComplaintDialog';
 import type {
     UserOrderTracking,
     ShippingTimelineItem,
-    UserConfirmDeliveryRequest,
-    UserRequestReturnRequest,
 } from '@/types/shipping';
 import { ORDER_SHIPPING_STATUS_CONFIG } from '@/types/shipping';
-import api from '@/services/api';
+import { shippingApi } from '@/services/shippingApi';
 
-// Inline shipping API functions (previously in services/shipping/shippingApi)
-const getUserOrders = async (params?: { pageSize?: number; status?: string }): Promise<UserOrderTracking[]> => {
-    const response = await api.get('/shipping/user/orders', { params });
-    return Array.isArray(response.data) ? response.data : (response.data?.items ?? []);
-};
-
-const getUserOrderTracking = async (orderId: string): Promise<UserOrderTracking> => {
-    const response = await api.get(`/shipping/user/orders/${orderId}/tracking`);
-    return response.data;
-};
-
-const confirmDelivery = async (data: UserConfirmDeliveryRequest): Promise<void> => {
-    await api.post(`/shipping/user/orders/${data.orderId}/confirm-delivery`, data);
-};
-
-const requestReturn = async (data: UserRequestReturnRequest): Promise<void> => {
-    await api.post(`/shipping/user/orders/${data.orderId}/return`, data);
-};
-
-const cancelUserOrder = async (orderId: string, reason: string): Promise<void> => {
-    await api.post(`/shipping/user/orders/${orderId}/cancel`, { reason });
-};
+const { getUserOrders, getUserOrderTracking, confirmDelivery, requestReturn, cancelUserOrder } = shippingApi;
 
 // Status progress mapping
 const STATUS_PROGRESS: Record<string, number> = {

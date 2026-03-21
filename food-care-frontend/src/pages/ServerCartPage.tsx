@@ -44,7 +44,7 @@ export default function ServerCartPage() {
             toast.success(`Thanh toán thành công! Số dư còn ${result.walletAfter.toLocaleString('vi-VN')}đ`);
             navigate(`/orders/${result.orderId}/tracking`);
         },
-        onError: (err: any) => {
+        onError: (err: Error & { response?: { data?: { message?: string } } }) => {
             toast.error(err.response?.data?.message ?? 'Có lỗi xảy ra khi thanh toán');
         },
     });

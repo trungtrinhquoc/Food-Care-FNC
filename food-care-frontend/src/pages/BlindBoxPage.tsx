@@ -79,15 +79,20 @@ function DaysUntilBadge({ days }: { days: number }) {
 function BlindBoxCard({
   item,
   onBuy,
+  onDetail,
 }: {
   item: BlindBoxItem;
   onBuy: (item: BlindBoxItem) => void;
+  onDetail: (item: BlindBoxItem) => void;
 }) {
   const discount = Math.round((1 - item.blindBoxPrice / item.originalValue) * 100);
   const soldPct = Math.round((item.quantitySold / item.quantity) * 100);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow group">
+    <div
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
+      onClick={() => onDetail(item)}
+    >
       {/* Image */}
       <div className="relative h-48 bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center overflow-hidden">
         {item.imageUrl ? (
@@ -154,7 +159,7 @@ function BlindBoxCard({
         <Button
           className="w-full bg-orange-500 hover:bg-orange-600 text-white"
           size="sm"
-          onClick={() => onBuy(item)}
+          onClick={(e) => { e.stopPropagation(); onBuy(item); }}
           disabled={item.quantityAvailable === 0}
         >
           <ShoppingBag className="w-4 h-4 mr-2" />
@@ -162,6 +167,123 @@ function BlindBoxCard({
         </Button>
       </div>
     </div>
+  );
+}
+
+function BlindBoxDetailDialog({
+  itemId,
+  open,
+  onClose,
+  onBuy,
+}: {
+  itemId: string | null;
+  open: boolean;
+  onClose: () => void;
+  onBuy: (item: BlindBoxItem) => void;
+}) {
+  const [detail, setDetail] = useState<BlindBoxItem | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !itemId) { setDetail(null); return; }
+    setLoading(true);
+    api.get(`/blind-boxes/${itemId}`)
+      .then(res => setDetail(res.data as BlindBoxItem))
+      .catch(() => toast.error('Không thể tải chi tiết Blind Box'))
+      .finally(() => setLoading(false));
+  }, [open, itemId]);
+
+  if (!open) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+          </div>
+        ) : detail ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-700">
+                <Gift className="w-5 h-5" />
+                {detail.title}
+              </DialogTitle>
+              <DialogDescription className="flex items-center gap-1 text-gray-500">
+                <Store className="w-3.5 h-3.5" />{detail.storeName}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              {/* Image */}
+              {detail.imageUrl && (
+                <div className="relative rounded-xl overflow-hidden aspect-video bg-orange-50">
+                  <img src={detail.imageUrl} alt={detail.title} className="w-full h-full object-cover" />
+                  <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                    -{Math.round((1 - detail.blindBoxPrice / detail.originalValue) * 100)}%
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {detail.description && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-1">Mô tả</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">{detail.description}</p>
+                </div>
+              )}
+
+              {/* Contents */}
+              {detail.contents && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-1">Nội dung có thể bao gồm</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{detail.contents}</p>
+                </div>
+              )}
+
+              {/* Info grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-orange-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-0.5">Giá Blind Box</p>
+                  <p className="text-lg font-bold text-orange-600">{fmt(detail.blindBoxPrice)}</p>
+                  <p className="text-xs text-gray-400 line-through">{fmt(detail.originalValue)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-0.5">Còn lại</p>
+                  <p className="text-lg font-bold text-gray-900">{detail.quantityAvailable}</p>
+                  <p className="text-xs text-gray-400">/ {detail.quantity} hộp</p>
+                </div>
+              </div>
+
+              {/* Expiry */}
+              <div className="flex items-center gap-2 bg-amber-50 rounded-lg p-3 text-sm text-amber-700">
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  Hạn sử dụng: {new Date(detail.expiryDate).toLocaleDateString('vi-VN')}
+                  {detail.daysUntilExpiry <= 7 && (
+                    <span className="font-semibold ml-1">(còn {detail.daysUntilExpiry} ngày)</span>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={onClose}>Đóng</Button>
+              <Button
+                onClick={() => { onBuy(detail); onClose(); }}
+                disabled={detail.quantityAvailable === 0}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                {detail.quantityAvailable === 0 ? 'Hết hàng' : 'Mua ngay'}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-500">Không tìm thấy Blind Box</div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -263,6 +385,8 @@ export default function BlindBoxPage() {
   const [page, setPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState<BlindBoxItem | null>(null);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const PAGE_SIZE = 12;
 
   const loadData = useCallback(async (p: number) => {
@@ -278,6 +402,11 @@ export default function BlindBoxPage() {
   }, []);
 
   useEffect(() => { loadData(page); }, [page, loadData]);
+
+  const handleDetail = (item: BlindBoxItem) => {
+    setDetailItemId(item.id);
+    setDetailOpen(true);
+  };
 
   const handleBuy = (item: BlindBoxItem) => {
     if (!isAuthenticated) {
@@ -358,7 +487,7 @@ export default function BlindBoxPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {data?.items.map(item => (
-              <BlindBoxCard key={item.id} item={item} onBuy={handleBuy} />
+              <BlindBoxCard key={item.id} item={item} onBuy={handleBuy} onDetail={handleDetail} />
             ))}
           </div>
         )}
@@ -388,6 +517,14 @@ export default function BlindBoxPage() {
           </div>
         )}
       </div>
+
+      {/* Detail dialog */}
+      <BlindBoxDetailDialog
+        itemId={detailItemId}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onBuy={handleBuy}
+      />
 
       {/* Purchase dialog */}
       <PurchaseDialog

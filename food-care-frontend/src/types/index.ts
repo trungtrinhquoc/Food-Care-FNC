@@ -103,11 +103,14 @@ export interface Product {
     isSubscriptionAvailable: boolean;
     subscriptionDiscounts?: Record<string, number>;
     isActive: boolean;
+    supplierId?: number;
+    supplierName?: string;
 }
 
 
 export interface ProductFilter {
     categoryId?: number;
+    supplierId?: number;
     minPrice?: number;
     maxPrice?: number;
     searchTerm?: string;
@@ -195,6 +198,7 @@ export interface CreateOrderRequest {
     recipientName?: string;
     phoneNumber?: string;
     paymentMethod: string;
+    martId?: number;
     note?: string;
     couponCode?: string;
     items: CreateOrderItemRequest[];

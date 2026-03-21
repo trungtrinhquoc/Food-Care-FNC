@@ -24,36 +24,8 @@ api.interceptors.request.use((config) => {
 
 export const martApi = {
     getNearbyMarts: async (query: NearbyMartQuery): Promise<NearbyMart[]> => {
-        try {
-            const res = await api.get<NearbyMart[]>('/mart/nearby', { params: query });
-            return res.data;
-        } catch {
-            // Backend endpoint not yet available — return mock Đà Nẵng marts as fallback
-            return [
-                {
-                    id: 1,
-                    storeName: 'Food & Care Mart – Hải Châu',
-                    address: '123 Nguyễn Văn Linh, Phường Nam Dương, Quận Hải Châu, Đà Nẵng',
-                    distanceKm: 1.2,
-                    rating: 4.8,
-                    productCount: 320,
-                    isPreSelected: true,
-                    latitude: 16.0678,
-                    longitude: 108.2208,
-                },
-                {
-                    id: 2,
-                    storeName: 'Food & Care Mart – Thanh Khê',
-                    address: '45 Trần Cao Vân, Phường Xuân Hà, Quận Thanh Khê, Đà Nẵng',
-                    distanceKm: 2.7,
-                    rating: 4.6,
-                    productCount: 280,
-                    isPreSelected: false,
-                    latitude: 16.0831,
-                    longitude: 108.1965,
-                },
-            ];
-        }
+        const res = await api.get<NearbyMart[]>('/mart/nearby', { params: query });
+        return res.data;
     },
 
     getMartDetail: async (id: number): Promise<MartDetail> => {

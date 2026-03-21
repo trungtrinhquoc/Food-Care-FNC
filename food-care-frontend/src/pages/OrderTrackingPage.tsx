@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Package, Truck, CheckCircle2, Clock, ChevronLeft, MapPin, Phone } from 'lucide-react';
+import { Package, CheckCircle2, Clock, ChevronLeft, MapPin } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import axios from 'axios';
 
@@ -21,7 +21,9 @@ interface TrackingStep {
     active: boolean;
 }
 
-interface OrderTracking {
+// OrderTracking shape (used by API response)
+interface _OrderTracking {
+    id: string;
     orderId: string;
     orderNumber: string;
     status: string;
@@ -29,8 +31,17 @@ interface OrderTracking {
     expectedDeliveryEnd?: string;
     martName: string;
     shippingAddress: string;
+    shippingAddressSnapshot?: string;
     totalAmount: number;
     steps: TrackingStep[];
+    items?: Array<{
+        productId: string;
+        productName: string;
+        quantity: number;
+        unitPrice: number;
+        totalPrice: number;
+        productImageUrl?: string;
+    }>;
 }
 
 const statusStepMap: Record<string, number> = {
@@ -89,7 +100,7 @@ export default function OrderTrackingPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const { data: order, isLoading } = useQuery({
+    const { data: order, isLoading } = useQuery<_OrderTracking>({
         queryKey: ['order-tracking', id],
         queryFn: async () => {
             const res = await api.get(`/orders/${id}`);

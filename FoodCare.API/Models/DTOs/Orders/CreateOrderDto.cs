@@ -9,6 +9,8 @@
         public string? PhoneNumber { get; set; }
         public string PaymentMethod { get; set; } = null!;
 
+        public int? MartId { get; set; }
+
         public string? Note { get; set; }
         public string? CouponCode { get; set; }
 

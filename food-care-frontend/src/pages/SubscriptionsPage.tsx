@@ -1,15 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileApi } from '../services/api';
+import { subscriptionApi } from '../services/subscriptionApi';
+import type { SubscriptionOption, CreateSubscriptionRequest } from '../services/subscriptionApi';
+import { productsApi } from '../services/productsApi';
 import { toast } from 'sonner';
 import {
     Package, Calendar, TrendingUp, Pause, Play,
-    X, Loader2, ChevronRight, Clock, AlertCircle, Plus
+    X, Loader2, ChevronRight, Clock, AlertCircle, Plus, Search
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '../components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '../components/ui/select';
+import type { Product } from '../types';
 
 interface Subscription {
     id: string;
@@ -39,10 +59,215 @@ function parseImageUrl(imageUrl?: string | string[]): string[] {
     }
 }
 
+function CreateSubscriptionDialog({
+    open,
+    onOpenChange,
+    onSuccess,
+}: {
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    onSuccess: () => void;
+}) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [selectedFrequency, setSelectedFrequency] = useState('');
+    const [quantity, setQuantity] = useState(1);
+
+    const { data: options = [] } = useQuery<SubscriptionOption[]>({
+        queryKey: ['subscription-options'],
+        queryFn: subscriptionApi.getOptions,
+        enabled: open,
+    });
+
+    const { data: searchResults = [] } = useQuery({
+        queryKey: ['product-search', searchTerm],
+        queryFn: async () => {
+            if (!searchTerm.trim()) return [];
+            const res = await productsApi.getProducts({ searchTerm: searchTerm.trim(), pageSize: 5 });
+            return res.products;
+        },
+        enabled: searchTerm.trim().length >= 2,
+    });
+
+    const createMutation = useMutation({
+        mutationFn: subscriptionApi.createSubscription,
+        onSuccess: () => {
+            toast.success('Đã tạo đơn hàng định kỳ thành công!');
+            onSuccess();
+            resetAndClose();
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Không thể tạo đơn định kỳ');
+        },
+    });
+
+    const resetAndClose = () => {
+        setSearchTerm('');
+        setSelectedProduct(null);
+        setSelectedFrequency('');
+        setQuantity(1);
+        onOpenChange(false);
+    };
+
+    const selectedOption = options.find(o => o.code === selectedFrequency);
+
+    const handleSubmit = () => {
+        if (!selectedProduct || !selectedFrequency || !selectedOption) return;
+        const dto: CreateSubscriptionRequest = {
+            productId: selectedProduct.id,
+            frequency: selectedFrequency,
+            quantity,
+            discountPercent: selectedOption.discountPercent,
+        };
+        createMutation.mutate(dto);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => { if (!v) resetAndClose(); else onOpenChange(v); }}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-emerald-700">
+                        <Plus className="w-5 h-5" />
+                        Tạo Đơn Hàng Định Kỳ
+                    </DialogTitle>
+                    <DialogDescription>
+                        Chọn sản phẩm và tần suất giao hàng tự động
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                    {/* Product search */}
+                    {!selectedProduct ? (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">Chọn sản phẩm</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <Input
+                                    placeholder="Tìm kiếm sản phẩm..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+                            {searchResults.length > 0 && (
+                                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                                    {searchResults.map((p: Product) => (
+                                        <button
+                                            key={p.id}
+                                            className="w-full flex items-center gap-3 p-2 hover:bg-emerald-50 transition-colors text-left"
+                                            onClick={() => { setSelectedProduct(p); setSearchTerm(''); }}
+                                        >
+                                            <ImageWithFallback
+                                                src={p.images?.[0]}
+                                                alt={p.name}
+                                                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+                                                <p className="text-xs text-gray-500">{p.basePrice.toLocaleString('vi-VN')}đ/{p.unit}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                            <ImageWithFallback
+                                src={selectedProduct.images?.[0]}
+                                alt={selectedProduct.name}
+                                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{selectedProduct.name}</p>
+                                <p className="text-xs text-gray-500">{selectedProduct.basePrice.toLocaleString('vi-VN')}đ/{selectedProduct.unit}</p>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedProduct(null)} className="h-8 w-8 p-0">
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Frequency */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Tần suất giao hàng</label>
+                        <Select value={selectedFrequency} onValueChange={setSelectedFrequency}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Chọn tần suất..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {options.map((opt) => (
+                                    <SelectItem key={opt.code} value={opt.code}>
+                                        {opt.label} {opt.discountPercent > 0 && `(giảm ${opt.discountPercent}%)`}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Số lượng</label>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}>
+                                <span className="text-lg">−</span>
+                            </Button>
+                            <span className="w-12 text-center text-sm font-semibold">{quantity}</span>
+                            <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={() => setQuantity(q => q + 1)}>
+                                <span className="text-lg">+</span>
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Summary */}
+                    {selectedProduct && selectedOption && (
+                        <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Giá gốc</span>
+                                <span>{(selectedProduct.basePrice * quantity).toLocaleString('vi-VN')}đ</span>
+                            </div>
+                            {selectedOption.discountPercent > 0 && (
+                                <div className="flex justify-between text-emerald-600">
+                                    <span>Giảm giá ({selectedOption.discountPercent}%)</span>
+                                    <span>-{(selectedProduct.basePrice * quantity * selectedOption.discountPercent / 100).toLocaleString('vi-VN')}đ</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold border-t pt-1">
+                                <span>Tạm tính mỗi kỳ</span>
+                                <span className="text-emerald-600">
+                                    {(selectedProduct.basePrice * quantity * (1 - selectedOption.discountPercent / 100)).toLocaleString('vi-VN')}đ
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={resetAndClose} disabled={createMutation.isPending}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={!selectedProduct || !selectedFrequency || createMutation.isPending}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                        {createMutation.isPending ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang tạo...</>
+                        ) : (
+                            'Tạo đơn định kỳ'
+                        )}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function SubscriptionsPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState('all');
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
     const { data: subscriptions = [], isLoading } = useQuery({
         queryKey: ['subscriptions'],
@@ -157,7 +382,7 @@ export default function SubscriptionsPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate('/products')}
+                        onClick={() => setCreateDialogOpen(true)}
                         className="btn-outline h-9 px-4 border-emerald-500 text-emerald-600 font-bold text-xs"
                     >
                         <Plus className="w-3.5 h-3.5 mr-2" />
@@ -330,6 +555,13 @@ export default function SubscriptionsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Create subscription dialog */}
+            <CreateSubscriptionDialog
+                open={createDialogOpen}
+                onOpenChange={setCreateDialogOpen}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: ['subscriptions'] })}
+            />
         </div>
     );
 

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../services/productsApi';
 import { categoriesApi } from '../services/api';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import type { Product } from '../types'
@@ -14,6 +15,7 @@ import { SimplePagination } from '../components/ui/pagination';
 
 export default function ProductsPage() {
     const navigate = useNavigate()
+    const { user } = useAuth();
     const pageSize = 12;
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -41,13 +43,14 @@ export default function ProductsPage() {
         queryFn: categoriesApi.getCategories,
     });
     const { data, isLoading, error } = useQuery({
-        queryKey: ['products', selectedCategory, searchQuery, currentPage],
+        queryKey: ['products', selectedCategory, searchQuery, currentPage, user?.selectedMartId],
         queryFn: () =>
             productsApi.getProducts({
                 page: currentPage,
                 pageSize,
                 searchTerm: searchQuery || undefined,
                 categoryId: (searchQuery || selectedCategory === 'all') ? undefined : parseInt(selectedCategory, 10),
+                supplierId: user?.selectedMartId ?? undefined,
             }),
     });
 

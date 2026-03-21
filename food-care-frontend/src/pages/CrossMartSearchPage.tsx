@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { crossMartSearchApi } from '../services/crossMartSearchApi';
 import { Search, MapPin, Star, Truck, Store, ChevronLeft, Bell } from 'lucide-react';
-import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import type { CrossMartProductResult } from '../types/mart';
 

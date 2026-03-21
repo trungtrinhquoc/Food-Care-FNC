@@ -66,17 +66,17 @@ export default function MartSelectionPage() {
     }, []);
 
     // ── Fetch marts ──────────────────────────────────────────────────────────
-    const { data: marts, isLoading: loadingMarts } = useQuery({
+    const { data: marts, isLoading: loadingMarts, isError: martsError } = useQuery({
         queryKey: ['nearby-marts', coords?.lat, coords?.lng],
         queryFn: () => martApi.getNearbyMarts({
             latitude: coords!.lat,
             longitude: coords!.lng,
             radiusKm: 3,
-            maxResults: 4, // PRD: show 3-4 marts, first pre-selected
+            maxResults: 4,
         }),
         enabled: !!coords,
+        retry: 1,
         select: (data) => {
-            // Enforce pre-selection on first item if API doesn't set it
             if (!data.length) return data;
             const hasPreSelected = data.some((m) => m.isPreSelected);
             if (!hasPreSelected) {
@@ -129,6 +129,11 @@ export default function MartSelectionPage() {
             return;
         }
         confirmMutation.mutate(effectiveSelectedId!);
+    };
+
+    const handleSkip = () => {
+        localStorage.removeItem('onboarding_pending');
+        navigate('/', { replace: true });
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -220,16 +225,45 @@ export default function MartSelectionPage() {
                             </div>
                         )}
 
-                        {marts && marts.length === 0 && (
+                        {martsError && (
+                            <div className="text-center py-12">
+                                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                                <p className="font-medium text-gray-700">Không thể tải danh sách mart</p>
+                                <p className="text-sm text-gray-500 mt-1 mb-6">
+                                    Hệ thống chưa có dữ liệu mart cho khu vực này. Bạn có thể thử lại sau.
+                                </p>
+                                <div className="flex flex-col items-center gap-3">
+                                    <Button variant="outline" onClick={() => setPhase('address')}>
+                                        Thử địa chỉ khác
+                                    </Button>
+                                    <button
+                                        className="text-sm text-gray-400 hover:text-gray-600 underline"
+                                        onClick={handleSkip}
+                                    >
+                                        Bỏ qua, vào trang chủ
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {!martsError && marts && marts.length === 0 && (
                             <div className="text-center py-12">
                                 <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
                                 <p className="font-medium text-gray-700">Không tìm thấy mart nào trong 3 km</p>
-                                <p className="text-sm text-gray-500 mt-1 mb-4">
-                                    Hiện chưa có mart phục vụ khu vực này. Thử địa chỉ khác?
+                                <p className="text-sm text-gray-500 mt-1 mb-6">
+                                    Hiện chưa có mart phục vụ khu vực này.
                                 </p>
-                                <Button variant="outline" onClick={() => setPhase('address')}>
-                                    Thay đổi địa chỉ
-                                </Button>
+                                <div className="flex flex-col items-center gap-3">
+                                    <Button variant="outline" onClick={() => setPhase('address')}>
+                                        Thay đổi địa chỉ
+                                    </Button>
+                                    <button
+                                        className="text-sm text-gray-400 hover:text-gray-600 underline"
+                                        onClick={handleSkip}
+                                    >
+                                        Bỏ qua, vào trang chủ
+                                    </button>
+                                </div>
                             </div>
                         )}
 

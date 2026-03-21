@@ -251,6 +251,7 @@ export default function CheckoutPage() {
                 recipientName: formData.fullName,
                 phoneNumber: formData.phone,
                 paymentMethod,
+                martId: user.selectedMartId ?? undefined,
                 note: formData.notes,
                 couponCode: appliedCoupon?.code,
                 items: checkoutItems.map((item: any) => ({
