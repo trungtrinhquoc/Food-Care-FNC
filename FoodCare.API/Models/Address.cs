@@ -25,6 +25,10 @@ public partial class Address
 
     public bool? IsDefault { get; set; }
 
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public virtual ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();

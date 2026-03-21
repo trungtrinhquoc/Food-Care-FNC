@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { shipmentsApi, productsApi } from '@/services/supplier/supplierApi';
+import { shipmentsApi, productsApi, warehousesApi } from '@/services/supplier/supplierApi';
 import type { 
   SupplierShipment,
   CreateShipmentRequest,
@@ -99,17 +99,22 @@ export const SupplierShipmentManagement: React.FC = () => {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<ShipmentDetail | null>(null);
 
-  // Mock warehouses - in production, fetch from API
-  const warehouses = [
-    { id: 'wh-001', name: 'Warehouse HCM - District 7' },
-    { id: 'wh-002', name: 'Warehouse HN - Cau Giay' },
-    { id: 'wh-003', name: 'Warehouse DN - Hai Chau' },
-  ];
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     loadShipments();
     loadProducts();
+    loadWarehouses();
   }, []);
+
+  const loadWarehouses = async () => {
+    try {
+      const data = await warehousesApi.getAvailable();
+      setWarehouses(data.map(w => ({ id: w.id, name: w.name })));
+    } catch (error) {
+      console.error('Error loading warehouses:', error);
+    }
+  };
 
   const loadShipments = async () => {
     setLoading(true);

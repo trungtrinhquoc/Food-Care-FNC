@@ -2,175 +2,260 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/admin/Button";
 import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Textarea } from "../../components/ui/textarea";
-import { Switch } from "../../components/ui/switch";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "../../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { SimplePagination } from "../../components/ui/pagination";
-import { Bell, Send, Eye, Search, Loader2 } from "lucide-react";
-import { OrderStatusBadge, ReminderDaysBadge } from "../../components/ui/status-badge";
-import type { ZaloReminder } from "../../types/admin";
-import { mockZaloReminders } from "../../services/adminService";
+import { Bell, Send, Search, Loader2, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
+import { toast } from "sonner";
+import { zaloService, type ZaloMessage, type ZaloTemplate, type ZaloMessageFilter } from "../../services/admin/zaloService";
+
+function ZaloStatusBadge({ status }: { status?: string }) {
+  switch (status) {
+    case 'sent':
+    case 'success':
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"><CheckCircle className="w-3 h-3" />Đã gửi</span>;
+    case 'failed':
+    case 'error':
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700"><XCircle className="w-3 h-3" />Thất bại</span>;
+    case 'pending':
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700"><Clock className="w-3 h-3" />Chờ xử lý</span>;
+    default:
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{status || 'N/A'}</span>;
+  }
+}
 
 export function ZaloTab() {
-  const [reminders, setReminders] = useState<ZaloReminder[]>([]);
+  const [messages, setMessages] = useState<ZaloMessage[]>([]);
+  const [templates, setTemplates] = useState<ZaloTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 5;
+  const [sendingPhone, setSendingPhone] = useState("");
+  const [sendingTemplate, setSendingTemplate] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const pageSize = 10;
 
-  // Fetch reminders - will be replaced with API call
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const filter: ZaloMessageFilter = {
+        pageSize: 100,
+        sortDescending: true,
+      };
+      if (statusFilter !== "all") filter.status = statusFilter;
+      if (searchTerm) filter.searchTerm = searchTerm;
+
+      const [msgData, tplData] = await Promise.all([
+        zaloService.getMessages(filter),
+        zaloService.getTemplates(),
+      ]);
+      setMessages(msgData);
+      setTemplates(tplData);
+    } catch {
+      toast.error("Không thể tải dữ liệu Zalo");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter, searchTerm]);
+
   useEffect(() => {
-    const fetchReminders = async () => {
-      try {
-        setIsLoading(true);
-        // TODO: Replace with actual API call
-        setReminders(mockZaloReminders);
-      } catch (error) {
-        console.error("Error fetching reminders:", error);
-      } finally {
-        setIsLoading(false);
+    loadData();
+  }, [loadData]);
+
+  const totalPages = Math.ceil(messages.length / pageSize);
+  const paginatedMessages = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return messages.slice(start, start + pageSize);
+  }, [messages, currentPage, pageSize]);
+
+  const handleSendMessage = useCallback(async () => {
+    if (!sendingPhone.trim()) {
+      toast.error("Vui lòng nhập số điện thoại");
+      return;
+    }
+    if (!sendingTemplate) {
+      toast.error("Vui lòng chọn mẫu tin nhắn");
+      return;
+    }
+    setIsSending(true);
+    try {
+      const result = await zaloService.sendMessage({
+        templateId: parseInt(sendingTemplate),
+        phoneNumber: sendingPhone.trim(),
+      });
+      if (result.success) {
+        toast.success("Đã gửi tin nhắn Zalo thành công");
+        setSendingPhone("");
+        setSendingTemplate("");
+        loadData();
+      } else {
+        toast.error(result.errorMessage || "Gửi tin nhắn thất bại");
       }
-    };
-    fetchReminders();
-  }, []);
+    } catch {
+      toast.error("Không thể gửi tin nhắn");
+    } finally {
+      setIsSending(false);
+    }
+  }, [sendingPhone, sendingTemplate, loadData]);
 
-  const filteredReminders = useMemo(() => {
-    return reminders.filter(
-      (r) =>
-        r.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.phone.includes(searchTerm)
-    );
-  }, [reminders, searchTerm]);
-
-  const totalPages = Math.ceil(filteredReminders.length / pageSize);
-  const paginatedReminders = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredReminders.slice(startIndex, startIndex + pageSize);
-  }, [filteredReminders, currentPage, pageSize]);
-
-  const handleSendReminder = useCallback((reminderId: string) => {
-    setReminders(prev => prev.map(r =>
-      r.id === reminderId ? { ...r, status: 'sent' as const, sentDate: new Date().toISOString().split('T')[0] } : r
-    ));
-  }, []);
-
-  const handleSendBulk = useCallback(() => {
-    setReminders(prev => prev.map(r =>
-      r.status === 'pending' ? { ...r, status: 'sent' as const, sentDate: new Date().toISOString().split('T')[0] } : r
-    ));
-  }, []);
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        <span className="ml-2 text-gray-600">Đang tải cấu hình Zalo...</span>
+        <span className="ml-2 text-gray-600">Đang tải dữ liệu Zalo...</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Send Message Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="w-5 h-5 text-emerald-600" />
+            Gửi tin nhắn Zalo
+          </CardTitle>
+          <CardDescription>Chọn mẫu tin nhắn và nhập số điện thoại để gửi</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Select value={sendingTemplate} onValueChange={setSendingTemplate}>
+              <SelectTrigger className="w-full sm:w-[280px]">
+                <SelectValue placeholder="Chọn mẫu tin nhắn" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.filter(t => t.isActive).map(tpl => (
+                  <SelectItem key={tpl.id} value={String(tpl.id)}>
+                    {tpl.templateName || tpl.templateId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Số điện thoại (VD: 0901234567)"
+              value={sendingPhone}
+              onChange={e => setSendingPhone(e.target.value)}
+              className="w-full sm:w-[200px]"
+            />
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={handleSendMessage}
+              disabled={isSending}
+            >
+              {isSending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              Gửi tin nhắn
+            </Button>
+          </div>
+
+          {/* Template preview */}
+          {sendingTemplate && (() => {
+            const tpl = templates.find(t => String(t.id) === sendingTemplate);
+            return tpl?.contentSample ? (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border text-sm text-gray-600">
+                <p className="font-medium text-gray-700 mb-1">Xem trước nội dung:</p>
+                <p>{tpl.contentSample}</p>
+              </div>
+            ) : null;
+          })()}
+        </CardContent>
+      </Card>
+
+      {/* Messages History Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Hệ thống nhắc nhở Zalo</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-blue-600" />
+                Lịch sử tin nhắn
+              </CardTitle>
               <CardDescription>
-                Tự động gửi nhắc nhở khi sản phẩm của khách hàng sắp hết
+                {messages.length} tin nhắn đã ghi nhận
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Bell className="w-4 h-4 mr-2" />
-                Cài đặt
-              </Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700" size="sm" onClick={handleSendBulk}>
-                <Send className="w-4 h-4 mr-2" />
-                Gửi hàng loạt
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={loadData}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Làm mới
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Bell className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <h3 className="text-sm font-semibold mb-1 text-blue-900">Cách hoạt động</h3>
-                  <p className="text-xs text-blue-700">
-                    Hệ thống tự động phát hiện khách hàng có sản phẩm sắp hết dựa trên lịch sử mua
-                    hàng và thời gian sử dụng trung bình. Bạn có thể gửi tin nhắn nhắc nhở qua Zalo
-                    để khuyến khích họ đặt hàng lại hoặc đăng ký gói định kỳ.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm theo tên, số điện thoại hoặc sản phẩm..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-10 max-w-sm"
-            />
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Tìm theo email hoặc số điện thoại..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10 max-w-sm"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="sent">Đã gửi</SelectItem>
+                <SelectItem value="pending">Chờ xử lý</SelectItem>
+                <SelectItem value="failed">Thất bại</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Khách hàng</TableHead>
-                <TableHead>Sản phẩm</TableHead>
-                <TableHead>Mua lần cuối</TableHead>
-                <TableHead>Ước tính còn</TableHead>
+                <TableHead>Email / SĐT</TableHead>
+                <TableHead>Mẫu tin nhắn</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead>Hành động</TableHead>
+                <TableHead>Thời gian gửi</TableHead>
+                <TableHead>Lỗi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedReminders.map((reminder) => (
-                <TableRow key={reminder.id}>
+              {paginatedMessages.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10 text-gray-400">
+                    Không có tin nhắn nào
+                  </TableCell>
+                </TableRow>
+              ) : paginatedMessages.map((msg) => (
+                <TableRow key={msg.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{reminder.customerName}</div>
-                      <div className="text-xs text-gray-500">{reminder.phone}</div>
+                      {msg.userEmail && <div className="font-medium text-sm">{msg.userEmail}</div>}
+                      <div className="text-xs text-gray-500">{msg.phoneSent}</div>
                     </div>
                   </TableCell>
-                  <TableCell>{reminder.product}</TableCell>
-                  <TableCell>{reminder.lastPurchase}</TableCell>
                   <TableCell>
-                    <ReminderDaysBadge days={reminder.estimatedDaysLeft} />
+                    <span className="text-sm">{msg.templateName || '—'}</span>
                   </TableCell>
                   <TableCell>
-                    <OrderStatusBadge status={reminder.status} />
-                    {reminder.sentDate && (
-                      <div className="text-xs text-gray-500 mt-1">{reminder.sentDate}</div>
-                    )}
+                    <ZaloStatusBadge status={msg.status} />
                   </TableCell>
                   <TableCell>
-                    {reminder.status === 'pending' ? (
-                      <Button
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => handleSendReminder(reminder.id)}
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        Gửi ngay
-                      </Button>
+                    <span className="text-sm text-gray-600">{formatDate(msg.sentAt)}</span>
+                  </TableCell>
+                  <TableCell>
+                    {msg.errorMessage ? (
+                      <span className="text-xs text-red-500">{msg.errorMessage}</span>
                     ) : (
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Xem
-                      </Button>
+                      <span className="text-xs text-gray-400">—</span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -178,42 +263,46 @@ export function ZaloTab() {
             </TableBody>
           </Table>
 
-          {/* Pagination */}
           <SimplePagination
             currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={filteredReminders.length}
+            totalItems={messages.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
-            itemLabel="lời nhắc"
+            itemLabel="tin nhắn"
           />
         </CardContent>
       </Card>
 
-      {/* Zalo Template Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Mẫu tin nhắn Zalo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Tiêu đề tin nhắn</Label>
-            <Input placeholder="VD: Sản phẩm của bạn sắp hết!" />
-          </div>
-          <div>
-            <Label>Nội dung tin nhắn</Label>
-            <Textarea
-              placeholder="VD: Xin chào {customer_name}, sản phẩm {product_name} của bạn ước tính sẽ hết trong {days_left} ngày. Đặt hàng ngay để không bỏ lỡ!"
-              rows={4}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch id="auto-send" />
-            <Label htmlFor="auto-send">Tự động gửi khi sản phẩm còn 3 ngày</Label>
-          </div>
-          <Button className="bg-emerald-600 hover:bg-emerald-700">Lưu cài đặt</Button>
-        </CardContent>
-      </Card>
+      {/* Templates List Card */}
+      {templates.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mẫu tin nhắn Zalo đã cài đặt</CardTitle>
+            <CardDescription>{templates.filter(t => t.isActive).length} mẫu đang hoạt động</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {templates.map(tpl => (
+                <div key={tpl.id} className={`p-4 rounded-lg border ${tpl.isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-sm">{tpl.templateName || tpl.templateId}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                      {tpl.isActive ? 'Hoạt động' : 'Tắt'}
+                    </span>
+                  </div>
+                  {tpl.contentSample && (
+                    <p className="text-xs text-gray-500 mt-1">{tpl.contentSample}</p>
+                  )}
+                  {tpl.price != null && (
+                    <p className="text-xs text-gray-400 mt-1">Giá: {tpl.price.toLocaleString('vi-VN')}đ/tin</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

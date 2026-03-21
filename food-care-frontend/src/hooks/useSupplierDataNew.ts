@@ -10,21 +10,28 @@ const mapSupplierOrderToOrder = (supplierOrder: SupplierOrder): Order => ({
   orderNumber: `ORD-${supplierOrder.id}`,
   customerId: `cust-${supplierOrder.id}`,
   customerName: supplierOrder.customerName,
-  customerEmail: `${supplierOrder.customerName.toLowerCase().replace(' ', '.')}@example.com`,
-  customerPhone: '0900000000',
+  customerEmail: supplierOrder.customerEmail || '',
+  customerPhone: supplierOrder.customerPhone || '',
   customer: {
     name: supplierOrder.customerName,
-    phone: '0900000000',
-    email: `${supplierOrder.customerName.toLowerCase().replace(' ', '.')}@example.com`
+    phone: supplierOrder.customerPhone || '',
+    email: supplierOrder.customerEmail || ''
   },
-  items: [], // API doesn't provide items, populate with mock data
+  items: (supplierOrder.items || []).map(item => ({
+    id: item.id,
+    productId: item.productId,
+    productName: item.productName,
+    quantity: item.quantity,
+    price: item.price,
+    totalPrice: item.totalPrice
+  })),
   totalAmount: supplierOrder.totalAmount,
   status: supplierOrder.status as OrderStatus,
-  shippingAddress: {
-    street: '123 Đường ABC',
-    city: 'TP.HCM',
-    state: 'Quận 1',
-    zipCode: '700000',
+  shippingAddress: supplierOrder.shippingAddress || {
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
     country: 'Vietnam'
   },
   createdAt: supplierOrder.createdAt,
@@ -33,70 +40,12 @@ const mapSupplierOrderToOrder = (supplierOrder: SupplierOrder): Order => ({
       {
         date: supplierOrder.createdAt,
         status: supplierOrder.status,
-        location: 'Kho TP.HCM',
+        location: '',
         description: `Đơn hàng ${supplierOrder.status}`
       }
     ]
   }
 });
-
-// Mock data - using inline data to avoid import issues
-const mockOrders = [
-  {
-    id: '1',
-    orderNumber: 'ORD-2024-001',
-    customerId: 'cust-001',
-    customerName: 'Nguyễn Văn A',
-    customerEmail: 'a@example.com',
-    customerPhone: '0901234567',
-    customer: {
-      name: 'Nguyễn Văn A',
-      phone: '0901234567',
-      email: 'a@example.com'
-    },
-    totalAmount: 150000,
-    status: 'pending' as OrderStatus,
-    createdAt: '2024-01-15',
-    itemCount: 3,
-    items: [
-      {
-        id: 'item-1',
-        productId: 'prod-1',
-        productName: 'Sữa tươi',
-        quantity: 2,
-        price: 25000,
-        totalPrice: 50000
-      }
-    ],
-    shippingAddress: {
-      street: '123 Nguyễn Huệ',
-      city: 'TP.HCM',
-      state: 'Quận 1',
-      zipCode: '700000',
-      country: 'Vietnam'
-    },
-    shipping: {
-      timeline: [
-        {
-          date: '2024-01-15',
-          timestamp: '2024-01-15T10:00:00Z',
-          status: 'confirmed',
-          location: 'Kho TP.HCM',
-          description: 'Đơn hàng đã được xác nhận',
-          notes: 'Đã xác nhận đơn hàng thành công'
-        },
-        {
-          date: '2024-01-16',
-          timestamp: '2024-01-16T14:30:00Z',
-          status: 'processing',
-          location: 'Kho TP.HCM',
-          description: 'Đang xử lý đơn hàng',
-          notes: 'Đang đóng gói sản phẩm'
-        }
-      ]
-    }
-  }
-];
 
 // Orders hooks
 export const useOrders = () => {
@@ -109,9 +58,8 @@ export const useOrders = () => {
         // Map SupplierOrder[] to Order[]
         return apiOrders.map(mapSupplierOrderToOrder);
       } catch (error) {
-        console.warn('Failed to fetch orders from API, using mock data:', error);
-        // Fallback to mock data
-        return mockOrders;
+        console.warn('Failed to fetch orders from API:', error);
+        return [];
       }
     },
   });
@@ -127,9 +75,7 @@ export const useUpdateOrderStatus = () => {
         return response.data;
       } catch (error) {
         console.warn('Failed to update order status via API:', error);
-        // Fallback to mock behavior
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { orderId, status };
+        throw error;
       }
     },
     onSuccess: () => {
@@ -157,8 +103,7 @@ export const useAddShipping = () => {
         return response.data;
       } catch (error) {
         console.warn('Failed to add shipping info via API:', error);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { orderId, trackingNumber, carrier };
+        throw error;
       }
     },
     onSuccess: () => {
@@ -180,8 +125,7 @@ export const useCancelOrder = () => {
         return response.data;
       } catch (error) {
         console.warn('Failed to cancel order via API:', error);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { orderId, reason };
+        throw error;
       }
     },
     onSuccess: () => {
@@ -200,8 +144,7 @@ export const useBulkConfirmOrders = () => {
         return response.data;
       } catch (error) {
         console.warn('Failed to bulk confirm orders via API:', error);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { orderIds };
+        throw error;
       }
     },
     onSuccess: () => {
@@ -224,63 +167,62 @@ export const useKPIs = () => {
           totalProducts: apiStats.totalProducts || 0,
           averageOrderValue: apiStats.totalOrders ? Math.round(apiStats.totalRevenue / apiStats.totalOrders) : 0,
           pendingOrders: apiStats.pendingOrders || 0,
-          completedOrders: Math.floor((apiStats.totalOrders || 0) * 0.7), // Calculate from total
-          cancelledOrders: Math.floor((apiStats.totalOrders || 0) * 0.1), // Calculate from total
+          completedOrders: apiStats.completedOrders || 0,
+          cancelledOrders: apiStats.cancelledOrders || 0,
           revenue: {
-            today: apiStats.thisMonthRevenue || 0,
+            today: apiStats.todayRevenue || 0,
             month: apiStats.thisMonthRevenue || 0,
             change: apiStats.lastMonthRevenue ? ((apiStats.thisMonthRevenue - apiStats.lastMonthRevenue) / apiStats.lastMonthRevenue * 100) : 0
           },
           orders: {
             new: apiStats.pendingOrders || 0,
-            processing: Math.floor((apiStats.totalOrders || 0) * 0.3),
-            completed: Math.floor((apiStats.totalOrders || 0) * 0.7),
-            cancelled: Math.floor((apiStats.totalOrders || 0) * 0.1)
+            processing: apiStats.confirmedOrders || 0,
+            completed: apiStats.completedOrders || 0,
+            cancelled: apiStats.cancelledOrders || 0
           },
           products: {
             total: apiStats.totalProducts || 0,
             active: apiStats.activeProducts || 0,
             lowStock: apiStats.lowStockProducts || 0,
-            outOfStock: Math.floor((apiStats.totalProducts || 0) * 0.1)
+            outOfStock: apiStats.outOfStockProducts || 0
           },
           customers: {
-            new: Math.floor((apiStats.totalOrders || 0) * 0.2),
-            returning: Math.floor((apiStats.totalOrders || 0) * 0.8),
-            total: Math.floor((apiStats.totalOrders || 0) * 1.5)
+            new: apiStats.pendingOrders || 0,
+            returning: (apiStats.totalOrders || 0) - (apiStats.pendingOrders || 0),
+            total: apiStats.totalOrders || 0
           }
         };
       } catch (error) {
-        console.warn('Failed to fetch KPIs from API, using mock data:', error);
-        // Fallback to mock data
+        console.warn('Failed to fetch KPIs from API:', error);
         return {
-          totalRevenue: 2500000,
-          totalOrders: 45,
-          totalProducts: 23,
-          averageOrderValue: 55555,
-          pendingOrders: 8,
-          completedOrders: 35,
-          cancelledOrders: 2,
+          totalRevenue: 0,
+          totalOrders: 0,
+          totalProducts: 0,
+          averageOrderValue: 0,
+          pendingOrders: 0,
+          completedOrders: 0,
+          cancelledOrders: 0,
           revenue: {
-            today: 150000,
-            month: 2500000,
-            change: 12.5
+            today: 0,
+            month: 0,
+            change: 0
           },
           orders: {
-            new: 8,
-            processing: 12,
-            completed: 35,
-            cancelled: 2
+            new: 0,
+            processing: 0,
+            completed: 0,
+            cancelled: 0
           },
           products: {
-            total: 23,
-            active: 20,
-            lowStock: 2,
-            outOfStock: 1
+            total: 0,
+            active: 0,
+            lowStock: 0,
+            outOfStock: 0
           },
           customers: {
-            new: 15,
-            returning: 105,
-            total: 120
+            new: 0,
+            returning: 0,
+            total: 0
           }
         };
       }
@@ -291,46 +233,61 @@ export const useKPIs = () => {
 export const useFulfillmentMetrics = () => {
   return useQuery({
     queryKey: ['fulfillment-metrics'],
-    queryFn: () => Promise.resolve({
-      fulfillmentRate: 95.5,
-      onTimeDeliveryRate: 92.3,
-      averageProcessingTime: 2.5,
-      ordersByStatus: [
-        { status: 'pending', count: 8 },
-        { status: 'confirmed', count: 15 },
-        { status: 'processing', count: 12 },
-        { status: 'shipped', count: 20 },
-        { status: 'delivered', count: 35 },
-        { status: 'cancelled', count: 2 }
-      ],
-      averageFulfillmentTime: 1.8,
-      dailyProcessing: [
-        { date: '2024-01-15', processed: 12, shipped: 10, delivered: 8 },
-        { date: '2024-01-16', processed: 15, shipped: 13, delivered: 11 },
-        { date: '2024-01-17', processed: 18, shipped: 16, delivered: 14 },
-        { date: '2024-01-18', processed: 14, shipped: 12, delivered: 10 },
-        { date: '2024-01-19', processed: 20, shipped: 18, delivered: 16 },
-        { date: '2024-01-20', processed: 16, shipped: 14, delivered: 12 },
-        { date: '2024-01-21', processed: 19, shipped: 17, delivered: 15 }
-      ]
-    }),
+    queryFn: async () => {
+      try {
+        const apiStats = await supplierApi.getStats();
+        const totalOrders = apiStats.totalOrders || 0;
+        const completedOrders = apiStats.completedOrders || 0;
+        return {
+          fulfillmentRate: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0,
+          onTimeDeliveryRate: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0,
+          averageProcessingTime: 0,
+          ordersByStatus: [],
+          averageFulfillmentTime: 0,
+          dailyProcessing: []
+        };
+      } catch (error) {
+        console.warn('Failed to fetch fulfillment metrics:', error);
+        return {
+          fulfillmentRate: 0,
+          onTimeDeliveryRate: 0,
+          averageProcessingTime: 0,
+          ordersByStatus: [],
+          averageFulfillmentTime: 0,
+          dailyProcessing: []
+        };
+      }
+    },
   });
 };
 
 export const useAlerts = () => {
   return useQuery({
     queryKey: ['alerts'],
-    queryFn: () => Promise.resolve([
-      {
-        id: '1',
-        type: 'low_stock' as const,
-        title: 'Sản phẩm sắp hết hàng',
-        message: 'Sản phẩm "Sữa tươi" còn ít hơn 10 đơn vị',
-        severity: 'medium' as const,
-        isRead: false,
-        createdAt: '2024-01-15'
+    queryFn: async () => {
+      try {
+        const products = await supplierApi.getProducts();
+        const alerts: { id: string; type: 'low_stock'; title: string; message: string; severity: 'medium' | 'high'; isRead: boolean; createdAt: string }[] = [];
+        const productList = Array.isArray(products) ? products : [];
+        productList.forEach((p: { id?: string; name?: string; stockQuantity?: number; lowStockThreshold?: number }) => {
+          if (p.stockQuantity !== undefined && p.lowStockThreshold !== undefined && p.stockQuantity <= p.lowStockThreshold) {
+            alerts.push({
+              id: `low-stock-${p.id}`,
+              type: 'low_stock',
+              title: 'Sản phẩm sắp hết hàng',
+              message: `"${p.name}" còn ${p.stockQuantity} đơn vị`,
+              severity: p.stockQuantity === 0 ? 'high' : 'medium',
+              isRead: false,
+              createdAt: new Date().toISOString()
+            });
+          }
+        });
+        return alerts;
+      } catch (error) {
+        console.warn('Failed to fetch alerts:', error);
+        return [];
       }
-    ]),
+    },
   });
 };
 
@@ -339,7 +296,6 @@ export const useDismissAlert = () => {
 
   return useMutation({
     mutationFn: async ({ alertId }: { alertId: string }) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
       return { alertId };
     },
     onSuccess: () => {

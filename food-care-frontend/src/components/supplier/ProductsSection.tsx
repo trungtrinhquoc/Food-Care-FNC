@@ -126,7 +126,7 @@ export function ProductsSection({
     };
 
     const openCreateModal = () => {
-        setForm({ name: '', description: '', basePrice: 0, cost: 0, stockQuantity: 0, minStock: 10, sku: '', categoryId: '', images: [] });
+        setForm({ name: '', description: '', manufacturer: '', origin: '', basePrice: 0, cost: 0, stockQuantity: 0, minStock: 10, sku: '', categoryId: '', images: [] });
         setEditingProduct(null);
         setModalMode('create');
     };
@@ -135,6 +135,8 @@ export function ProductsSection({
         setForm({
             name: product.name,
             description: product.description || '',
+            manufacturer: product.manufacturer || '',
+            origin: product.origin || '',
             basePrice: product.basePrice,
             cost: product.cost || 0,
             stockQuantity: product.stockQuantity,
@@ -189,6 +191,8 @@ export function ProductsSection({
                 ...form,
                 categoryId: form.categoryId || undefined,
                 sku: form.sku || undefined,
+                manufacturer: form.manufacturer || undefined,
+                origin: form.origin || undefined,
                 images: form.images && form.images.length > 0 ? form.images : undefined,
             };
             if (modalMode === 'create') {
@@ -198,6 +202,7 @@ export function ProductsSection({
                 const updateData: UpdateProductRequest = {
                     name: form.name, description: form.description, basePrice: form.basePrice,
                     cost: form.cost, stockQuantity: form.stockQuantity, minStock: form.minStock,
+                    manufacturer: form.manufacturer || undefined, origin: form.origin || undefined,
                     sku: form.sku || undefined, categoryId: form.categoryId || undefined,
                     images: form.images && form.images.length > 0 ? form.images : undefined,
                 };
@@ -601,6 +606,16 @@ export function ProductsSection({
                                         rows={3}
                                         placeholder="Mô tả chi tiết sản phẩm"
                                     />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Nhà sản xuất</label>
+                                        <Input value={form.manufacturer || ''} onChange={(e) => setForm((p) => ({ ...p, manufacturer: e.target.value }))} placeholder="VD: Vinamilk, TH True Milk..." />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Xuất xứ</label>
+                                        <Input value={form.origin || ''} onChange={(e) => setForm((p) => ({ ...p, origin: e.target.value }))} placeholder="VD: Việt Nam, Nhật Bản..." />
+                                    </div>
                                 </div>
                                 {/* Category select */}
                                 <div>

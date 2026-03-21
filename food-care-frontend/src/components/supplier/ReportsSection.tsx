@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import {
@@ -20,6 +20,7 @@ import {
     BarChart3,
     PieChart,
     Activity,
+    Loader2,
 } from 'lucide-react';
 import {
     AreaChart,
@@ -33,26 +34,71 @@ import {
     ResponsiveContainer,
     Legend,
 } from 'recharts';
+import { revenueApi, type RevenueData } from '../../services/supplier/supplierApi';
 
-// Mock data
-const performanceData = [
-    { month: 'T1', orders: 45, revenue: 12500000, products: 25 },
-    { month: 'T2', orders: 52, revenue: 15200000, products: 28 },
-    { month: 'T3', orders: 61, revenue: 18800000, products: 32 },
-    { month: 'T4', orders: 55, revenue: 16100000, products: 30 },
-    { month: 'T5', orders: 72, revenue: 21500000, products: 35 },
-    { month: 'T6', orders: 65, revenue: 19200000, products: 33 },
-];
+interface PerformanceDataItem {
+    month: string;
+    orders: number;
+    revenue: number;
+    products: number;
+}
 
-const categoryData = [
-    { name: 'Rau củ', value: 45, revenue: 32000000 },
-    { name: 'Trái cây', value: 28, revenue: 25000000 },
-    { name: 'Thực phẩm khô', value: 15, revenue: 18000000 },
-    { name: 'Đồ uống', value: 12, revenue: 15000000 },
-];
+interface CategoryDataItem {
+    name: string;
+    value: number;
+    revenue: number;
+}
 
 export function ReportsSection() {
     const [period, setPeriod] = useState('6months');
+    const [isLoading, setIsLoading] = useState(true);
+    const [isError, setIsError] = useState(false);
+    const [performanceData, setPerformanceData] = useState<PerformanceDataItem[]>([]);
+    const [categoryData, setCategoryData] = useState<CategoryDataItem[]>([]);
+
+    useEffect(() => {
+        const periodToMonths: Record<string, number> = {
+            '7days': 1,
+            '30days': 1,
+            '6months': 6,
+            '1year': 12,
+        };
+        const months = periodToMonths[period] || 6;
+
+        const fetchData = async () => {
+            setIsLoading(true);
+            setIsError(false);
+            try {
+                const data: RevenueData = await revenueApi.getRevenue(months);
+
+                // Map monthly revenue to performance chart data
+                const perf: PerformanceDataItem[] = data.monthlyRevenue.map((m) => ({
+                    month: m.month,
+                    orders: m.orders,
+                    revenue: m.revenue,
+                    products: 0,
+                }));
+                setPerformanceData(perf);
+
+                // Map category revenue to category chart data
+                const cats: CategoryDataItem[] = data.categoryRevenue.map((c) => ({
+                    name: c.category,
+                    value: Math.round(c.percentage),
+                    revenue: c.revenue,
+                }));
+                setCategoryData(cats);
+            } catch (error) {
+                console.warn('Failed to fetch revenue data for reports:', error);
+                setIsError(true);
+                setPerformanceData([]);
+                setCategoryData([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [period]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', {
@@ -162,6 +208,20 @@ export function ReportsSection() {
                 })}
             </div>
 
+            {isError ? (
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="py-12 flex flex-col items-center gap-4 text-center">
+                        <BarChart3 className="h-12 w-12 text-amber-400" />
+                        <div>
+                            <p className="font-semibold text-amber-800">Dữ liệu chưa khả dụng</p>
+                            <p className="text-sm text-amber-700 mt-1">
+                                Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <>
             {/* Performance Overview Chart */}
             <Card>
                 <CardHeader>
@@ -182,6 +242,15 @@ export function ReportsSection() {
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {isLoading ? (
+                        <div className="h-[350px] flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                        </div>
+                    ) : performanceData.length === 0 ? (
+                        <div className="h-[350px] flex items-center justify-center text-gray-400">
+                            Chưa có dữ liệu doanh thu
+                        </div>
+                    ) : (
                     <div className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={performanceData}>
@@ -210,6 +279,7 @@ export function ReportsSection() {
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -228,6 +298,15 @@ export function ReportsSection() {
                         </div>
                     </CardHeader>
                     <CardContent>
+                        {isLoading ? (
+                            <div className="h-[200px] flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+                            </div>
+                        ) : categoryData.length === 0 ? (
+                            <div className="h-[200px] flex items-center justify-center text-gray-400">
+                                Chưa có dữ liệu danh mục
+                            </div>
+                        ) : (
                         <div className="space-y-4">
                             {categoryData.map((category, index) => {
                                 const colors = ['bg-blue-500', 'bg-blue-400', 'bg-blue-600', 'bg-blue-300'];
@@ -243,7 +322,7 @@ export function ReportsSection() {
                                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full ${colors[index % colors.length]} rounded-full`}
-                                                    style={{ width: `${(category.value / 45) * 100}%` }}
+                                                    style={{ width: `${(category.value / Math.max(...categoryData.map(c => c.value), 1)) * 100}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -251,6 +330,7 @@ export function ReportsSection() {
                                 );
                             })}
                         </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -267,8 +347,17 @@ export function ReportsSection() {
                         </div>
                     </CardHeader>
                     <CardContent>
+                        {isLoading ? (
+                            <div className="h-[200px] flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                            </div>
+                        ) : categoryData.length === 0 ? (
+                            <div className="h-[200px] flex items-center justify-center text-gray-400">
+                                Chưa có dữ liệu danh mục
+                            </div>
+                        ) : (
                         <div className="space-y-4">
-                            {categoryData.sort((a, b) => b.revenue - a.revenue).map((category, index) => (
+                            {[...categoryData].sort((a, b) => b.revenue - a.revenue).map((category, index) => (
                                 <div
                                     key={category.name}
                                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
@@ -285,6 +374,7 @@ export function ReportsSection() {
                                 </div>
                             ))}
                         </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -298,11 +388,20 @@ export function ReportsSection() {
                         </div>
                         <div>
                             <CardTitle className="text-lg">Xu hướng tăng trưởng</CardTitle>
-                            <CardDescription>Biểu đồ tăng trưởng số lượng sản phẩm</CardDescription>
+                            <CardDescription>Biểu đồ tăng trưởng đơn hàng theo tháng</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {isLoading ? (
+                        <div className="h-[250px] flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                        </div>
+                    ) : performanceData.length === 0 ? (
+                        <div className="h-[250px] flex items-center justify-center text-gray-400">
+                            Chưa có dữ liệu xu hướng
+                        </div>
+                    ) : (
                     <div className="h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={performanceData}>
@@ -316,12 +415,12 @@ export function ReportsSection() {
                                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                                 <YAxis tick={{ fontSize: 12 }} />
                                 <Tooltip
-                                    formatter={(value) => [value, 'Sản phẩm']}
+                                    formatter={(value) => [value, 'Đơn hàng']}
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
                                 />
                                 <Area
                                     type="monotone"
-                                    dataKey="products"
+                                    dataKey="orders"
                                     stroke="#8b5cf6"
                                     strokeWidth={2}
                                     fill="url(#colorProducts)"
@@ -329,8 +428,11 @@ export function ReportsSection() {
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
+                    )}
                 </CardContent>
             </Card>
+                </>
+            )}
         </div>
     );
 }

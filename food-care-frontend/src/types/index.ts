@@ -58,6 +58,7 @@ export interface User {
     loyaltyPoints: number;
     createdAt?: string;
     staffPositionEnum?: string; // 'Shipper' | 'WarehouseManager' | etc.
+    selectedMartId?: number | null;
     providerInfo?: {
         storeName: string;
         level: string;

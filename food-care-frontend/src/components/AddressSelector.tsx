@@ -79,6 +79,11 @@ export function AddressSelector({
         }
     }, [value.district, value.ward, districts, wards, selectedDistrict, selectedWard, selectDistrict, selectWard]);
 
+    // Stable ref to onChange — prevents emitChange from recreating when
+    // the parent passes an inline arrow function (avoids infinite re-render loop)
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+
     // Propagate changes to parent via onChange
     const prevAddressRef = useRef<string>('');
 
@@ -87,9 +92,9 @@ export function AddressSelector({
         const key = JSON.stringify(addr);
         if (key !== prevAddressRef.current) {
             prevAddressRef.current = key;
-            onChange(addr);
+            onChangeRef.current(addr);
         }
-    }, [getAddressValue, onChange]);
+    }, [getAddressValue]);
 
     useEffect(() => {
         emitChange();

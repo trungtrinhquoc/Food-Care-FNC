@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/admin/Button';
@@ -27,6 +27,7 @@ import { AlertsPanel, type SystemAlert } from '../../components/admin/AlertsPane
 import { DashboardSkeleton } from '../../components/admin/DashboardSkeleton';
 import type { AdminStats, RevenueData } from '../../types/admin';
 import { useOverviewData } from '../../hooks/useOverviewData';
+import { alertsService, type AdminAlert } from '../../services/admin/alertsService';
 
 interface OverviewTabProps {
   stats: AdminStats;
@@ -35,51 +36,88 @@ interface OverviewTabProps {
   isLoading?: boolean;
 }
 
-// Generate sparkline data (simulated - replace with API data when available)
-function generateSparkline(base: number, variance: number = 0.2): number[] {
-  return Array.from({ length: 7 }, () =>
-    Math.floor(base * (1 + (Math.random() - 0.5) * variance))
-  );
+// Extract sparkline data from orders chart (real API data)
+function getOrdersSparkline(ordersChart: { total: number }[]): number[] {
+  if (!ordersChart || ordersChart.length === 0) return [];
+  return ordersChart.slice(-7).map(d => d.total);
 }
 
-// Mock alerts (replace with real notification system)
-const generateMockAlerts = (stats: AdminStats): SystemAlert[] => {
-  const alerts: SystemAlert[] = [];
+function getRevenueSparkline(revenueData: { revenue: number }[]): number[] {
+  if (!revenueData || revenueData.length === 0) return [];
+  return revenueData.slice(-7).map(d => d.revenue);
+}
 
-  if (stats.lowStockProducts && stats.lowStockProducts > 0) {
-    alerts.push({
-      id: 'alert-low-stock',
-      type: 'low_stock',
-      severity: 'warning',
-      title: `${stats.lowStockProducts} sản phẩm sắp hết hàng`,
-      message: 'Một số sản phẩm có số lượng tồn kho thấp, cần bổ sung ngay.',
-      timestamp: new Date().toISOString(),
-      actionUrl: '/admin?tab=products',
-      actionLabel: 'Xem sản phẩm',
-    });
-  }
-
-  if (stats.pendingOrders && stats.pendingOrders > 0) {
-    alerts.push({
-      id: 'alert-pending-orders',
-      type: 'pending_order',
-      severity: 'info',
-      title: `${stats.pendingOrders} đơn hàng chờ xử lý`,
-      message: 'Có đơn hàng mới cần được xác nhận.',
-      timestamp: new Date(Date.now() - 1800000).toISOString(),
-      actionUrl: '/admin?tab=orders',
-      actionLabel: 'Xem đơn hàng',
-    });
-  }
-
-  return alerts;
-};
+// Convert backend AdminAlert to frontend SystemAlert
+function mapAlertToSystemAlert(alert: AdminAlert): SystemAlert {
+  const typeMap: Record<string, SystemAlert['type']> = {
+    sla_violation: 'sla_violation',
+    quality_issue: 'quality_issue',
+    rating_drop: 'rating_drop',
+    return_rate: 'return_rate',
+    low_stock: 'low_stock',
+    pending_order: 'pending_order',
+    new_review: 'new_review',
+    system: 'system',
+  };
+  return {
+    id: alert.id,
+    type: typeMap[alert.type] || 'other',
+    severity: alert.severity as SystemAlert['severity'],
+    title: alert.title,
+    message: alert.message,
+    timestamp: alert.createdAt,
+    isRead: alert.isRead,
+    storeName: alert.storeName,
+    supplierId: alert.supplierId,
+  };
+}
 
 export function OverviewTab({ stats, revenueData, totalProducts, isLoading = false }: OverviewTabProps) {
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [trafficDateRange, setTrafficDateRange] = useState<TrafficDateRange>('7d');
   const [orderDateRange, setOrderDateRange] = useState<TrafficDateRange>('7d');
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch real alerts from API
+  const loadAlerts = useCallback(async () => {
+    try {
+      setAlertsLoading(true);
+      const [alertData, count] = await Promise.all([
+        alertsService.getAlerts({ pageSize: 10 }),
+        alertsService.getUnreadCount(),
+      ]);
+      setAlerts(alertData.map(mapAlertToSystemAlert));
+      setUnreadCount(count);
+    } catch {
+      // Silently fail — alerts are non-critical
+      setAlerts([]);
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAlerts();
+  }, [loadAlerts]);
+
+  const handleMarkAsRead = useCallback(async (alertId: string) => {
+    try {
+      await alertsService.markAsRead(alertId);
+      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, isRead: true } : a));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleMarkAllAsRead = useCallback(async () => {
+    try {
+      await alertsService.markAllAsRead();
+      setAlerts(prev => prev.map(a => ({ ...a, isRead: true })));
+      setUnreadCount(0);
+    } catch { /* ignore */ }
+  }, []);
 
   // Map traffic date range to days
   const trafficDaysMap: Record<TrafficDateRange, number> = {
@@ -173,9 +211,6 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
     return <DashboardSkeleton />;
   }
 
-  // Generate alerts based on real stats
-  const alerts = generateMockAlerts(stats);
-
   // Calculate order status breakdown from stats
   const completedOrders = stats.totalOrders - (stats.pendingOrders || 0);
   const orderBreakdown = [
@@ -203,7 +238,7 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
           iconColor="text-emerald-600"
           iconBgColor="bg-emerald-100"
           trend={{ value: stats.monthlyGrowth, isPositive: stats.monthlyGrowth >= 0 }}
-          sparklineData={generateSparkline(stats.totalRevenue / 30)}
+          sparklineData={getRevenueSparkline(revenueData)}
           subtitle="so với kỳ trước"
           onClick={handleRevenueClick}
         />
@@ -213,8 +248,8 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
           icon={ShoppingCart}
           iconColor="text-blue-600"
           iconBgColor="bg-blue-100"
-          trend={{ value: 12.5, isPositive: true }}
-          sparklineData={generateSparkline(stats.totalOrders / 7)}
+          trend={{ value: stats.monthlyGrowth, isPositive: stats.monthlyGrowth >= 0 }}
+          sparklineData={getOrdersSparkline(ordersChart)}
           breakdown={orderBreakdown}
           onClick={handleOrdersClick}
         />
@@ -224,9 +259,9 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
           icon={Users}
           iconColor="text-purple-600"
           iconBgColor="bg-purple-100"
-          trend={{ value: 8.2, isPositive: true }}
-          sparklineData={generateSparkline(stats.totalCustomers / 30)}
-          subtitle={`+${Math.floor(stats.totalCustomers * 0.05)} khách mới`}
+          trend={{ value: stats.monthlyGrowth, isPositive: stats.monthlyGrowth >= 0 }}
+          sparklineData={getOrdersSparkline(ordersChart)}
+          subtitle={stats.newCustomersThisWeek > 0 ? `+${stats.newCustomersThisWeek} khách mới` : 'Không có khách mới'}
           onClick={handleCustomersClick}
         />
         <StatsCard
@@ -285,12 +320,19 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
             </CardTitle>
             {alerts.length > 0 && (
               <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-                {alerts.length} mới
+                {unreadCount > 0 ? `${unreadCount} chưa đọc` : `${alerts.length} cảnh báo`}
               </span>
             )}
           </CardHeader>
           <CardContent>
-            <AlertsPanel alerts={alerts} onAlertAction={handleAlertAction} />
+            <AlertsPanel
+              alerts={alerts}
+              isLoading={alertsLoading}
+              onAlertAction={handleAlertAction}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              unreadCount={unreadCount}
+            />
           </CardContent>
         </Card>
       </div>
@@ -379,19 +421,19 @@ export function OverviewTab({ stats, revenueData, totalProducts, isLoading = fal
                 <div className="flex justify-between">
                   <span className="text-gray-500">Doanh thu hôm nay</span>
                   <span className="font-medium text-gray-900">
-                    {Math.floor(stats.totalRevenue / 30).toLocaleString('vi-VN')}đ
+                    {stats.todayRevenue.toLocaleString('vi-VN')}đ
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Đơn hôm nay</span>
                   <span className="font-medium text-gray-900">
-                    {Math.floor(stats.totalOrders / 30)}
+                    {stats.ordersToday}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Khách mới tuần này</span>
                   <span className="font-medium text-primary-600">
-                    +{Math.floor(stats.totalCustomers * 0.02)}
+                    +{stats.newCustomersThisWeek}
                   </span>
                 </div>
               </div>

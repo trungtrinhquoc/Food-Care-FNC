@@ -138,6 +138,9 @@ export default function LoginPage() {
                 phoneNumber: '' // Phone number is optional in this UI, can be improved later
             });
 
+            // Mark that the user should go through onboarding after verifying email + logging in
+            localStorage.setItem('onboarding_pending', 'true');
+
             // Show email verification notice
             setRegisteredEmail(registerData.email);
             setShowEmailNotice(true);

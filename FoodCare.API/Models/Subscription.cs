@@ -26,6 +26,12 @@ public partial class Subscription
 
     public DateOnly? PauseUntil { get; set; }
 
+    /// <summary>
+    /// Fixed delivery day of week: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+    /// Only certain days allowed by business rules: Mon(0), Wed(2), Fri(4), Sat(5), Sun(6)
+    /// </summary>
+    public short? DeliveryDayOfWeek { get; set; }
+
     public Guid? PaymentMethodId { get; set; }
 
     public Guid? ShippingAddressId { get; set; }

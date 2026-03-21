@@ -246,6 +246,17 @@ public class SupplierController : ControllerBase
         return Ok(sla);
     }
 
+    // GET /api/supplier/delivery-batches — group confirmed/shipping orders by district
+    [HttpGet("delivery-batches")]
+    public async Task<IActionResult> GetDeliveryBatches()
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+        var batches = await _supplierAuthService.GetDeliveryBatchesAsync(userId);
+        return Ok(batches);
+    }
+
     // ===== BLIND BOX =====
 
     // POST /api/supplier/blind-boxes  — supplier submits a blind box for admin approval

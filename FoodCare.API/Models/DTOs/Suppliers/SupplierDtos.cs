@@ -105,6 +105,8 @@ public class CreateSupplierProductDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? Manufacturer { get; set; }
+    public string? Origin { get; set; }
     public decimal BasePrice { get; set; }
     public decimal? Cost { get; set; }
     public int StockQuantity { get; set; }
@@ -121,6 +123,8 @@ public class UpdateSupplierProductDto
 {
     public string? Name { get; set; }
     public string? Description { get; set; }
+    public string? Manufacturer { get; set; }
+    public string? Origin { get; set; }
     public decimal? BasePrice { get; set; }
     public decimal? Cost { get; set; }
     public int? StockQuantity { get; set; }
@@ -149,6 +153,10 @@ public class SupplierOrderDto
     public string Status { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public int ItemCount { get; set; }
+    public string? CustomerEmail { get; set; }
+    public string? CustomerPhone { get; set; }
+    public AddressDto? ShippingAddress { get; set; }
+    public List<OrderItemDto> Items { get; set; } = new();
 }
 
 public class SupplierOrderDetailDto
@@ -248,6 +256,12 @@ public class SupplierStatsDto
     public decimal TotalRevenue { get; set; }
     public decimal ThisMonthRevenue { get; set; }
     public decimal LastMonthRevenue { get; set; }
+    public int CompletedOrders { get; set; }
+    public int CancelledOrders { get; set; }
+    public int ShippingOrders { get; set; }
+    public int ConfirmedOrders { get; set; }
+    public int OutOfStockProducts { get; set; }
+    public decimal TodayRevenue { get; set; }
 }
 
 // ===== SUPPLIER ALERT DTOs =====
@@ -473,4 +487,25 @@ public class CreateSupplierBlindBoxDto
     public DateTime ExpiryDate { get; set; }
     public string? Contents { get; set; }
     public string? ImageUrl { get; set; }
+}
+
+// ===== DELIVERY BATCH DTOs (spec 3.3) =====
+
+public class DeliveryBatchDto
+{
+    public string District { get; set; } = string.Empty;
+    public string? Ward { get; set; }
+    public int OrderCount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public List<BatchOrderDto> Orders { get; set; } = new();
+}
+
+public class BatchOrderDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string? Address { get; set; }
+    public decimal TotalAmount { get; set; }
+    public int ItemCount { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

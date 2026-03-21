@@ -9,6 +9,20 @@ export interface AdminStats {
   monthlyGrowth: number;
   pendingOrders: number;
   lowStockProducts: number;
+  ordersToday: number;
+  pendingComplaints: number;
+  gmv: number;
+  fAndCRevenue: number;
+  activeMarts: number;
+  activeUsersCount: number;
+  activeSubscriptions: number;
+  churnRate: number;
+  todayRevenue: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  shippingOrders: number;
+  confirmedOrders: number;
+  newCustomersThisWeek: number;
 }
 
 export interface RevenueData {

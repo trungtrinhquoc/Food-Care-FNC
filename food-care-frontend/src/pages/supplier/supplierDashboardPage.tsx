@@ -16,6 +16,7 @@ import { ReportsSection } from '../../components/supplier/ReportsSection';
 import { SupplierShipmentManager } from '../../components/supplier/SupplierShipmentManager';
 import { RegistrationSection } from '../../components/supplier/RegistrationSection';
 import { SlaSection } from '../../components/supplier/SlaSection';
+import { DeliveryBatchesSection } from '../../components/supplier/DeliveryBatchesSection';
 // APIs
 import {
   profileApi,
@@ -230,7 +231,7 @@ export default function SupplierDashboardPage() {
   }
 
   // Tabs that require approved registration
-  const gatedTabs = ['products', 'orders', 'revenue', 'reviews', 'delivery', 'reports', 'sla'];
+  const gatedTabs = ['products', 'orders', 'revenue', 'reviews', 'delivery', 'delivery-batches', 'reports', 'sla'];
 
   // Render active section
   const renderSection = () => {
@@ -307,6 +308,9 @@ export default function SupplierDashboardPage() {
             onRefreshStats={loadStats}
           />
         );
+
+      case 'delivery-batches':
+        return <DeliveryBatchesSection />;
 
       case 'reports':
         return <ReportsSection />;

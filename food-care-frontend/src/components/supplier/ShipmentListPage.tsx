@@ -32,19 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-interface Shipment {
-  id: string;
-  externalReference: string;
-  warehouseName?: string;
-  status: string;
-  totalItems: number;
-  totalQuantity: number;
-  totalValue: number;
-  expectedDeliveryDate: string;
-  trackingNumber?: string;
-  createdAt: string;
-}
+import { shipmentsApi, type SupplierShipment } from '../../services/supplier/supplierApi';
 
 interface ShipmentListProps {
   supplierId?: string;
@@ -52,7 +40,7 @@ interface ShipmentListProps {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const ShipmentListPage: React.FC<ShipmentListProps> = ({ supplierId: _supplierId }) => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [shipments, setShipments] = useState<SupplierShipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     status: 'all',
@@ -75,10 +63,8 @@ export const ShipmentListPage: React.FC<ShipmentListProps> = ({ supplierId: _sup
   const loadShipments = async () => {
     try {
       setLoading(true);
-      // API call here - mock data for now
-      setShipments([]);
-      // const response = await supplierShipmentApi.getMyShipments(filters);
-      // setShipments(response.data);
+      const response = await shipmentsApi.getShipments(1, 100);
+      setShipments(response.items || []);
     } catch (error) {
       console.error('Error loading shipments:', error);
     } finally {
@@ -88,10 +74,14 @@ export const ShipmentListPage: React.FC<ShipmentListProps> = ({ supplierId: _sup
 
   const loadStats = async () => {
     try {
-      // Mock stats for now
-      setStats({ draft: 0, dispatched: 0, inTransit: 0, delivered: 0 });
-      // const response = await supplierShipmentApi.getStats();
-      // setStats(response);
+      const response = await shipmentsApi.getShipments(1, 1000);
+      const items = response.items || [];
+      setStats({
+        draft: items.filter(s => s.status === 'Draft').length,
+        dispatched: items.filter(s => s.status === 'Dispatched').length,
+        inTransit: items.filter(s => s.status === 'InTransit').length,
+        delivered: items.filter(s => s.status === 'Stored' || s.status === 'Closed').length,
+      });
     } catch (error) {
       console.error('Error loading stats:', error);
     }

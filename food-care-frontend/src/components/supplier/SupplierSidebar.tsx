@@ -17,6 +17,7 @@ import {
   LogOut,
   ShieldCheck,
   Lock,
+  MapPin,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -39,6 +40,7 @@ export function SupplierSidebar({ activeTab, onTabChange, badges = {}, onLogout,
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, requiresApproval: true },
     { id: 'reviews', label: 'Đánh giá', icon: Star, badge: badges.reviews, requiresApproval: true },
     { id: 'delivery', label: 'Xác nhận giao hàng', icon: Truck, requiresApproval: true },
+    { id: 'delivery-batches', label: 'Lô giao hàng', icon: MapPin, requiresApproval: true },
     { id: 'reports', label: 'Báo cáo vận hành', icon: FileText, requiresApproval: true },
     { id: 'sla', label: 'SLA & Hiệu suất', icon: ShieldCheck, requiresApproval: true },
     { id: 'settings', label: 'Cài đặt', icon: Settings },

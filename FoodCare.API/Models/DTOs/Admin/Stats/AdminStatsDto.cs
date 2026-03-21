@@ -17,6 +17,12 @@ public class AdminStatsDto
     public int ActiveUsersCount { get; set; }
     public int ActiveSubscriptions { get; set; }
     public decimal ChurnRate { get; set; }
+    public decimal TodayRevenue { get; set; }
+    public int CompletedOrders { get; set; }
+    public int CancelledOrders { get; set; }
+    public int ShippingOrders { get; set; }
+    public int ConfirmedOrders { get; set; }
+    public int NewCustomersThisWeek { get; set; }
 }
 
 public class RevenueDataDto

@@ -48,6 +48,9 @@ public partial class User
     [Column(TypeName = "decimal(15,2)")]
     public decimal AccountBalance { get; set; } = 0;
 
+    // Mart đang chọn (Supplier đóng vai trò mart)
+    public int? SelectedMartId { get; set; }
+
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();

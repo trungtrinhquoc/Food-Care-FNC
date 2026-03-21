@@ -12,6 +12,8 @@ export { default as suppliersService } from './suppliersService';
 export { default as adminProductsService } from './adminProductsService';
 export { complaintsService } from './complaintsService';
 export { financeService } from './financeService';
+export { alertsService } from './alertsService';
+export { zaloService } from './zaloService';
 
 // Re-export individual functions for convenience
 export * from './customersService';
@@ -23,3 +25,5 @@ export * from './suppliersService';
 export * from './adminProductsService';
 export * from './complaintsService';
 export * from './financeService';
+export * from './alertsService';
+export * from './zaloService';

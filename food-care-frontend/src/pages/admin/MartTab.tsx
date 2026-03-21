@@ -18,6 +18,7 @@ import api from "../../services/api";
 import type { MartSummary } from "../../types/admin";
 import { useDebounce } from "../../hooks/useDebounce";
 import { toast } from "sonner";
+import { alertsService, type AdminAlert } from "../../services/admin/alertsService";
 
 // ── SLA progress bar ──────────────────────────────────────────────────────────
 function SlaBar({ rate }: { rate: number }) {
@@ -293,6 +294,7 @@ export function MartTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedMart, setSelectedMart] = useState<MartSummary | null>(null);
+  const [slaAlerts, setSlaAlerts] = useState<AdminAlert[]>([]);
   const debouncedSearch = useDebounce(search, 400);
 
   const loadMarts = useCallback(async () => {
@@ -310,6 +312,13 @@ export function MartTab() {
   }, []);
 
   useEffect(() => { loadMarts(); }, [loadMarts]);
+
+  // Load SLA violation alerts from backend
+  useEffect(() => {
+    alertsService.getAlerts({ type: 'sla_violation', isRead: false, pageSize: 50 })
+      .then(setSlaAlerts)
+      .catch(() => {});
+  }, []);
 
   // Client-side filter
   const filtered = marts.filter(m => {
@@ -333,6 +342,28 @@ export function MartTab() {
 
   return (
     <div className="space-y-5">
+      {/* Backend SLA Alerts */}
+      {slaAlerts.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex gap-3">
+          <ShieldAlert className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800 mb-1">
+              {slaAlerts.length} cảnh báo SLA từ hệ thống giám sát
+            </p>
+            <ul className="text-sm text-red-700 space-y-0.5">
+              {slaAlerts.slice(0, 5).map(a => (
+                <li key={a.id}>
+                  <span className="font-medium">{a.storeName}</span>: {a.message}
+                </li>
+              ))}
+              {slaAlerts.length > 5 && (
+                <li className="text-xs text-red-500">và {slaAlerts.length - 5} cảnh báo khác...</li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* SLA warning banner */}
       {slaWarnings.length > 0 && (
         <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 flex gap-3">
