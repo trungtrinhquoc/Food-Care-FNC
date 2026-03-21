@@ -879,6 +879,51 @@ export const deliveryBatchesApi = {
   },
 };
 
+// =====================================================
+// BLIND BOX API
+// =====================================================
+
+export interface SupplierBlindBox {
+  id: string;
+  title: string;
+  description: string;
+  originalValue: number;
+  blindBoxPrice: number;
+  quantity: number;
+  quantitySold: number;
+  expiryDate: string;
+  contents: string | null;
+  imageUrl: string | null;
+  status: 'pending' | 'approved' | 'active' | 'sold_out' | 'archived' | 'rejected';
+  rejectionReason: string | null;
+  createdAt: string;
+  daysUntilExpiry: number;
+  quantityAvailable: number;
+}
+
+export interface CreateBlindBoxRequest {
+  title: string;
+  description: string | null;
+  originalValue: number;
+  blindBoxPrice: number;
+  quantity: number;
+  expiryDate: string;
+  contents: string | null;
+  imageUrl: string | null;
+}
+
+export const blindBoxApi = {
+  getMyBlindBoxes: async (): Promise<SupplierBlindBox[]> => {
+    const response = await supplierApi.get<SupplierBlindBox[]>('/blind-boxes');
+    return response.data;
+  },
+
+  create: async (request: CreateBlindBoxRequest): Promise<{ id: string; message: string }> => {
+    const response = await supplierApi.post<{ id: string; message: string }>('/blind-boxes', request);
+    return response.data;
+  },
+};
+
 export default {
   profile: profileApi,
   products: productsApi,
@@ -893,4 +938,5 @@ export default {
   nearExpiry: nearExpiryApi,
   sla: slaApi,
   deliveryBatches: deliveryBatchesApi,
+  blindBox: blindBoxApi,
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { adminCouponsService } from '../../services/admin/adminCouponsService';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -47,7 +47,7 @@ export default function AdminCouponsPage() {
 
     const fetchCoupons = async () => {
         try {
-            const { data } = await api.get('/admin/coupons');
+            const data = await adminCouponsService.getList();
             setCoupons(data);
         } catch {
             toast.error('Lỗi tải danh sách mã giảm giá');
@@ -105,10 +105,10 @@ export default function AdminCouponsPage() {
                 usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : null,
             };
             if (editingCoupon) {
-                await api.put(`/admin/coupons/${editingCoupon.id}`, payload);
+                await adminCouponsService.update(editingCoupon.id, payload as Parameters<typeof adminCouponsService.update>[1]);
                 toast.success('Cập nhật mã giảm giá thành công!');
             } else {
-                await api.post('/admin/coupons', payload);
+                await adminCouponsService.create(payload as Parameters<typeof adminCouponsService.create>[0]);
                 toast.success('Tạo mã giảm giá thành công!');
             }
             setIsModalOpen(false);
@@ -121,7 +121,7 @@ export default function AdminCouponsPage() {
     const handleDelete = async (id: number) => {
         if (!window.confirm('Bạn có chắc muốn xóa mã giảm giá này?')) return;
         try {
-            await api.delete(`/admin/coupons/${id}`);
+            await adminCouponsService.delete(id);
             toast.success('Đã xóa mã giảm giá');
             fetchCoupons();
         } catch {

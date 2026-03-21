@@ -333,7 +333,7 @@ export function ProductsSection({
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => { setBlindBoxProduct(product); setBlindBoxDialogOpen(true); }}
+                                        onClick={() => { setBlindBoxProduct(p); setBlindBoxDialogOpen(true); }}
                                         className="flex-shrink-0 ml-4 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
                                     >
                                         Tạo Blind Box

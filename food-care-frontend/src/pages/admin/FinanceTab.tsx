@@ -115,7 +115,7 @@ export function FinanceTab() {
         financeService.getSettlements(month, year),
       ]);
       setSummary(s);
-      setSettlements(Array.isArray(st) ? st : st?.items ?? []);
+      setSettlements(Array.isArray(st) ? st : []);
     } catch {
       toast.error("Không thể tải dữ liệu tài chính");
     } finally {

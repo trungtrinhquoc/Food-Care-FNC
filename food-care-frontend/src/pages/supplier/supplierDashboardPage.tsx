@@ -17,6 +17,7 @@ import { SupplierShipmentManager } from '../../components/supplier/SupplierShipm
 import { RegistrationSection } from '../../components/supplier/RegistrationSection';
 import { SlaSection } from '../../components/supplier/SlaSection';
 import { DeliveryBatchesSection } from '../../components/supplier/DeliveryBatchesSection';
+import { BlindBoxSection } from '../../components/supplier/BlindBoxSection';
 // APIs
 import {
   profileApi,
@@ -231,7 +232,7 @@ export default function SupplierDashboardPage() {
   }
 
   // Tabs that require approved registration
-  const gatedTabs = ['products', 'orders', 'revenue', 'reviews', 'delivery', 'delivery-batches', 'reports', 'sla'];
+  const gatedTabs = ['products', 'orders', 'revenue', 'reviews', 'delivery', 'delivery-batches', 'blind-boxes', 'reports', 'sla'];
 
   // Render active section
   const renderSection = () => {
@@ -311,6 +312,9 @@ export default function SupplierDashboardPage() {
 
       case 'delivery-batches':
         return <DeliveryBatchesSection />;
+
+      case 'blind-boxes':
+        return <BlindBoxSection />;
 
       case 'reports':
         return <ReportsSection />;

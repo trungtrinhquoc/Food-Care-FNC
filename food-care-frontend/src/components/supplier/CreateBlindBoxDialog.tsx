@@ -12,17 +12,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Gift, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '@/services/api';
-
-interface NearExpiryProduct {
-  productId: string;
-  productName: string;
-  daysUntilExpiry: number;
-  expiryDate?: string;
-  currentStock?: number;
-  imageUrl?: string;
-  basePrice?: number;
-}
+import { blindBoxApi, type NearExpiryProduct } from '../../services/supplier/supplierApi';
 
 interface CreateBlindBoxDialogProps {
   open: boolean;
@@ -39,6 +29,12 @@ export function CreateBlindBoxDialog({
 }: CreateBlindBoxDialogProps) {
   const suggestedPrice = product?.basePrice ? Math.round(product.basePrice * 0.5) : 0;
   const suggestedOriginal = product?.basePrice ?? 0;
+
+  // Map shared NearExpiryProduct fields to dialog needs
+  const productName = product?.name ?? '';
+  const productStock = product?.stockQuantity;
+  const productExpiryDate = product?.expiryDate;
+  const productDaysUntilExpiry = product?.daysUntilExpiry ?? 0;
 
   const [form, setForm] = useState({
     title: '',
@@ -85,13 +81,13 @@ export function CreateBlindBoxDialog({
 
     setLoading(true);
     try {
-      await api.post('/supplier/blind-boxes', {
+      await blindBoxApi.create({
         title: form.title.trim(),
         description: form.description.trim() || null,
         originalValue: form.originalValue,
         blindBoxPrice: form.blindBoxPrice,
         quantity: form.quantity,
-        expiryDate: product.expiryDate ?? new Date(Date.now() + product.daysUntilExpiry * 86400000).toISOString(),
+        expiryDate: productExpiryDate ?? new Date(Date.now() + productDaysUntilExpiry * 86400000).toISOString(),
         contents: form.contents.trim() || null,
         imageUrl: form.imageUrl.trim() || null,
       });
@@ -116,7 +112,7 @@ export function CreateBlindBoxDialog({
             Tạo Blind Box
           </DialogTitle>
           <DialogDescription>
-            Từ sản phẩm: <strong>{product.productName}</strong> — còn <strong>{product.daysUntilExpiry} ngày</strong> HSD
+            Từ sản phẩm: <strong>{productName}</strong> — còn <strong>{productDaysUntilExpiry} ngày</strong> HSD
           </DialogDescription>
         </DialogHeader>
 
@@ -136,7 +132,7 @@ export function CreateBlindBoxDialog({
               type="text"
               value={form.title}
               onChange={e => handleChange('title', e.target.value)}
-              placeholder={`Blind Box ${product.productName}`}
+              placeholder={`Blind Box ${productName}`}
               maxLength={200}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
@@ -193,11 +189,11 @@ export function CreateBlindBoxDialog({
               value={form.quantity}
               onChange={e => handleChange('quantity', Number(e.target.value))}
               min={1}
-              max={product.currentStock ?? 999}
+              max={productStock ?? 999}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
-            {product.currentStock && (
-              <p className="text-xs text-gray-400 mt-1">Tồn kho hiện tại: {product.currentStock}</p>
+            {productStock && (
+              <p className="text-xs text-gray-400 mt-1">Tồn kho hiện tại: {productStock}</p>
             )}
           </div>
 

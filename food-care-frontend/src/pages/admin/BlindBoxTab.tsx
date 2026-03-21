@@ -13,7 +13,7 @@ import {
 import {
   Package, Loader2, RefreshCw, X,
 } from "lucide-react";
-import api from "../../services/api";
+import { adminBlindBoxService } from "../../services/admin/adminBlindBoxService";
 import { toast } from "sonner";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -224,8 +224,7 @@ export function BlindBoxTab() {
     try {
       const params: Record<string, string | number> = { page: p, pageSize };
       if (s !== "all") params.status = s;
-      const res = await api.get("/admin/blind-boxes", { params });
-      const data: BlindBoxListResult = res.data;
+      const data: BlindBoxListResult = await adminBlindBoxService.getList(params);
       setItems(data.items ?? []);
       setTotalCount(data.totalCount ?? 0);
     } catch {
@@ -254,7 +253,7 @@ export function BlindBoxTab() {
   const handleApprove = async (adjustedPrice?: number) => {
     if (!approveTarget) return;
     try {
-      await api.patch(`/admin/blind-boxes/${approveTarget.id}/approve`, { adjustedPrice });
+      await adminBlindBoxService.approve(approveTarget.id, adjustedPrice);
       toast.success("Blind box đã được duyệt");
       setApproveTarget(null);
       loadData();
@@ -266,7 +265,7 @@ export function BlindBoxTab() {
   const handleReject = async (reason: string) => {
     if (!rejectTarget) return;
     try {
-      await api.patch(`/admin/blind-boxes/${rejectTarget.id}/reject`, { reason });
+      await adminBlindBoxService.reject(rejectTarget.id, reason);
       toast.success("Blind box đã bị từ chối");
       setRejectTarget(null);
       loadData();
@@ -277,7 +276,7 @@ export function BlindBoxTab() {
 
   const handleArchive = async (item: BlindBoxDto) => {
     try {
-      await api.patch(`/admin/blind-boxes/${item.id}/archive`);
+      await adminBlindBoxService.archive(item.id);
       toast.success("Blind box đã được lưu trữ");
       loadData();
     } catch {
