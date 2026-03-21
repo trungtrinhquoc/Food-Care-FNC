@@ -78,7 +78,6 @@ public class SubscriptionPaymentJob : BackgroundService
         // Lấy tất cả subscriptions active mà đã tới hạn giao
         var dueSubscriptions = await db.Subscriptions
             .Include(s => s.Product)
-            .Include(s => s.User)
             .Where(s => s.Status == SubStatus.active && s.NextDeliveryDate <= today)
             .ToListAsync(ct);
 

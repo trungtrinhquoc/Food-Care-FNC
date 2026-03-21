@@ -24,10 +24,13 @@ namespace FoodCare.API.Services.Implementations
         {
             var clientId = _config["PaymentSettings:PayOS:ClientId"];
             var apiKey = _config["PaymentSettings:PayOS:ApiKey"];
-            var checksumKey = _config["PaymentSettings:PayOS:ChecksumKey"];
+            var checksumKey = _config["PaymentSettings:PayOS:ChecksumKey"]
+                ?? throw new InvalidOperationException("PayOS ChecksumKey is not configured.");
 
-            var returnUrl = _config["PaymentSettings:PayOS:ReturnUrl"];
-            var cancelUrl = _config["PaymentSettings:PayOS:CancelUrl"];
+            var returnUrl = _config["PaymentSettings:PayOS:ReturnUrl"]
+                ?? throw new InvalidOperationException("PayOS ReturnUrl is not configured.");
+            var cancelUrl = _config["PaymentSettings:PayOS:CancelUrl"]
+                ?? throw new InvalidOperationException("PayOS CancelUrl is not configured.");
 
             var signature = CreateSignature(
                 orderCode,
@@ -91,7 +94,8 @@ namespace FoodCare.API.Services.Implementations
         }
         public bool VerifySignature(string payload, string receivedSignature)
         {
-            var checksumKey = _config["PaymentSettings:PayOS:ChecksumKey"];
+            var checksumKey = _config["PaymentSettings:PayOS:ChecksumKey"]
+                ?? throw new InvalidOperationException("PayOS ChecksumKey is not configured.");
 
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(checksumKey));
             var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));

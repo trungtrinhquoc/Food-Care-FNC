@@ -116,6 +116,7 @@ public class MappingProfile : Profile
 
     private static bool ParseIsSubscription(string? snapshot)
     {
+        if (snapshot is null) return false;
         try
         {
             using var doc = System.Text.Json.JsonDocument.Parse(snapshot);

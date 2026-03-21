@@ -124,6 +124,7 @@ builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>();
 builder.Services.AddScoped<IAdminComplaintService, AdminComplaintService>();
 builder.Services.AddScoped<IAdminFinanceService, AdminFinanceService>();
+builder.Services.AddScoped<IAdminAlertService, AdminAlertService>();
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPayOsService,PayOsService >();
@@ -150,6 +151,7 @@ builder.Services.AddScoped<FoodCare.API.Services.Interfaces.IGeocodingService, F
 
 // Background service: auto-process subscription payments via FNC Pay
 builder.Services.AddHostedService<FoodCare.API.Jobs.SubscriptionPaymentJob>();
+builder.Services.AddHostedService<FoodCare.API.Jobs.SlaMonitoringJob>();
 
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
 
