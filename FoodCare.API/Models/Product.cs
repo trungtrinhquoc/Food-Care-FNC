@@ -19,6 +19,10 @@ public partial class Product
 
     public string? Description { get; set; }
 
+    public string? Manufacturer { get; set; }
+
+    public string? Origin { get; set; }
+
     public string? Images { get; set; }
 
     public decimal BasePrice { get; set; }

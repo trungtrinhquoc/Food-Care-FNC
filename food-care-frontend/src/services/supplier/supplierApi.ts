@@ -62,6 +62,8 @@ export interface SupplierProduct {
   id: string;
   name: string;
   description?: string;
+  manufacturer?: string;
+  origin?: string;
   basePrice: number;
   price?: number;
   cost?: number;
@@ -276,6 +278,8 @@ export interface SubmitRegistrationRequest {
 export interface CreateProductRequest {
   name: string;
   description?: string;
+  manufacturer?: string;
+  origin?: string;
   basePrice: number;
   cost?: number;
   stockQuantity: number;
@@ -290,6 +294,8 @@ export interface CreateProductRequest {
 export interface UpdateProductRequest {
   name?: string;
   description?: string;
+  manufacturer?: string;
+  origin?: string;
   basePrice?: number;
   cost?: number;
   stockQuantity?: number;
@@ -845,6 +851,79 @@ export const slaApi = {
   },
 };
 
+// =====================================================
+// DELIVERY BATCHES API
+// =====================================================
+
+export interface BatchOrder {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerAddress: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface DeliveryBatch {
+  district: string;
+  orderCount: number;
+  totalAmount: number;
+  orders: BatchOrder[];
+}
+
+export const deliveryBatchesApi = {
+  getBatches: async (): Promise<DeliveryBatch[]> => {
+    const response = await supplierApi.get<DeliveryBatch[]>('/delivery-batches');
+    return response.data;
+  },
+};
+
+// =====================================================
+// BLIND BOX API
+// =====================================================
+
+export interface SupplierBlindBox {
+  id: string;
+  title: string;
+  description: string;
+  originalValue: number;
+  blindBoxPrice: number;
+  quantity: number;
+  quantitySold: number;
+  expiryDate: string;
+  contents: string | null;
+  imageUrl: string | null;
+  status: 'pending' | 'approved' | 'active' | 'sold_out' | 'archived' | 'rejected';
+  rejectionReason: string | null;
+  createdAt: string;
+  daysUntilExpiry: number;
+  quantityAvailable: number;
+}
+
+export interface CreateBlindBoxRequest {
+  title: string;
+  description: string | null;
+  originalValue: number;
+  blindBoxPrice: number;
+  quantity: number;
+  expiryDate: string;
+  contents: string | null;
+  imageUrl: string | null;
+}
+
+export const blindBoxApi = {
+  getMyBlindBoxes: async (): Promise<SupplierBlindBox[]> => {
+    const response = await supplierApi.get<SupplierBlindBox[]>('/blind-boxes');
+    return response.data;
+  },
+
+  create: async (request: CreateBlindBoxRequest): Promise<{ id: string; message: string }> => {
+    const response = await supplierApi.post<{ id: string; message: string }>('/blind-boxes', request);
+    return response.data;
+  },
+};
+
 export default {
   profile: profileApi,
   products: productsApi,
@@ -858,4 +937,6 @@ export default {
   inboundSessions: inboundSessionsApi,
   nearExpiry: nearExpiryApi,
   sla: slaApi,
+  deliveryBatches: deliveryBatchesApi,
+  blindBox: blindBoxApi,
 };

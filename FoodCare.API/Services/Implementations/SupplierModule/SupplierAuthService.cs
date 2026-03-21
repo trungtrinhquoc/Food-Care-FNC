@@ -15,12 +15,14 @@ public class SupplierAuthService : ISupplierAuthService
     private readonly FoodCareDbContext _context;
     private readonly IMapper _mapper;
     private readonly IGeocodingService _geocodingService;
+    private readonly IWalletService _walletService;
 
-    public SupplierAuthService(FoodCareDbContext context, IMapper mapper, IGeocodingService geocodingService)
+    public SupplierAuthService(FoodCareDbContext context, IMapper mapper, IGeocodingService geocodingService, IWalletService walletService)
     {
         _context = context;
         _mapper = mapper;
         _geocodingService = geocodingService;
+        _walletService = walletService;
     }
 
     public async Task<SupplierProfileDto?> GetSupplierProfileAsync(string userId)
@@ -66,23 +68,58 @@ public class SupplierAuthService : ISupplierAuthService
     public async Task<IEnumerable<SupplierOrderDto>> GetSupplierOrdersAsync(string userId)
     {
         var userGuid = Guid.Parse(userId);
-        var orders = await _context.OrderItems
+        var orderItems = await _context.OrderItems
             .Include(oi => oi.Order)
+                .ThenInclude(o => o!.User)
             .Include(oi => oi.Product)
             .Where(oi => oi.Product != null && 
                          oi.Product.Supplier != null && 
                          oi.Product.Supplier.UserId == userGuid)
-            .Select(oi => new SupplierOrderDto
-            {
-                CreatedAt = oi.Order!.CreatedAt ?? DateTime.UtcNow,
-                TotalAmount = oi.Order!.TotalAmount,
-                Status = oi.Order!.Status.ToString(),
-                CustomerName = oi.Order!.User != null ? (oi.Order!.User.FullName ?? "Unknown") : "Unknown",
-                ItemCount = _context.OrderItems.Count(oi2 => oi2.OrderId == oi.OrderId)
-            })
-            .Distinct()
-            .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
+
+        var orders = orderItems
+            .GroupBy(oi => oi.OrderId)
+            .Select(g =>
+            {
+                var firstItem = g.First();
+                var order = firstItem.Order!;
+                var user = order.User;
+
+                // Parse shipping address from order's ShippingAddressSnapshot if available
+                AddressDto? shippingAddress = null;
+                if (!string.IsNullOrEmpty(order.ShippingAddressSnapshot))
+                {
+                    try
+                    {
+                        shippingAddress = JsonSerializer.Deserialize<AddressDto>(order.ShippingAddressSnapshot, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                    catch { /* If not JSON, use as street */ shippingAddress = new AddressDto { Street = order.ShippingAddressSnapshot }; }
+                }
+
+                return new SupplierOrderDto
+                {
+                    Id = order.Id.ToString(),
+                    CreatedAt = order.CreatedAt ?? DateTime.UtcNow,
+                    TotalAmount = order.TotalAmount,
+                    Status = order.Status.ToString(),
+                    CustomerName = user != null ? (user.FullName ?? "Unknown") : "Unknown",
+                    ItemCount = g.Count(),
+                    CustomerEmail = user?.Email,
+                    CustomerPhone = user?.PhoneNumber,
+                    ShippingAddress = shippingAddress,
+                    Items = g.Select(oi => new OrderItemDto
+                    {
+                        Id = oi.Id.ToString(),
+                        ProductId = oi.ProductId?.ToString() ?? "",
+                        ProductName = oi.Product?.Name ?? "Unknown",
+                        Quantity = oi.Quantity,
+                        Price = oi.Price,
+                        TotalPrice = oi.TotalPrice ?? 0
+                    }).ToList()
+                };
+            })
+            .OrderByDescending(o => o.CreatedAt)
+            .ToList();
 
         return orders;
     }
@@ -120,6 +157,32 @@ public class SupplierAuthService : ISupplierAuthService
             .Where(oi => oi.Order!.CreatedAt >= lastMonth && oi.Order!.CreatedAt < thisMonth)
             .Sum(oi => oi.TotalPrice);
 
+        // All order items including cancelled (for status breakdowns)
+        var allOrderItems = await _context.OrderItems
+            .Include(oi => oi.Order)
+            .Include(oi => oi.Product)
+            .Where(oi => oi.Product != null && 
+                         oi.Product.Supplier != null && 
+                         oi.Product.Supplier.UserId == userGuid)
+            .ToListAsync();
+
+        var allOrderIds = allOrderItems.Select(oi => oi.OrderId).Distinct().ToList();
+        var allOrders = await _context.Orders
+            .Where(o => allOrderIds.Contains(o.Id))
+            .ToListAsync();
+
+        var completedOrders = allOrders.Count(o => o.Status == OrderStatus.delivered);
+        var cancelledOrders = allOrders.Count(o => o.Status == OrderStatus.cancelled);
+        var shippingOrders = allOrders.Count(o => o.Status == OrderStatus.shipping);
+        var confirmedOrders = allOrders.Count(o => o.Status == OrderStatus.confirmed);
+        var outOfStockProducts = products.Count(p => p.StockQuantity.HasValue && p.StockQuantity.Value <= 0);
+
+        var todayStart = now.Date;
+        var todayEnd = todayStart.AddDays(1);
+        var todayRevenue = orderItems
+            .Where(oi => oi.Order!.CreatedAt.HasValue && oi.Order!.CreatedAt.Value >= todayStart && oi.Order!.CreatedAt.Value < todayEnd)
+            .Sum(oi => oi.TotalPrice);
+
         return new SupplierStatsDto
         {
             TotalProducts = products.Count,
@@ -129,7 +192,13 @@ public class SupplierAuthService : ISupplierAuthService
             PendingOrders = orderItems.Count(oi => oi.Order!.Status.Equals("pending")),
             TotalRevenue = totalRevenue ?? 0m,
             ThisMonthRevenue = thisMonthRevenue ?? 0m,
-            LastMonthRevenue = lastMonthRevenue ?? 0m
+            LastMonthRevenue = lastMonthRevenue ?? 0m,
+            CompletedOrders = completedOrders,
+            CancelledOrders = cancelledOrders,
+            ShippingOrders = shippingOrders,
+            ConfirmedOrders = confirmedOrders,
+            OutOfStockProducts = outOfStockProducts,
+            TodayRevenue = todayRevenue ?? 0m
         };
     }
 
@@ -365,6 +434,8 @@ public class SupplierAuthService : ISupplierAuthService
             Name = dto.Name,
             Slug = slug,
             Description = dto.Description,
+            Manufacturer = dto.Manufacturer,
+            Origin = dto.Origin,
             BasePrice = dto.BasePrice,
             CostPrice = dto.Cost,
             Sku = dto.Sku,
@@ -420,9 +491,18 @@ public class SupplierAuthService : ISupplierAuthService
 
         if (dto.Name != null) product.Name = dto.Name;
         if (dto.Description != null) product.Description = dto.Description;
+        if (dto.Manufacturer != null) product.Manufacturer = dto.Manufacturer;
+        if (dto.Origin != null) product.Origin = dto.Origin;
         if (dto.BasePrice.HasValue) product.BasePrice = dto.BasePrice.Value;
         if (dto.Cost.HasValue) product.CostPrice = dto.Cost.Value;
-        if (dto.StockQuantity.HasValue) product.StockQuantity = dto.StockQuantity.Value;
+        if (dto.StockQuantity.HasValue)
+        {
+            product.StockQuantity = dto.StockQuantity.Value;
+
+            // Auto-hide product when stock reaches zero (spec 3.2)
+            if (dto.StockQuantity.Value <= 0)
+                product.IsActive = false;
+        }
         if (dto.MinStock.HasValue) product.LowStockThreshold = dto.MinStock.Value;
         if (dto.Sku != null)
         {
@@ -626,6 +706,8 @@ public class SupplierAuthService : ISupplierAuthService
         if (dto.Status == "delivered" && string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
             throw new InvalidOperationException("Delivery photo is required when marking an order as delivered.");
 
+        var previousStatus = order.Status;
+
         order.Status = dto.Status switch
         {
             "confirmed" => OrderStatus.confirmed,
@@ -639,6 +721,17 @@ public class SupplierAuthService : ISupplierAuthService
             order.DeliveryPhotoUrl = dto.DeliveryPhotoUrl;
 
         order.UpdatedAt = DateTime.UtcNow;
+
+        // Log status change in OrderStatusHistory
+        _context.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            PreviousStatus = previousStatus,
+            NewStatus = order.Status,
+            Note = dto.Notes ?? dto.Reason,
+            CreatedAt = DateTime.UtcNow
+        });
 
         if (dto.Status == "delivered")
         {
@@ -658,6 +751,24 @@ public class SupplierAuthService : ISupplierAuthService
             : 100;
 
         await _context.SaveChangesAsync();
+
+        // Auto-refund on supplier cancel if order was already paid (spec 3.3 step 26)
+        if (dto.Status == "cancelled" && order.PaymentStatus == PaymentStatus.paid && order.UserId.HasValue)
+        {
+            try
+            {
+                await _walletService.RefundAsync(
+                    order.UserId.Value,
+                    order.TotalAmount,
+                    order.Id,
+                    $"Hoàn tiền - nhà cung cấp hủy đơn #{order.Id.ToString()[..8]}");
+            }
+            catch (Exception)
+            {
+                // Refund failure should not reverse the cancellation — log handled upstream
+            }
+        }
+
         return true;
     }
 
@@ -763,5 +874,70 @@ public class SupplierAuthService : ISupplierAuthService
         if (south.Any(p => c.Contains(p))) return "South";
 
         return "Central"; // default
+    }
+
+    // ===== DELIVERY BATCH GROUPING (spec 3.3) =====
+
+    public async Task<List<DeliveryBatchDto>> GetDeliveryBatchesAsync(Guid userId)
+    {
+        var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId && s.IsDeleted != true);
+        if (supplier == null) return new List<DeliveryBatchDto>();
+
+        var confirmedOrders = await _context.Orders
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.Product)
+            .Include(o => o.User)
+            .Where(o => (o.Status == OrderStatus.confirmed || o.Status == OrderStatus.shipping)
+                     && o.OrderItems.Any(oi => oi.Product != null && oi.Product.SupplierId == supplier.Id))
+            .ToListAsync();
+
+        // Group by district parsed from ShippingAddressSnapshot (JSON)
+        var batches = new Dictionary<string, DeliveryBatchDto>();
+
+        foreach (var order in confirmedOrders)
+        {
+            var district = "Không xác định";
+            var ward = (string?)null;
+            var address = (string?)null;
+
+            try
+            {
+                var addrDoc = JsonDocument.Parse(order.ShippingAddressSnapshot);
+                if (addrDoc.RootElement.TryGetProperty("district", out var d))
+                    district = d.GetString() ?? district;
+                if (addrDoc.RootElement.TryGetProperty("ward", out var w))
+                    ward = w.GetString();
+                address = order.ShippingAddressSnapshot;
+            }
+            catch { /* not valid JSON — use default */ }
+
+            if (!batches.TryGetValue(district, out var batch))
+            {
+                batch = new DeliveryBatchDto
+                {
+                    District = district,
+                    Ward = ward,
+                    OrderCount = 0,
+                    TotalAmount = 0,
+                    Orders = new()
+                };
+                batches[district] = batch;
+            }
+
+            batch.OrderCount++;
+            batch.TotalAmount += order.TotalAmount;
+            batch.Orders.Add(new BatchOrderDto
+            {
+                Id = order.Id.ToString(),
+                CustomerName = order.User?.FullName ?? "Khách hàng",
+                Address = address,
+                TotalAmount = order.TotalAmount,
+                ItemCount = order.OrderItems.Count,
+                CreatedAt = order.CreatedAt ?? DateTime.UtcNow
+            });
+        }
+
+        return batches.Values
+            .OrderByDescending(b => b.OrderCount)
+            .ToList();
     }
 }

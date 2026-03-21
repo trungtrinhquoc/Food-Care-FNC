@@ -18,6 +18,20 @@ const defaultStats: AdminStats = {
   monthlyGrowth: 0,
   pendingOrders: 0,
   lowStockProducts: 0,
+  ordersToday: 0,
+  pendingComplaints: 0,
+  gmv: 0,
+  fAndCRevenue: 0,
+  activeMarts: 0,
+  activeUsersCount: 0,
+  activeSubscriptions: 0,
+  churnRate: 0,
+  todayRevenue: 0,
+  completedOrders: 0,
+  cancelledOrders: 0,
+  shippingOrders: 0,
+  confirmedOrders: 0,
+  newCustomersThisWeek: 0,
 };
 
 export function useDashboardStats(): UseDashboardStatsReturn {

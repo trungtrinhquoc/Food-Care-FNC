@@ -11,10 +11,12 @@ namespace FoodCare.API.Services.Implementations.Admin;
 public class AdminOrderService : IAdminOrderService
 {
     private readonly FoodCareDbContext _context;
+    private readonly ICommissionService _commissionService;
 
-    public AdminOrderService(FoodCareDbContext context)
+    public AdminOrderService(FoodCareDbContext context, ICommissionService commissionService)
     {
         _context = context;
+        _commissionService = commissionService;
     }
 
     public async Task<PagedResult<AdminOrderDto>> GetOrdersAsync(AdminOrderFilterDto filter)
@@ -240,6 +242,13 @@ public class AdminOrderService : IAdminOrderService
                     paymentLog.UpdatedAt = DateTime.UtcNow;
                 }
             }
+
+            // Record commission — staged on shared DbContext, committed with SaveChanges below
+            if (order.MartId.HasValue)
+            {
+                await _commissionService.PrepareCommissionForOrderAsync(
+                    order.Id, order.MartId.Value, order.TotalAmount);
+            }
         }
 
         // Handle refund when order is cancelled
@@ -261,6 +270,12 @@ public class AdminOrderService : IAdminOrderService
                     paymentLog.UpdatedAt = DateTime.UtcNow;
                 }
             }
+        }
+
+        // Reverse commission when order is returned
+        if (newStatus == OrderStatus.returned && previousStatus != OrderStatus.returned)
+        {
+            await _commissionService.PrepareCommissionRefundAsync(order.Id);
         }
 
         // === TẠO THÔNG BÁO CHO NGƯỜI DÙNG ===

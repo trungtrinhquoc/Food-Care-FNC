@@ -189,6 +189,10 @@ export interface SupplierOrder {
   status: string;
   customerName: string;
   itemCount: number;
+  customerEmail?: string;
+  customerPhone?: string;
+  shippingAddress?: Address;
+  items?: OrderItem[];
 }
 
 export interface SupplierStats {
@@ -200,6 +204,12 @@ export interface SupplierStats {
   totalRevenue: number;
   thisMonthRevenue: number;
   lastMonthRevenue: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  shippingOrders: number;
+  confirmedOrders: number;
+  outOfStockProducts: number;
+  todayRevenue: number;
 }
 
 // ===== DASHBOARD METRICS TYPES =====

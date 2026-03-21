@@ -33,6 +33,13 @@ public partial class Order
 
     public Guid? SubscriptionId { get; set; }
 
+    // Mart that fulfills this order (1 order = 1 mart)
+    public int? MartId { get; set; }
+
+    // Expected delivery time window for SLA tracking
+    public DateTime? ExpectedDeliveryStart { get; set; }
+    public DateTime? ExpectedDeliveryEnd { get; set; }
+
     public string? Note { get; set; }
 
     [System.ComponentModel.DataAnnotations.MaxLength(500)]

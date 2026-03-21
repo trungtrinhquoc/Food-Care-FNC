@@ -2,6 +2,7 @@ using FoodCare.API.Models;
 using FoodCare.API.Models.DTOs.Shipping;
 using FoodCare.API.Models.Enums;
 using FoodCare.API.Services.Interfaces;
+using FoodCare.API.Services.Interfaces.Admin;
 using Microsoft.EntityFrameworkCore;
 
 namespace FoodCare.API.Services.Implementations;
@@ -10,11 +11,16 @@ public class ShippingFlowService : IShippingFlowService
 {
     private readonly FoodCareDbContext _context;
     private readonly ILogger<ShippingFlowService> _logger;
+    private readonly ICommissionService _commissionService;
 
-    public ShippingFlowService(FoodCareDbContext context, ILogger<ShippingFlowService> logger)
+    public ShippingFlowService(
+        FoodCareDbContext context,
+        ILogger<ShippingFlowService> logger,
+        ICommissionService commissionService)
     {
         _context = context;
         _logger = logger;
+        _commissionService = commissionService;
     }
 
     #region Helper Methods
@@ -123,6 +129,20 @@ public class ShippingFlowService : IShippingFlowService
             });
 
             await _context.SaveChangesAsync();
+
+            if (order.MartId.HasValue)
+            {
+                try
+                {
+                    await _commissionService.PrepareCommissionForOrderAsync(
+                        order.Id, order.MartId.Value, order.TotalAmount);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to record commission for delivered order {OrderId}", order.Id);
+                }
+            }
         }
 
         return await GetUserOrderTrackingAsync(userId, dto.OrderId)

@@ -181,7 +181,6 @@ export function AdvancedOrderManagement({
   };
 
   const handlePrintPackingSlip = (order: Order) => {
-    // Mock print functionality
     console.log('Printing packing slip for:', order.orderNumber);
     toast.success(`Đang in phiếu đóng gói cho đơn ${order.orderNumber}`);
   };

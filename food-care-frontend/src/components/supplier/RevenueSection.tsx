@@ -89,6 +89,28 @@ export function RevenueSection({ loading = false }: RevenueSectionProps) {
     const monthlyRevenueData = revenueData?.monthlyRevenue || [];
     const topProducts = revenueData?.topProducts || [];
 
+    // Calculate real growth percentages from monthly revenue data
+    const growth = (() => {
+        const months = monthlyRevenueData;
+        if (months.length < 2) return { revenue: 0, orders: 0, avg: 0 };
+
+        const mid = Math.floor(months.length / 2);
+        const cur = months.slice(mid);
+        const prev = months.slice(0, mid);
+
+        const curRev = cur.reduce((s, m) => s + m.revenue, 0);
+        const prevRev = prev.reduce((s, m) => s + m.revenue, 0);
+        const curOrd = cur.reduce((s, m) => s + m.orders, 0);
+        const prevOrd = prev.reduce((s, m) => s + m.orders, 0);
+        const curAvg = curOrd > 0 ? curRev / curOrd : 0;
+        const prevAvg = prevOrd > 0 ? prevRev / prevOrd : 0;
+
+        const pct = (c: number, p: number) =>
+            p > 0 ? Math.round(((c - p) / p) * 100) : c > 0 ? 100 : 0;
+
+        return { revenue: pct(curRev, prevRev), orders: pct(curOrd, prevOrd), avg: pct(curAvg, prevAvg) };
+    })();
+
     return (
         <div className="space-y-6">
             <SectionHeader
@@ -124,9 +146,9 @@ export function RevenueSection({ loading = false }: RevenueSectionProps) {
                             <div>
                                 <p className="text-blue-100 text-sm font-medium">Tổng doanh thu</p>
                                 <p className="text-3xl font-bold mt-1">{formatCurrency(totalRevenue)}</p>
-                                <div className="flex items-center gap-1 mt-2 text-blue-100">
-                                    <TrendingUp className="h-4 w-4" />
-                                    <span className="text-sm">+12% so với kỳ trước</span>
+                                <div className={`flex items-center gap-1 mt-2 ${growth.revenue >= 0 ? 'text-blue-100' : 'text-red-200'}`}>
+                                    {growth.revenue >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                                    <span className="text-sm">{growth.revenue >= 0 ? '+' : ''}{growth.revenue}% so với kỳ trước</span>
                                 </div>
                             </div>
                             <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
@@ -142,9 +164,9 @@ export function RevenueSection({ loading = false }: RevenueSectionProps) {
                             <div>
                                 <p className="text-gray-500 text-sm font-medium">Tổng đơn hàng</p>
                                 <p className="text-3xl font-bold text-gray-900 mt-1">{totalOrders}</p>
-                                <div className="flex items-center gap-1 mt-2 text-blue-600">
-                                    <TrendingUp className="h-4 w-4" />
-                                    <span className="text-sm">+8% so với kỳ trước</span>
+                                <div className={`flex items-center gap-1 mt-2 ${growth.orders >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {growth.orders >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                                    <span className="text-sm">{growth.orders >= 0 ? '+' : ''}{growth.orders}% so với kỳ trước</span>
                                 </div>
                             </div>
                             <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -160,9 +182,9 @@ export function RevenueSection({ loading = false }: RevenueSectionProps) {
                             <div>
                                 <p className="text-gray-500 text-sm font-medium">Giá trị TB/đơn</p>
                                 <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(avgOrderValue)}</p>
-                                <div className="flex items-center gap-1 mt-2 text-blue-600">
-                                    <TrendingUp className="h-4 w-4" />
-                                    <span className="text-sm">+3% so với kỳ trước</span>
+                                <div className={`flex items-center gap-1 mt-2 ${growth.avg >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {growth.avg >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                                    <span className="text-sm">{growth.avg >= 0 ? '+' : ''}{growth.avg}% so với kỳ trước</span>
                                 </div>
                             </div>
                             <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">

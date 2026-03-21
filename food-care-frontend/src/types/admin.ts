@@ -36,6 +36,19 @@ export interface AdminStats {
   activeSubscriptions: number;
   pendingOrders: number;
   lowStockProducts: number;
+  ordersToday: number;
+  pendingComplaints: number;
+  gmv: number;
+  fAndCRevenue: number;
+  activeMarts: number;
+  activeUsersCount: number;
+  churnRate: number;
+  todayRevenue: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  shippingOrders: number;
+  confirmedOrders: number;
+  newCustomersThisWeek: number;
 }
 
 export interface RevenueData {
@@ -526,4 +539,65 @@ export interface AdminStatsMobile {
   monthlyGrowth?: number;
   pendingOrders?: number;
   lowStockProducts?: number;
+}
+
+// ==================== COMMISSION ====================
+export type CommissionStatus = 'pending' | 'settled' | 'refunded';
+
+export interface CommissionPolicy {
+  id: number;
+  supplierId: number | null;
+  supplierName: string | null;
+  categoryId: number | null;
+  commissionRate: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface SetCommissionRateRequest {
+  rate: number;
+  description?: string;
+  effectiveFrom?: string;
+}
+
+export interface OrderCommission {
+  id: string;
+  orderId: string;
+  supplierId: number;
+  supplierName: string;
+  orderAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  supplierAmount: number;
+  status: CommissionStatus;
+  settlementId: string | null;
+  createdAt: string;
+}
+
+export interface CommissionBySupplier {
+  supplierId: number;
+  supplierName: string;
+  effectiveRate: number;
+  totalSales: number;
+  totalCommission: number;
+  totalDue: number;
+  orderCount: number;
+  pendingCount: number;
+  settledCount: number;
+}
+
+export interface CommissionReport {
+  month: number;
+  year: number;
+  totalOrderAmount: number;
+  totalCommissionAmount: number;
+  totalSupplierAmount: number;
+  totalOrderCount: number;
+  pendingCount: number;
+  settledCount: number;
+  refundedCount: number;
+  bySupplier: CommissionBySupplier[];
 }

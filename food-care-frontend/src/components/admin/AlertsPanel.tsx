@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, Package, ShoppingCart, Star } from 'lucide-react';
+import { AlertTriangle, Info, Package, ShoppingCart, Star, CheckCheck, Eye } from 'lucide-react';
 import { Button } from './Button';
 
 function formatTimeAgo(date: string | Date): string {
@@ -16,22 +16,28 @@ function formatTimeAgo(date: string | Date): string {
 
 export interface SystemAlert {
   id: string;
-  type: 'low_stock' | 'pending_order' | 'new_review' | 'system' | 'other';
-  severity: 'info' | 'warning' | 'error';
+  type: 'low_stock' | 'pending_order' | 'new_review' | 'system' | 'sla_violation' | 'quality_issue' | 'rating_drop' | 'return_rate' | 'other';
+  severity: 'info' | 'warning' | 'error' | 'low' | 'medium' | 'high' | 'critical';
   title: string;
   message: string;
   timestamp: string;
   actionUrl?: string;
   actionLabel?: string;
+  isRead?: boolean;
+  storeName?: string;
+  supplierId?: number;
 }
 
 interface AlertsPanelProps {
   alerts: SystemAlert[];
   isLoading?: boolean;
   onAlertAction?: (alert: SystemAlert) => void;
+  onMarkAsRead?: (alertId: string) => void;
+  onMarkAllAsRead?: () => void;
+  unreadCount?: number;
 }
 
-const alertConfig = {
+const alertConfig: Record<string, { icon: typeof AlertTriangle; bgColor: string; iconColor: string; borderColor: string }> = {
   low_stock: { 
     icon: Package, 
     bgColor: 'bg-orange-50', 
@@ -56,6 +62,30 @@ const alertConfig = {
     iconColor: 'text-red-600',
     borderColor: 'border-red-200'
   },
+  sla_violation: {
+    icon: AlertTriangle,
+    bgColor: 'bg-red-50',
+    iconColor: 'text-red-600',
+    borderColor: 'border-red-200'
+  },
+  quality_issue: {
+    icon: AlertTriangle,
+    bgColor: 'bg-amber-50',
+    iconColor: 'text-amber-600',
+    borderColor: 'border-amber-200'
+  },
+  rating_drop: {
+    icon: Star,
+    bgColor: 'bg-yellow-50',
+    iconColor: 'text-yellow-600',
+    borderColor: 'border-yellow-200'
+  },
+  return_rate: {
+    icon: Package,
+    bgColor: 'bg-red-50',
+    iconColor: 'text-red-500',
+    borderColor: 'border-red-200'
+  },
   other: { 
     icon: Info, 
     bgColor: 'bg-gray-50', 
@@ -64,7 +94,7 @@ const alertConfig = {
   },
 };
 
-export function AlertsPanel({ alerts, isLoading = false, onAlertAction }: AlertsPanelProps) {
+export function AlertsPanel({ alerts, isLoading = false, onAlertAction, onMarkAsRead, onMarkAllAsRead, unreadCount }: AlertsPanelProps) {
   const handleAction = (alert: SystemAlert) => {
     if (onAlertAction) {
       onAlertAction(alert);
@@ -87,8 +117,25 @@ export function AlertsPanel({ alerts, isLoading = false, onAlertAction }: Alerts
     );
   }
 
+  const unread = unreadCount ?? alerts.filter(a => !a.isRead).length;
+
   return (
     <div className="space-y-3">
+      {/* Mark all as read header */}
+      {unread > 0 && onMarkAllAsRead && (
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-500">{unread} chưa đọc</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onMarkAllAsRead}
+            className="h-7 text-xs gap-1 text-blue-600 hover:text-blue-700"
+          >
+            <CheckCheck className="w-3.5 h-3.5" />
+            Đánh dấu tất cả đã đọc
+          </Button>
+        </div>
+      )}
       {alerts.map((alert) => {
         const config = alertConfig[alert.type] || alertConfig.other;
         const Icon = config.icon;
@@ -96,7 +143,7 @@ export function AlertsPanel({ alerts, isLoading = false, onAlertAction }: Alerts
         return (
           <div
             key={alert.id}
-            className={`p-4 rounded-lg border ${config.bgColor} ${config.borderColor} transition-all hover:shadow-sm`}
+            className={`p-4 rounded-lg border ${config.bgColor} ${config.borderColor} transition-all hover:shadow-sm ${alert.isRead ? 'opacity-60' : ''}`}
           >
             <div className="flex items-start gap-3">
               <div className={`flex-shrink-0 w-10 h-10 rounded-lg ${config.bgColor} flex items-center justify-center`}>
@@ -110,16 +157,32 @@ export function AlertsPanel({ alerts, isLoading = false, onAlertAction }: Alerts
                   </span>
                 </div>
                 <p className="text-xs text-gray-600 mb-2">{alert.message}</p>
-                {alert.actionUrl && alert.actionLabel && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAction(alert)}
-                    className="h-7 text-xs"
-                  >
-                    {alert.actionLabel}
-                  </Button>
+                {alert.storeName && (
+                  <p className="text-[10px] text-gray-400 mb-2">Mart: {alert.storeName}</p>
                 )}
+                <div className="flex items-center gap-2">
+                  {alert.actionUrl && alert.actionLabel && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAction(alert)}
+                      className="h-7 text-xs"
+                    >
+                      {alert.actionLabel}
+                    </Button>
+                  )}
+                  {!alert.isRead && onMarkAsRead && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onMarkAsRead(alert.id)}
+                      className="h-7 text-xs gap-1 text-gray-500 hover:text-blue-600"
+                    >
+                      <Eye className="w-3 h-3" />
+                      Đã đọc
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

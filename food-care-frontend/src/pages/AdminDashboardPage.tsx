@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Store,
   DollarSign,
+  Percent,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -41,6 +42,7 @@ const ComplaintsTab     = lazy(() => import("./admin/ComplaintsTab").then(m => (
 const MartTab           = lazy(() => import("./admin/MartTab").then(m => ({ default: m.MartTab })));
 const FinanceTab        = lazy(() => import("./admin/FinanceTab").then(m => ({ default: m.FinanceTab })));
 const BlindBoxTab       = lazy(() => import("./admin/BlindBoxTab").then(m => ({ default: m.BlindBoxTab })));
+const CommissionTab     = lazy(() => import("./admin/CommissionTab").then(m => ({ default: m.CommissionTab })));
 
 // Responsive bottom-nav (used only on < lg screens)
 import { AdminBottomNav } from "../components/admin/AdminBottomNav";
@@ -53,6 +55,7 @@ const TABS = [
   { value: "mart",           label: "Quản lý Mart",   icon: Store,        group: "monitor" },
   { value: "blindbox",       label: "Blind Box",      icon: Box,          group: "monitor" },
   { value: "finance",        label: "Tài chính",      icon: DollarSign,   group: "monitor" },
+  { value: "commission",     label: "Hoa hồng",       icon: Percent,      group: "monitor" },
   // ── Operations ───────────────────────────────────────────────────────────
   { value: "products",       label: "Sản phẩm",       icon: Box,          group: "ops" },
   { value: "orders",         label: "Đơn hàng",       icon: ShoppingCart, group: "ops" },
@@ -160,21 +163,13 @@ function TabContent({
   if (tab === "coupons")       return <AdminCouponsPage />;
   if (tab === "approvals")     return <ApprovalsTab />;
   if (tab === "zalo")          return <ZaloTab />;
+  if (tab === "commission")    return <CommissionTab />;
   return null;
 }
 
 function buildFormattedStats(stats: ReturnType<typeof useDashboardStats>["stats"]) {
   if (!stats) return null;
-  return {
-    totalRevenue:       stats.totalRevenue,
-    totalOrders:        stats.totalOrders,
-    totalCustomers:     stats.totalCustomers,
-    totalProducts:      stats.totalProducts,
-    monthlyGrowth:      stats.monthlyGrowth,
-    activeSubscriptions: stats.pendingOrders,
-    pendingOrders:      stats.pendingOrders,
-    lowStockProducts:   stats.lowStockProducts,
-  };
+  return { ...stats };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -194,7 +189,7 @@ export default function AdminDashboardPage() {
   const handleTabChange = useCallback((value: string) => setSelectedTab(value as TabValue), []);
   const handleLogout    = useCallback(() => { localStorage.removeItem("token"); navigate("/login"); }, [navigate]);
 
-  const pendingComplaints: number = (stats as any)?.pendingComplaints ?? 0;
+  const pendingComplaints: number = stats?.pendingComplaints ?? 0;
 
   // Group sidebar tabs
   const groupedTabs = useMemo(() => {

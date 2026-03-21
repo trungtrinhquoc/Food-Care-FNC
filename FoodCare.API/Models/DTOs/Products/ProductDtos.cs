@@ -30,6 +30,7 @@ public class ProductDto
 public class ProductFilterDto
 {
     public int? CategoryId { get; set; }
+    public int? SupplierId { get; set; }
     public string? SearchTerm { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }

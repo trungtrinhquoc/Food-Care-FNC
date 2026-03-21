@@ -34,6 +34,11 @@ public class ProductService : IProductService
             query = query.Where(p => p.CategoryId == filter.CategoryId.Value);
         }
 
+        if (filter.SupplierId.HasValue)
+        {
+            query = query.Where(p => p.SupplierId == filter.SupplierId.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
         {
             var searchTerm = $"%{filter.SearchTerm.Trim()}%";

@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Package, MapPin, Phone, Calendar, User, Truck } from 'lucide-react';
+import { Package, MapPin, Phone, Calendar, User, Truck, Clock } from 'lucide-react';
 import type { OrderStatus } from '../../types/supplier';
 
 interface OrderDetailsModalProps {
@@ -35,6 +35,12 @@ interface OrderDetailsModalProps {
       expectedDelivery?: string;
     };
     notes?: string;
+    statusHistory?: Array<{
+      status: string;
+      changedAt: string;
+      changedBy?: string;
+      note?: string;
+    }>;
   } | null;
 }
 
@@ -198,6 +204,40 @@ export function OrderDetailsModal({ isOpen, onClose, order }: OrderDetailsModalP
               <p className="text-sm text-green-800">
                 <strong>Thời gian giao hàng:</strong> {formatDate(order.deliveryTime)}
               </p>
+            </div>
+          )}
+
+          {/* Status History Timeline */}
+          {order.statusHistory && order.statusHistory.length > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <Clock className="h-4 w-4" />
+                Lịch sử trạng thái
+              </h3>
+              <div className="relative">
+                <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-gray-200" />
+                <div className="space-y-4">
+                  {order.statusHistory.map((entry, idx) => (
+                    <div key={idx} className="flex gap-3 relative">
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 z-10 ${
+                        idx === 0 ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{entry.status}</span>
+                          <span className="text-xs text-gray-400">{formatDate(entry.changedAt)}</span>
+                        </div>
+                        {entry.changedBy && (
+                          <p className="text-xs text-gray-500 mt-0.5">Bởi: {entry.changedBy}</p>
+                        )}
+                        {entry.note && (
+                          <p className="text-xs text-gray-500 mt-0.5">{entry.note}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

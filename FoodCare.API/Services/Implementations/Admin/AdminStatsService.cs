@@ -112,6 +112,29 @@ public class AdminStatsService : IAdminStatsService
             ? (decimal)cancelledSubsThisMonth / totalSubsThisMonth * 100
             : 0;
 
+        // TodayRevenue
+        var todayRevenue = await _context.Orders
+            .Where(o => o.Status == OrderStatus.delivered &&
+                   o.CreatedAt.HasValue && o.CreatedAt.Value >= today && o.CreatedAt.Value < tomorrow)
+            .SumAsync(o => (decimal?)o.TotalAmount) ?? 0;
+
+        // Order status breakdowns
+        var completedOrders = await _context.Orders
+            .CountAsync(o => o.Status == OrderStatus.delivered);
+        var cancelledOrders = await _context.Orders
+            .CountAsync(o => o.Status == OrderStatus.cancelled);
+        var shippingOrders = await _context.Orders
+            .CountAsync(o => o.Status == OrderStatus.shipping);
+        var confirmedOrders = await _context.Orders
+            .CountAsync(o => o.Status == OrderStatus.confirmed);
+
+        // NewCustomersThisWeek
+        var oneWeekAgo = now.AddDays(-7);
+        var newCustomersThisWeek = await _context.Users
+            .Where(u => u.Role == UserRole.customer &&
+                   u.CreatedAt.HasValue && u.CreatedAt.Value >= oneWeekAgo)
+            .CountAsync();
+
         return new AdminStatsDto
         {
             TotalRevenue = totalRevenue,
@@ -128,7 +151,13 @@ public class AdminStatsService : IAdminStatsService
             ActiveMarts = activeMarts,
             ActiveUsersCount = activeUsersCount,
             ActiveSubscriptions = activeSubscriptions,
-            ChurnRate = churnRate
+            ChurnRate = churnRate,
+            TodayRevenue = todayRevenue,
+            CompletedOrders = completedOrders,
+            CancelledOrders = cancelledOrders,
+            ShippingOrders = shippingOrders,
+            ConfirmedOrders = confirmedOrders,
+            NewCustomersThisWeek = newCustomersThisWeek
         };
     }
 

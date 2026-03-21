@@ -124,6 +124,7 @@ builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminSubscriptionService, AdminSubscriptionService>();
 builder.Services.AddScoped<IAdminComplaintService, AdminComplaintService>();
 builder.Services.AddScoped<IAdminFinanceService, AdminFinanceService>();
+builder.Services.AddScoped<ICommissionService, CommissionService>();
 builder.Services.AddScoped<IAdminAlertService, AdminAlertService>();
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
@@ -152,8 +153,12 @@ builder.Services.AddScoped<FoodCare.API.Services.Interfaces.IGeocodingService, F
 // Background service: auto-process subscription payments via FNC Pay
 builder.Services.AddHostedService<FoodCare.API.Jobs.SubscriptionPaymentJob>();
 builder.Services.AddHostedService<FoodCare.API.Jobs.SlaMonitoringJob>();
+builder.Services.AddHostedService<FoodCare.API.Jobs.OrderTimeoutJob>();
 
 builder.Services.AddScoped<IShippingFlowService, ShippingFlowService>();
+builder.Services.AddScoped<IMartService, MartService>();
+builder.Services.AddScoped<ICrossMartSearchService, CrossMartSearchService>();
+builder.Services.AddScoped<ICartService, CartService>();
 
 var app = builder.Build();
 

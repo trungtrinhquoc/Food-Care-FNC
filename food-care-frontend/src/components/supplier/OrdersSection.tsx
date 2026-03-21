@@ -34,6 +34,7 @@ import {
     Users,
     Camera,
     Link2,
+    MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, type SupplierOrder } from '../../services/supplier/supplierApi';
@@ -198,6 +199,99 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
     cancelled: { label: 'Đã hủy', color: 'text-red-700', bgColor: 'bg-red-100' },
 };
 
+// =====================================================
+// Cancel Order Dialog (requires reason)
+// =====================================================
+interface CancelOrderDialogProps {
+    open: boolean;
+    order: SupplierOrder | null;
+    onClose: () => void;
+    onCancelled: () => void;
+}
+
+function CancelOrderDialog({ open, order, onClose, onCancelled }: CancelOrderDialogProps) {
+    const [reason, setReason] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleClose = () => {
+        setReason('');
+        onClose();
+    };
+
+    const handleCancel = async () => {
+        if (!order) return;
+        if (!reason.trim()) {
+            toast.error('Vui lòng nhập lý do hủy đơn hàng.');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await ordersApi.patchOrderStatus(order.id, { status: 'cancelled', reason: reason.trim() });
+            toast.success('Đã hủy đơn hàng thành công.');
+            onCancelled();
+            handleClose();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể hủy đơn hàng.';
+            toast.error(msg);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+            <DialogContent className="sm:max-w-[450px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-red-600">
+                        <XCircle className="h-5 w-5" />
+                        Hủy đơn hàng
+                    </DialogTitle>
+                    <DialogDescription>
+                        Đơn hàng <strong>{order?.orderNumber}</strong> — Nhập lý do để hủy đơn hàng này.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                            <MessageSquare className="h-4 w-4" />
+                            Lý do hủy <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Nhập lý do hủy đơn hàng..."
+                            rows={3}
+                            maxLength={500}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                        <p className="text-xs text-gray-400">{reason.length}/500 ký tự</p>
+                    </div>
+
+                    {!reason.trim() && (
+                        <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                            Bắt buộc phải nhập lý do trước khi hủy đơn hàng.
+                        </p>
+                    )}
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={handleClose} disabled={submitting}>
+                        Quay lại
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        onClick={handleCancel}
+                        disabled={!reason.trim() || submitting}
+                    >
+                        {submitting ? 'Đang hủy...' : 'Xác nhận hủy'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function OrdersSection({
     orders = [],
     loading = false,
@@ -210,6 +304,7 @@ export function OrdersSection({
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [updating, setUpdating] = useState<string | null>(null);
     const [deliveryDialogOrder, setDeliveryDialogOrder] = useState<SupplierOrder | null>(null);
+    const [cancelDialogOrder, setCancelDialogOrder] = useState<SupplierOrder | null>(null);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', {
@@ -427,7 +522,7 @@ export function OrdersSection({
                                                             variant="destructive"
                                                             size="sm"
                                                             disabled={updating === order.id}
-                                                            onClick={() => handleUpdateStatus(order.id, 'cancelled')}
+                                                            onClick={() => setCancelDialogOrder(order)}
                                                         >
                                                             <XCircle className="h-4 w-4" />
                                                         </Button>
@@ -482,6 +577,14 @@ export function OrdersSection({
                 order={deliveryDialogOrder}
                 onClose={() => setDeliveryDialogOrder(null)}
                 onConfirmed={() => { onRefresh(); }}
+            />
+
+            {/* Cancel Order Dialog */}
+            <CancelOrderDialog
+                open={cancelDialogOrder !== null}
+                order={cancelDialogOrder}
+                onClose={() => setCancelDialogOrder(null)}
+                onCancelled={() => { onRefresh(); }}
             />
 
             {/* Order Detail Dialog */}
@@ -563,8 +666,8 @@ export function OrdersSection({
                                 <Button
                                     variant="destructive"
                                     onClick={() => {
-                                        handleUpdateStatus(selectedOrder.id, 'cancelled');
                                         setDetailDialogOpen(false);
+                                        setCancelDialogOrder(selectedOrder);
                                     }}
                                 >
                                     Từ chối

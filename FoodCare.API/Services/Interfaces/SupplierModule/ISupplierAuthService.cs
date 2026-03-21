@@ -36,4 +36,7 @@ public interface ISupplierAuthService
 
     // SLA metrics
     Task<SupplierSlaDto> GetSlaMetricsAsync(Guid userId);
+
+    // Delivery batch grouping (spec 3.3)
+    Task<List<DeliveryBatchDto>> GetDeliveryBatchesAsync(Guid userId);
 }

@@ -18,6 +18,9 @@ public class BlindBox
     public string? Contents { get; set; }             // JSON: [{ "name": "Cà rốt", "qty": 2 }]
     public string? ImageUrl { get; set; }
     [MaxLength(50)] public string Status { get; set; } = "pending"; // pending|approved|active|sold_out|archived
+    [MaxLength(2)] public string? Tier { get; set; } // S or M
+    [Column(TypeName = "decimal(15,2)")] public decimal? SellPrice { get; set; }
+    public bool? DeliverWithSubscription { get; set; }
     public string? RejectionReason { get; set; }
     public Guid? ApprovedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

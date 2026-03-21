@@ -125,41 +125,98 @@ public class AdminFinanceService : IAdminFinanceService
 
     public async Task SettleAllAsync(int month, int year)
     {
-        // Check if already settled for this period
-        var existingSettlements = await _context.Settlements
-            .Where(s => s.Month == month && s.Year == year && s.IsPaid)
-            .AnyAsync();
+        // Prevent double settlement
+        var alreadySettled = await _context.Settlements
+            .AnyAsync(s => s.Month == month && s.Year == year && s.IsPaid);
+        if (alreadySettled) return;
 
-        if (existingSettlements)
-            return;
-
-        var dtos = await GetSettlementsAsync(month, year);
         var now = DateTime.UtcNow;
 
-        foreach (var dto in dtos.Where(s => !s.IsPaid))
-        {
-            var supplier = await _context.Suppliers.FindAsync(dto.SupplierId);
-            if (supplier != null)
-            {
-                supplier.TotalCommission = (supplier.TotalCommission ?? 0) + dto.CommissionAmount;
-                supplier.PendingPayout = Math.Max(0, (supplier.PendingPayout ?? 0) - dto.AmountDue);
-            }
+        // ── New path: aggregate from per-order OrderCommission ledger ─────────
+        var pendingCommissions = await _context.OrderCommissions
+            .Include(c => c.Supplier)
+            .Where(c => c.Status == "pending"
+                     && c.CreatedAt.Month == month
+                     && c.CreatedAt.Year  == year)
+            .ToListAsync();
 
-            // Persist settlement record
-            _context.Settlements.Add(new Settlement
+        if (pendingCommissions.Count > 0)
+        {
+            var grouped = pendingCommissions.GroupBy(c => c.SupplierId);
+
+            foreach (var group in grouped)
             {
-                Id = Guid.NewGuid(),
-                SupplierId = dto.SupplierId,
-                Month = month,
-                Year = year,
-                TotalSales = dto.TotalSales,
-                CommissionRate = dto.CommissionRate,
-                CommissionAmount = dto.CommissionAmount,
-                AmountDue = dto.AmountDue,
-                IsPaid = true,
-                PaidAt = now,
-                CreatedAt = now
-            });
+                var totalSales       = group.Sum(c => c.OrderAmount);
+                var commissionAmount = group.Sum(c => c.CommissionAmount);
+                var supplierAmount   = group.Sum(c => c.SupplierAmount);
+                // Weighted-average rate for display purposes
+                var commissionRate   = totalSales > 0
+                    ? Math.Round(commissionAmount / totalSales * 100m, 2)
+                    : 15m;
+
+                var settlementId = Guid.NewGuid();
+
+                _context.Settlements.Add(new Settlement
+                {
+                    Id               = settlementId,
+                    SupplierId       = group.Key,
+                    Month            = month,
+                    Year             = year,
+                    TotalSales       = totalSales,
+                    CommissionRate   = commissionRate,
+                    CommissionAmount = commissionAmount,
+                    AmountDue        = supplierAmount,
+                    IsPaid           = true,
+                    PaidAt           = now,
+                    CreatedAt        = now,
+                });
+
+                // Link commission records to this settlement
+                foreach (var c in group)
+                {
+                    c.SettlementId = settlementId;
+                    c.Status       = "settled";
+                }
+
+                // Update supplier running totals
+                var supplier = group.First().Supplier;
+                if (supplier != null)
+                {
+                    supplier.TotalCommission = (supplier.TotalCommission ?? 0m) + commissionAmount;
+                    supplier.PendingPayout   = Math.Max(0m, (supplier.PendingPayout ?? 0m) - supplierAmount);
+                    supplier.UpdatedAt       = now;
+                }
+            }
+        }
+        else
+        {
+            // ── Legacy fallback: build from SupplierOrders (pre-commission-ledger era) ─
+            var dtos = await GetSettlementsAsync(month, year);
+
+            foreach (var dto in dtos.Where(s => !s.IsPaid))
+            {
+                var supplier = await _context.Suppliers.FindAsync(dto.SupplierId);
+                if (supplier != null)
+                {
+                    supplier.TotalCommission = (supplier.TotalCommission ?? 0m) + dto.CommissionAmount;
+                    supplier.PendingPayout   = Math.Max(0m, (supplier.PendingPayout ?? 0m) - dto.AmountDue);
+                }
+
+                _context.Settlements.Add(new Settlement
+                {
+                    Id               = Guid.NewGuid(),
+                    SupplierId       = dto.SupplierId,
+                    Month            = month,
+                    Year             = year,
+                    TotalSales       = dto.TotalSales,
+                    CommissionRate   = dto.CommissionRate,
+                    CommissionAmount = dto.CommissionAmount,
+                    AmountDue        = dto.AmountDue,
+                    IsPaid           = true,
+                    PaidAt           = now,
+                    CreatedAt        = now,
+                });
+            }
         }
 
         await _context.SaveChangesAsync();

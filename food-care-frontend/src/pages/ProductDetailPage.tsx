@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../services/productsApi';
 import { useEffect, useState } from 'react';
 import {
-  Star, Plus, Minus, ShoppingCart, ChevronLeft, Repeat, Tag, Package, CheckCircle2
+  Star, Plus, Minus, ShoppingCart, ChevronLeft, Repeat, Tag, Package, CheckCircle2, Store
 } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination, Thumbs } from 'swiper/modules'
@@ -19,6 +19,7 @@ import { cloudinaryResize } from '../utils/cloudinary'
 import { SubscriptionDialog } from '../components/SubscriptionDialog';
 import { ReviewSection } from '../components/ReviewSection';
 import type { Product } from '../types';
+import { subscriptionApi } from '../services/subscriptionApi';
 
 export default function ProductDetailPage() {
   const isLoggedIn = !!localStorage.getItem("token");
@@ -109,7 +110,7 @@ export default function ProductDetailPage() {
     toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
   };
 
-  const handleSubscriptionConfirm = (
+  const handleSubscriptionConfirm = async (
     freq: 'Weekly' | 'BiWeekly' | 'Monthly',
     qty: number
   ) => {
@@ -118,12 +119,31 @@ export default function ProductDetailPage() {
       BiWeekly: '2 tuần/lần',
       Monthly: 'hàng tháng',
     };
+    const freqCodeMap: Record<string, string> = {
+      Weekly: 'weekly',
+      BiWeekly: 'biweekly',
+      Monthly: 'monthly',
+    };
     const discounts = { Weekly: 15, BiWeekly: 12, Monthly: 10 };
     const discount = discounts[freq];
-    addToCart(product, qty, true, freq, discount);
-    toast.success(`Đã đăng ký đặt hàng định kỳ ${product.name}`, {
-      description: `Giao hàng ${frequencyText[freq]} - Giảm ${discount}%`,
-    });
+
+    try {
+      await subscriptionApi.createSubscription({
+        productId: product.id,
+        frequency: freqCodeMap[freq],
+        quantity: qty,
+        discountPercent: discount,
+      });
+      toast.success(`Đã đăng ký đặt hàng định kỳ ${product.name}`, {
+        description: `Giao hàng ${frequencyText[freq]} - Giảm ${discount}%`,
+      });
+    } catch (error: any) {
+      // Fallback: add to cart with subscription flag
+      addToCart(product, qty, true, freq, discount);
+      toast.success(`Đã thêm đơn định kỳ ${product.name} vào giỏ hàng`, {
+        description: `Giao hàng ${frequencyText[freq]} - Giảm ${discount}%`,
+      });
+    }
   };
 
   const handleBuyNow = () => {
@@ -235,10 +255,18 @@ export default function ProductDetailPage() {
 
             {/* Category + Name */}
             <div>
-              <Badge className="mb-1.5 text-xs" variant="secondary">
-                <Tag className="w-3 h-3 mr-1" />
-                {product.categoryName}
-              </Badge>
+              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                <Badge className="text-xs" variant="secondary">
+                  <Tag className="w-3 h-3 mr-1" />
+                  {product.categoryName}
+                </Badge>
+                {product.supplierName && (
+                  <Badge className="text-xs" variant="outline">
+                    <Store className="w-3 h-3 mr-1" />
+                    {product.supplierName}
+                  </Badge>
+                )}
+              </div>
               <h1 className="text-lg sm:text-xl font-bold leading-snug text-gray-900">
                 {product.name}
               </h1>

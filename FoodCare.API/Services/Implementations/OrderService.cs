@@ -61,11 +61,25 @@ namespace FoodCare.API.Services.Implementations
                     }
                 }
 
-                // 2. Tạo Order
+                // 2. Resolve MartId: use dto value, fall back to user's selectedMartId, or infer from first product
+                int? resolvedMartId = dto.MartId;
+                if (!resolvedMartId.HasValue && dto.UserId.HasValue)
+                {
+                    var orderUser = await _context.Users.FindAsync(dto.UserId.Value);
+                    resolvedMartId = orderUser?.SelectedMartId;
+                }
+                if (!resolvedMartId.HasValue && dto.Items.Any())
+                {
+                    var firstProduct = await _context.Products.FindAsync(dto.Items.First().ProductId);
+                    resolvedMartId = firstProduct?.SupplierId;
+                }
+
+                // 3. Tạo Order
                 var order = new Order
                 {
                     Id = Guid.NewGuid(),
                     UserId = dto.UserId,
+                    MartId = resolvedMartId,
 
                     Subtotal = subtotal,
                     ShippingFee = shippingFee,

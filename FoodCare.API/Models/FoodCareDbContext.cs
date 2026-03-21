@@ -52,6 +52,10 @@ public partial class FoodCareDbContext : DbContext {
     public DbSet<Complaint> Complaints { get; set; }
     public DbSet<BlindBox> BlindBoxes { get; set; }
     public DbSet<Settlement> Settlements { get; set; }
+    public DbSet<CartItem> CartItems { get; set; }
+    public DbSet<ProductAvailabilityNotification> ProductAvailabilityNotifications { get; set; }
+    public DbSet<CommissionPolicy> CommissionPolicies { get; set; }
+    public DbSet<OrderCommission> OrderCommissions { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
@@ -109,6 +113,8 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.RecipientName).HasMaxLength(100).HasColumnName("recipient_name");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Ward).HasMaxLength(100).HasColumnName("ward");
+            entity.Property(e => e.Latitude).HasPrecision(10, 8).HasColumnName("latitude");
+            entity.Property(e => e.Longitude).HasPrecision(11, 8).HasColumnName("longitude");
 
             entity.HasOne(d => d.User).WithMany(p => p.Addresses)
                 .HasForeignKey(d => d.UserId).HasConstraintName("addresses_user_id_fkey");
@@ -240,6 +246,11 @@ public partial class FoodCareDbContext : DbContext {
 
             entity.Property(e => e.DeliveryPhotoUrl).HasMaxLength(500).HasColumnName("delivery_photo_url");
 
+            // Mart + SLA delivery window
+            entity.Property(e => e.MartId).HasColumnName("mart_id");
+            entity.Property(e => e.ExpectedDeliveryStart).HasColumnName("expected_delivery_start");
+            entity.Property(e => e.ExpectedDeliveryEnd).HasColumnName("expected_delivery_end");
+
             entity.HasOne(d => d.Subscription).WithMany(p => p.Orders).HasForeignKey(d => d.SubscriptionId).HasConstraintName("orders_subscription_id_fkey");
             entity.HasOne(d => d.User).WithMany(p => p.Orders).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.SetNull).HasConstraintName("orders_user_id_fkey");
 
@@ -363,6 +374,8 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.CostPrice).HasPrecision(15, 2).HasColumnName("cost_price");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Manufacturer).HasMaxLength(255).HasColumnName("manufacturer");
+            entity.Property(e => e.Origin).HasMaxLength(255).HasColumnName("origin");
             entity.Property(e => e.Images).HasDefaultValueSql("'[]'::jsonb").HasColumnType("jsonb").HasColumnName("images");
             entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false).HasColumnName("is_deleted");
@@ -439,6 +452,7 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.DiscountPercent).HasPrecision(5, 2).HasDefaultValueSql("0").HasColumnName("discount_percent");
             entity.Property(e => e.NextDeliveryDate).HasColumnName("next_delivery_date");
             entity.Property(e => e.PauseUntil).HasColumnName("pause_until");
+            entity.Property(e => e.DeliveryDayOfWeek).HasColumnName("delivery_day_of_week");
             entity.Property(e => e.PaymentMethodId).HasColumnName("payment_method_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.Quantity).HasDefaultValue(1).HasColumnName("quantity");
@@ -742,6 +756,10 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.PasswordResetExpiry)
                 .HasColumnName("password_reset_expiry");
 
+            // Selected Mart (Supplier acting as mart)
+            entity.Property(e => e.SelectedMartId)
+                .HasColumnName("selected_mart_id");
+
             // Relationship with MemberTier
             entity.HasOne(d => d.Tier).WithMany(p => p.Users)
                 .HasForeignKey(d => d.TierId).HasConstraintName("users_tier_id_fkey");
@@ -904,6 +922,9 @@ public partial class FoodCareDbContext : DbContext {
             entity.Property(e => e.Contents).HasColumnName("contents");
             entity.Property(e => e.ImageUrl).HasColumnName("image_url");
             entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("pending").HasColumnName("status");
+            entity.Property(e => e.Tier).HasMaxLength(2).HasColumnName("tier");
+            entity.Property(e => e.SellPrice).HasColumnType("decimal(15,2)").HasColumnName("sell_price");
+            entity.Property(e => e.DeliverWithSubscription).HasDefaultValue(false).HasColumnName("deliver_with_subscription");
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
@@ -943,6 +964,131 @@ public partial class FoodCareDbContext : DbContext {
                 .HasForeignKey(d => d.SupplierId)
                 .HasConstraintName("settlements_supplier_id_fkey")
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // CartItem Configuration
+        modelBuilder.Entity<CartItem>(entity => {
+            entity.HasKey(e => e.Id).HasName("cart_items_pkey");
+            entity.ToTable("cart_items");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.Quantity).HasDefaultValue(1).HasColumnName("quantity");
+            entity.Property(e => e.IsSubscription).HasDefaultValue(false).HasColumnName("is_subscription");
+            entity.Property(e => e.SubscriptionFrequency).HasMaxLength(20).HasColumnName("subscription_frequency");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_cart_items_user");
+            entity.HasIndex(e => new { e.UserId, e.ProductId, e.IsSubscription })
+                .IsUnique()
+                .HasDatabaseName("uq_cart_items_user_product");
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("cart_items_user_id_fkey");
+
+            entity.HasOne(d => d.Product)
+                .WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("cart_items_product_id_fkey");
+        });
+
+        // ProductAvailabilityNotification Configuration
+        modelBuilder.Entity<ProductAvailabilityNotification>(entity => {
+            entity.HasKey(e => e.Id).HasName("product_availability_notifications_pkey");
+            entity.ToTable("product_availability_notifications");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.MartId).HasColumnName("mart_id");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.NotifiedAt).HasColumnName("notified_at");
+
+            entity.HasIndex(e => new { e.UserId, e.ProductId, e.MartId })
+                .IsUnique()
+                .HasDatabaseName("uq_product_avail_notif_user_product_mart");
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("product_availability_notifications_user_id_fkey");
+
+            entity.HasOne(d => d.Product)
+                .WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("product_availability_notifications_product_id_fkey");
+        });
+
+        // ── CommissionPolicy Configuration ────────────────────────────────────
+        modelBuilder.Entity<CommissionPolicy>(entity => {
+            entity.HasKey(e => e.Id).HasName("commission_policies_pkey");
+            entity.ToTable("commission_policies");
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CommissionRate).HasPrecision(5, 2).HasColumnName("commission_rate");
+            entity.Property(e => e.EffectiveFrom).HasColumnName("effective_from");
+            entity.Property(e => e.EffectiveTo).HasColumnName("effective_to");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("commission_policies_supplier_id_fkey");
+        });
+
+        // ── OrderCommission Configuration ─────────────────────────────────────
+        modelBuilder.Entity<OrderCommission>(entity => {
+            entity.HasKey(e => e.Id).HasName("order_commissions_pkey");
+            entity.ToTable("order_commissions");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.PolicyId).HasColumnName("policy_id");
+            entity.Property(e => e.OrderAmount).HasPrecision(15, 2).HasColumnName("order_amount");
+            entity.Property(e => e.CommissionRate).HasPrecision(5, 2).HasColumnName("commission_rate");
+            entity.Property(e => e.CommissionAmount).HasPrecision(15, 2).HasColumnName("commission_amount");
+            entity.Property(e => e.SupplierAmount).HasPrecision(15, 2).HasColumnName("supplier_amount");
+            entity.Property(e => e.SettlementId).HasColumnName("settlement_id");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("pending").HasColumnName("status");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+
+            entity.HasIndex(e => e.OrderId).IsUnique().HasDatabaseName("uq_order_commission_order");
+            entity.HasIndex(e => e.SupplierId).HasDatabaseName("idx_order_commissions_supplier");
+            entity.HasIndex(e => e.Status).HasDatabaseName("idx_order_commissions_status");
+
+            entity.HasOne(d => d.Order)
+                .WithMany()
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("order_commissions_order_id_fkey");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("order_commissions_supplier_id_fkey");
+
+            entity.HasOne(d => d.Policy)
+                .WithMany()
+                .HasForeignKey(d => d.PolicyId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("order_commissions_policy_id_fkey");
+
+            entity.HasOne(d => d.Settlement)
+                .WithMany()
+                .HasForeignKey(d => d.SettlementId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("order_commissions_settlement_id_fkey");
         });
 
     }

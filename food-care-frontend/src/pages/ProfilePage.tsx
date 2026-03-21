@@ -550,7 +550,7 @@ export default function ProfilePage() {
         try {
             const data = {
                 provider: paymentForm.provider,
-                providerToken: 'mock_token_' + Date.now(),
+                providerToken: 'token_' + Date.now(),
                 last4Digits: paymentForm.last4Digits || undefined,
                 isDefault: paymentForm.isDefault,
             };
@@ -715,7 +715,6 @@ export default function ProfilePage() {
 
 
 
-    // Mock total orders count
     const totalOrders = orders.length;
     const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN');
 

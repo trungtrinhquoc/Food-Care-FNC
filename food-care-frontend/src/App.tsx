@@ -23,6 +23,12 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import NotificationsPage from './pages/NotificationsPage';
 import BlindBoxPage from './pages/BlindBoxPage';
+import MartSelectionPage from './pages/MartSelectionPage';
+import CrossMartSearchPage from './pages/CrossMartSearchPage';
+import ServerCartPage from './pages/ServerCartPage';
+import OrderTrackingPage from './pages/OrderTrackingPage';
+import SplashPage from './pages/SplashPage';
+import OnboardingPage from './pages/OnboardingPage';
 
 import SupplierShipmentManagement from './components/supplier/SupplierShipmentManagement';
 
@@ -104,18 +110,30 @@ const SupplierRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Guard: redirect brand-new customer users to onboarding
+// Onboarding is optional — users land on home regardless of mart selection status
+const NewUserGuard = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>;
+};
+
 function AppRoutes() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isSupplierRoute = location.pathname.startsWith('/supplier');
   const isDashboardRoute = isAdminRoute || isSupplierRoute;
+  const isFullscreenRoute = ['/welcome', '/onboarding'].some((p) =>
+    location.pathname.startsWith(p)
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isDashboardRoute && <Header />}
+      {!isDashboardRoute && !isFullscreenRoute && <Header />}
       <main className="min-h-screen">
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<NewUserGuard><HomePage /></NewUserGuard>} />
+          <Route path="/welcome" element={<SplashPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/onboarding/mart" element={<ProtectedRoute><MartSelectionPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -141,6 +159,14 @@ function AppRoutes() {
             <ProtectedRoute><NotificationsPage /></ProtectedRoute>
           } />
           <Route path="/blind-boxes" element={<BlindBoxPage />} />
+          <Route path="/mart-selection" element={<MartSelectionPage />} />
+          <Route path="/search-all" element={<CrossMartSearchPage />} />
+          <Route path="/server-cart" element={
+            <ProtectedRoute><ServerCartPage /></ProtectedRoute>
+          } />
+          <Route path="/orders/:id/tracking" element={
+            <ProtectedRoute><OrderTrackingPage /></ProtectedRoute>
+          } />
 
           <Route path="/admin" element={
             <AdminRoute><AdminDashboardPage /></AdminRoute>
@@ -160,9 +186,9 @@ function AppRoutes() {
         </Routes>
       </main>
 
-      {!isDashboardRoute && <Footer />}
-      {/* Chat Widget - only show when logged in and not on dashboard routes */}
-      {!isDashboardRoute && <ChatWidgetWrapper />}
+      {!isDashboardRoute && !isFullscreenRoute && <Footer />}
+      {/* Chat Widget - only show when logged in and not on dashboard/fullscreen routes */}
+      {!isDashboardRoute && !isFullscreenRoute && <ChatWidgetWrapper />}
     </div>
   );
 }

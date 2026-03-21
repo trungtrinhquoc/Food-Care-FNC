@@ -41,6 +41,7 @@ function parseImageUrl(imageUrl?: string | string[]): string[] {
 
 export interface ProductFilter {
     categoryId?: number;
+    supplierId?: number;
     minPrice?: number;
     maxPrice?: number;
     searchTerm?: string;
