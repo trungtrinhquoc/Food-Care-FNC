@@ -25,7 +25,7 @@ public class AdminSupplierService : IAdminSupplierService
         {
             var searchLower = filter.SearchTerm.ToLower();
             query = query.Where(s => 
-                s.ContactName.ToLower().Contains(searchLower) ||
+                (s.ContactName != null && s.ContactName.ToLower().Contains(searchLower)) ||
                 (s.ContactEmail != null && s.ContactEmail.ToLower().Contains(searchLower)) ||
                 (s.ContactPhone != null && s.ContactPhone.Contains(searchLower)));
         }

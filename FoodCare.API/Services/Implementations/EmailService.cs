@@ -274,7 +274,8 @@ namespace FoodCare.API.Services.Implementations
             var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
             var username = _configuration["Email:Username"];
             var password = _configuration["Email:Password"];
-            var fromEmail = _configuration["Email:From"] ?? username;
+            var fromEmail = _configuration["Email:From"] ?? username
+                ?? throw new InvalidOperationException("Email:From or Email:Username is not configured.");
             var fromName = _configuration["Email:FromName"] ?? "Food & Care";
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))

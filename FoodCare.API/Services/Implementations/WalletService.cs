@@ -146,6 +146,11 @@ public class WalletService : IWalletService
             var user = await _db.Users.FindAsync(userId)
                 ?? throw new KeyNotFoundException("Không tìm thấy tài khoản người dùng.");
 
+            // Force fresh balance read from DB, bypassing EF Core identity map.
+            // Protects against stale cached entities when called from a shared DbContext scope
+            // (e.g. SubscriptionPaymentJob that pre-loaded Users via Include).
+            await _db.Entry(user).ReloadAsync();
+
             // 2. Load order + validate
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId)
                 ?? throw new KeyNotFoundException($"Không tìm thấy đơn hàng: {orderId}");
@@ -212,7 +217,11 @@ public class WalletService : IWalletService
         catch (Exception ex)
         {
             await dbTransaction.RollbackAsync();
-            _logger.LogError(ex, "[WalletService] ❌ PayOrderWithWallet thất bại - OrderId: {OrderId}", orderId);
+            // Insufficient balance is an expected, handled business case — log as warning, not error.
+            if (ex is InvalidOperationException)
+                _logger.LogWarning("[WalletService] ⚠️ PayOrderWithWallet thất bại (business rule) - OrderId: {OrderId} - {Message}", orderId, ex.Message);
+            else
+                _logger.LogError(ex, "[WalletService] ❌ PayOrderWithWallet thất bại - OrderId: {OrderId}", orderId);
             throw;
         }
     }

@@ -74,10 +74,10 @@ public class SupplierAuthService : ISupplierAuthService
                          oi.Product.Supplier.UserId == userGuid)
             .Select(oi => new SupplierOrderDto
             {
-                CreatedAt = (DateTime)oi.Order.CreatedAt,
-                TotalAmount = oi.Order.TotalAmount,
-                Status = oi.Order.Status.ToString(),
-                CustomerName = oi.Order.User != null ? oi.Order.User.FullName : "Unknown",
+                CreatedAt = oi.Order!.CreatedAt ?? DateTime.UtcNow,
+                TotalAmount = oi.Order!.TotalAmount,
+                Status = oi.Order!.Status.ToString(),
+                CustomerName = oi.Order!.User != null ? (oi.Order!.User.FullName ?? "Unknown") : "Unknown",
                 ItemCount = _context.OrderItems.Count(oi2 => oi2.OrderId == oi.OrderId)
             })
             .Distinct()
@@ -109,15 +109,15 @@ public class SupplierAuthService : ISupplierAuthService
             .Where(oi => oi.Product != null && 
                          oi.Product.Supplier != null && 
                          oi.Product.Supplier.UserId == userGuid &&
-                         !oi.Order.Status.Equals("cancelled"))
+                         !oi.Order!.Status.Equals("cancelled"))
             .ToListAsync();
 
         var totalRevenue = orderItems.Sum(oi => oi.TotalPrice);
         var thisMonthRevenue = orderItems
-            .Where(oi => oi.Order.CreatedAt >= thisMonth)
+            .Where(oi => oi.Order!.CreatedAt >= thisMonth)
             .Sum(oi => oi.TotalPrice);
         var lastMonthRevenue = orderItems
-            .Where(oi => oi.Order.CreatedAt >= lastMonth && oi.Order.CreatedAt < thisMonth)
+            .Where(oi => oi.Order!.CreatedAt >= lastMonth && oi.Order!.CreatedAt < thisMonth)
             .Sum(oi => oi.TotalPrice);
 
         return new SupplierStatsDto
@@ -126,10 +126,10 @@ public class SupplierAuthService : ISupplierAuthService
             ActiveProducts = products.Count(p => p.IsActive == true),
             LowStockProducts = products.Count(p => p.StockQuantity <= 10),
             TotalOrders = orderItems.Select(oi => oi.OrderId).Distinct().Count(),
-            PendingOrders = orderItems.Count(oi => oi.Order.Status.Equals("pending")),
-            TotalRevenue = (decimal)totalRevenue,
-            ThisMonthRevenue = (decimal)thisMonthRevenue,
-            LastMonthRevenue = (decimal)lastMonthRevenue
+            PendingOrders = orderItems.Count(oi => oi.Order!.Status.Equals("pending")),
+            TotalRevenue = totalRevenue ?? 0m,
+            ThisMonthRevenue = thisMonthRevenue ?? 0m,
+            LastMonthRevenue = lastMonthRevenue ?? 0m
         };
     }
 
@@ -154,14 +154,14 @@ public class SupplierAuthService : ISupplierAuthService
             .Where(oi => oi.Product != null && 
                          oi.Product.Supplier != null && 
                          oi.Product.Supplier.UserId == userGuid &&
-                         !oi.Order.Status.Equals("cancelled") &&
-                         oi.Order.CreatedAt >= startDate)
+                         !oi.Order!.Status.Equals("cancelled") &&
+                         oi.Order!.CreatedAt >= startDate)
             .ToListAsync();
 
         // Daily revenue (last 30 days)
         var dailyRevenue = orderItems
-            .Where(oi => oi.Order.CreatedAt >= now.AddDays(-30))
-            .GroupBy(oi => oi.Order.CreatedAt!.Value.Date)
+            .Where(oi => oi.Order!.CreatedAt >= now.AddDays(-30))
+            .GroupBy(oi => oi.Order!.CreatedAt!.Value.Date)
             .Select(g => new DailyRevenueDto
             {
                 Date = g.Key,
@@ -173,7 +173,7 @@ public class SupplierAuthService : ISupplierAuthService
 
         // Monthly revenue
         var monthlyRevenue = orderItems
-            .GroupBy(oi => new { oi.Order.CreatedAt!.Value.Year, oi.Order.CreatedAt.Value.Month })
+            .GroupBy(oi => new { oi.Order!.CreatedAt!.Value.Year, oi.Order!.CreatedAt.Value.Month })
             .Select(g => new MonthlyRevenueDto
             {
                 Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
@@ -193,7 +193,7 @@ public class SupplierAuthService : ISupplierAuthService
             .Select(g => new CategoryRevenueDto
             {
                 Category = g.Key ?? "Unknown",
-                Revenue = (decimal)g.Sum(oi => oi.TotalPrice),
+                Revenue = g.Sum(oi => oi.TotalPrice) ?? 0m,
                 Percentage = 0 // Will calculate below
             })
             .ToList();
@@ -213,7 +213,7 @@ public class SupplierAuthService : ISupplierAuthService
             {
                 ProductId = g.Key.ProductId ?? Guid.Empty,
                 ProductName = g.Key.ProductName ?? "Unknown",
-                Revenue = (decimal)g.Sum(oi => oi.TotalPrice),
+                Revenue = g.Sum(oi => oi.TotalPrice) ?? 0m,
                 Quantity = g.Sum(oi => oi.Quantity)
             })
             .OrderByDescending(p => p.Revenue)
@@ -226,7 +226,7 @@ public class SupplierAuthService : ISupplierAuthService
             MonthlyRevenue = monthlyRevenue,
             CategoryRevenue = categoryRevenue,
             TopProducts = topProducts,
-            TotalRevenue = (decimal)orderItems.Sum(oi => oi.TotalPrice),
+            TotalRevenue = orderItems.Sum(oi => oi.TotalPrice) ?? 0m,
             TotalOrders = orderItems.Select(oi => oi.OrderId).Distinct().Count()
         };
     }
@@ -250,7 +250,7 @@ public class SupplierAuthService : ISupplierAuthService
                 ProductId = r.ProductId ?? Guid.Empty,
                 ProductName = r.Product != null ? r.Product.Name : "Unknown",
                 ProductImage = r.Product != null ? r.Product.Images : null,
-                CustomerName = r.User != null ? r.User.FullName : "Anonymous",
+                CustomerName = r.User != null ? (r.User.FullName ?? "Anonymous") : "Anonymous",
                 CustomerAvatar = r.User != null ? r.User.AvatarUrl : null,
                 Rating = r.Rating ?? 0,
                 Comment = r.Comment ?? "",

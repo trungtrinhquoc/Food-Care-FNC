@@ -51,6 +51,7 @@ public partial class FoodCareDbContext : DbContext {
     public DbSet<SubscriptionConfirmation> SubscriptionConfirmations { get; set; }
     public DbSet<Complaint> Complaints { get; set; }
     public DbSet<BlindBox> BlindBoxes { get; set; }
+    public DbSet<Settlement> Settlements { get; set; }
 
     // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //     => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
@@ -915,6 +916,32 @@ public partial class FoodCareDbContext : DbContext {
                 .WithMany()
                 .HasForeignKey(d => d.SupplierId)
                 .HasConstraintName("fk_blind_boxes_suppliers")
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Settlement>(entity => {
+            entity.HasKey(e => e.Id).HasName("settlements_pkey");
+            entity.ToTable("settlements");
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()").HasColumnName("id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.Month).HasColumnName("month");
+            entity.Property(e => e.Year).HasColumnName("year");
+            entity.Property(e => e.TotalSales).HasColumnType("decimal(15,2)").HasColumnName("total_sales");
+            entity.Property(e => e.CommissionRate).HasColumnType("decimal(5,2)").HasColumnName("commission_rate");
+            entity.Property(e => e.CommissionAmount).HasColumnType("decimal(15,2)").HasColumnName("commission_amount");
+            entity.Property(e => e.AmountDue).HasColumnType("decimal(15,2)").HasColumnName("amount_due");
+            entity.Property(e => e.IsPaid).HasDefaultValue(false).HasColumnName("is_paid");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+
+            entity.HasIndex(e => new { e.SupplierId, e.Month, e.Year })
+                .IsUnique()
+                .HasDatabaseName("ix_settlements_supplier_period");
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("settlements_supplier_id_fkey")
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

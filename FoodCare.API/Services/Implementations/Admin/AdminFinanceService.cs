@@ -61,7 +61,30 @@ public class AdminFinanceService : IAdminFinanceService
 
     public async Task<List<MartSettlementDto>> GetSettlementsAsync(int month, int year)
     {
-        // Use SupplierOrders table which has the SupplierId relationship
+        // Check for persisted settlement records first
+        var persistedSettlements = await _context.Settlements
+            .Include(s => s.Supplier)
+            .Where(s => s.Month == month && s.Year == year)
+            .ToListAsync();
+
+        if (persistedSettlements.Count > 0)
+        {
+            return persistedSettlements
+                .Select(s => new MartSettlementDto
+                {
+                    SupplierId = s.SupplierId,
+                    StoreName = s.Supplier.StoreName,
+                    TotalSales = s.TotalSales,
+                    CommissionRate = s.CommissionRate,
+                    CommissionAmount = s.CommissionAmount,
+                    AmountDue = s.AmountDue,
+                    IsPaid = s.IsPaid
+                })
+                .OrderByDescending(s => s.AmountDue)
+                .ToList();
+        }
+
+        // Calculate from orders if no persisted settlements exist
         var suppliers = await _context.Suppliers
             .Where(s => s.IsActive == true)
             .ToListAsync();
@@ -102,16 +125,41 @@ public class AdminFinanceService : IAdminFinanceService
 
     public async Task SettleAllAsync(int month, int year)
     {
-        var settlements = await GetSettlementsAsync(month, year);
+        // Check if already settled for this period
+        var existingSettlements = await _context.Settlements
+            .Where(s => s.Month == month && s.Year == year && s.IsPaid)
+            .AnyAsync();
 
-        foreach (var settlement in settlements.Where(s => !s.IsPaid))
+        if (existingSettlements)
+            return;
+
+        var dtos = await GetSettlementsAsync(month, year);
+        var now = DateTime.UtcNow;
+
+        foreach (var dto in dtos.Where(s => !s.IsPaid))
         {
-            var supplier = await _context.Suppliers.FindAsync(settlement.SupplierId);
+            var supplier = await _context.Suppliers.FindAsync(dto.SupplierId);
             if (supplier != null)
             {
-                supplier.TotalCommission = (supplier.TotalCommission ?? 0) + settlement.CommissionAmount;
-                supplier.PendingPayout = Math.Max(0, (supplier.PendingPayout ?? 0) - settlement.AmountDue);
+                supplier.TotalCommission = (supplier.TotalCommission ?? 0) + dto.CommissionAmount;
+                supplier.PendingPayout = Math.Max(0, (supplier.PendingPayout ?? 0) - dto.AmountDue);
             }
+
+            // Persist settlement record
+            _context.Settlements.Add(new Settlement
+            {
+                Id = Guid.NewGuid(),
+                SupplierId = dto.SupplierId,
+                Month = month,
+                Year = year,
+                TotalSales = dto.TotalSales,
+                CommissionRate = dto.CommissionRate,
+                CommissionAmount = dto.CommissionAmount,
+                AmountDue = dto.AmountDue,
+                IsPaid = true,
+                PaidAt = now,
+                CreatedAt = now
+            });
         }
 
         await _context.SaveChangesAsync();

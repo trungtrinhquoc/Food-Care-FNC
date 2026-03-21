@@ -191,8 +191,8 @@ public class RecommendationService : IRecommendationService
                 ProductId = g.Key,
                 OrderCount = g.Count(),
                 Product = g.First().Product,
-                DiscountPercentage = (g.First().Product != null && g.First().Product!.OriginalPrice.HasValue && g.First().Product!.OriginalPrice.Value != 0) 
-                    ? ((g.First().Product!.OriginalPrice.Value - g.First().Product!.BasePrice) / g.First().Product!.OriginalPrice.Value) * 100 
+                DiscountPercentage = (g.First().Product != null && g.First().Product!.OriginalPrice.HasValue && g.First().Product!.OriginalPrice!.Value != 0) 
+                    ? ((g.First().Product!.OriginalPrice!.Value - g.First().Product!.BasePrice) / g.First().Product!.OriginalPrice!.Value) * 100 
                     : 0
             })
             .OrderByDescending(x => x.DiscountPercentage)

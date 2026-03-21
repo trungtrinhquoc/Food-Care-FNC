@@ -365,7 +365,7 @@ public class AuthService : IAuthService
             // We'll use it to get user info from Google's userinfo endpoint
             string email;
             string name;
-            string picture;
+            string? picture;
             
             try
             {
