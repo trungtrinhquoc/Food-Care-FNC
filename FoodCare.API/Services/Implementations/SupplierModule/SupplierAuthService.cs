@@ -89,16 +89,13 @@ public class SupplierAuthService : ISupplierAuthService
                 AddressDto? shippingAddress = null;
                 if (!string.IsNullOrEmpty(order.ShippingAddressSnapshot))
                 {
-                    try
-                    {
-                        shippingAddress = JsonSerializer.Deserialize<AddressDto>(order.ShippingAddressSnapshot, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    }
-                    catch { /* If not JSON, use as street */ shippingAddress = new AddressDto { Street = order.ShippingAddressSnapshot }; }
+                    shippingAddress = ParseShippingAddress(order.ShippingAddressSnapshot);
                 }
 
                 return new SupplierOrderDto
                 {
                     Id = order.Id.ToString(),
+                    OrderNumber = $"DH-{order.Id.ToString()[..8].ToUpperInvariant()}",
                     CreatedAt = order.CreatedAt ?? DateTime.UtcNow,
                     TotalAmount = order.TotalAmount,
                     Status = order.Status.ToString(),
@@ -693,6 +690,9 @@ public class SupplierAuthService : ISupplierAuthService
 
     public async Task<bool> UpdateOrderStatusAsync(Guid orderId, Guid userId, UpdateOrderStatusDto dto)
     {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Status))
+            throw new InvalidOperationException("Trạng thái đơn hàng không hợp lệ.");
+
         var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.UserId == userId && s.IsDeleted != true);
         if (supplier == null) return false;
 
@@ -703,21 +703,32 @@ public class SupplierAuthService : ISupplierAuthService
                 o.OrderItems.Any(oi => oi.Product != null && oi.Product.SupplierId == supplier.Id));
         if (order == null) return false;
 
-        if (dto.Status == "delivered" && string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
+        var normalizedStatus = dto.Status.Trim().ToLowerInvariant() switch
+        {
+            "shipped" => "shipping",
+            _ => dto.Status.Trim().ToLowerInvariant()
+        };
+
+        if (!Enum.TryParse<OrderStatus>(normalizedStatus, true, out var newStatus))
+            throw new InvalidOperationException("Trạng thái đơn hàng không được hỗ trợ.");
+
+        if (!IsValidSupplierStatusTransition(order.Status, newStatus))
+            throw new InvalidOperationException($"Không thể chuyển trạng thái từ '{order.Status}' sang '{newStatus}'.");
+
+        if (order.Status == newStatus)
+            throw new InvalidOperationException("Đơn hàng đã ở trạng thái này.");
+
+        if (newStatus == OrderStatus.delivered && string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
             throw new InvalidOperationException("Delivery photo is required when marking an order as delivered.");
+
+        if (newStatus == OrderStatus.cancelled && string.IsNullOrWhiteSpace(dto.Reason) && string.IsNullOrWhiteSpace(dto.Notes))
+            throw new InvalidOperationException("Lý do hủy đơn là bắt buộc.");
 
         var previousStatus = order.Status;
 
-        order.Status = dto.Status switch
-        {
-            "confirmed" => OrderStatus.confirmed,
-            "shipping"  => OrderStatus.shipping,
-            "delivered" => OrderStatus.delivered,
-            "cancelled" => OrderStatus.cancelled,
-            _ => order.Status
-        };
+        order.Status = newStatus;
 
-        if (dto.Status == "delivered" && !string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
+        if (newStatus == OrderStatus.delivered && !string.IsNullOrWhiteSpace(dto.DeliveryPhotoUrl))
             order.DeliveryPhotoUrl = dto.DeliveryPhotoUrl;
 
         order.UpdatedAt = DateTime.UtcNow;
@@ -733,12 +744,12 @@ public class SupplierAuthService : ISupplierAuthService
             CreatedAt = DateTime.UtcNow
         });
 
-        if (dto.Status == "delivered")
+        if (newStatus == OrderStatus.delivered)
         {
             supplier.CompletedOrders = (supplier.CompletedOrders ?? 0) + 1;
             supplier.TotalRevenue = (supplier.TotalRevenue ?? 0) + order.TotalAmount;
         }
-        else if (dto.Status == "cancelled")
+        else if (newStatus == OrderStatus.cancelled)
         {
             supplier.CancelledOrders = (supplier.CancelledOrders ?? 0) + 1;
         }
@@ -753,7 +764,7 @@ public class SupplierAuthService : ISupplierAuthService
         await _context.SaveChangesAsync();
 
         // Auto-refund on supplier cancel if order was already paid (spec 3.3 step 26)
-        if (dto.Status == "cancelled" && order.PaymentStatus == PaymentStatus.paid && order.UserId.HasValue)
+        if (newStatus == OrderStatus.cancelled && order.PaymentStatus == PaymentStatus.paid && order.UserId.HasValue)
         {
             try
             {
@@ -770,6 +781,17 @@ public class SupplierAuthService : ISupplierAuthService
         }
 
         return true;
+    }
+
+    private static bool IsValidSupplierStatusTransition(OrderStatus from, OrderStatus to)
+    {
+        return from switch
+        {
+            OrderStatus.pending => to is OrderStatus.confirmed or OrderStatus.cancelled,
+            OrderStatus.confirmed => to is OrderStatus.shipping or OrderStatus.cancelled,
+            OrderStatus.shipping => to == OrderStatus.delivered,
+            _ => false
+        };
     }
 
     // ===== NEAR-EXPIRY PRODUCTS =====
@@ -874,6 +896,46 @@ public class SupplierAuthService : ISupplierAuthService
         if (south.Any(p => c.Contains(p))) return "South";
 
         return "Central"; // default
+    }
+
+    private static AddressDto? ParseShippingAddress(string? snapshot)
+    {
+        if (string.IsNullOrWhiteSpace(snapshot)) return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(snapshot);
+            var root = doc.RootElement;
+
+            string? Get(params string[] keys)
+            {
+                foreach (var key in keys)
+                {
+                    if (root.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String)
+                    {
+                        var str = value.GetString();
+                        if (!string.IsNullOrWhiteSpace(str)) return str;
+                    }
+                }
+                return null;
+            }
+
+            return new AddressDto
+            {
+                Street = Get("addressLine1", "street", "address", "AddressLine1", "Street", "Address"),
+                Ward = Get("ward", "Ward"),
+                District = Get("district", "District"),
+                City = Get("city", "City"),
+                State = Get("state", "State"),
+                ZipCode = Get("zipCode", "postalCode", "ZipCode", "PostalCode"),
+                Country = Get("country", "Country")
+            };
+        }
+        catch
+        {
+            // Legacy plain-text snapshot
+            return new AddressDto { Street = snapshot };
+        }
     }
 
     // ===== DELIVERY BATCH GROUPING (spec 3.3) =====

@@ -997,12 +997,6 @@ export default function ProfilePage() {
                                                             {getStatusIcon(order.status)}
                                                             {getStatusText(order.status)}
                                                         </span>
-                                                        {order.status === 'shipping' && (
-                                                            <div className="h-4 w-[1px] bg-gray-300 mx-1"></div>
-                                                        )}
-                                                        {order.status === 'shipping' && (
-                                                            <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border border-orange-200">Đang giao hàng</span>
-                                                        )}
                                                     </div>
                                                 </div>
 

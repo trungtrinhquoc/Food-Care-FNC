@@ -165,16 +165,16 @@ export default function SupplierDashboardPage() {
     }
   };
 
-  const loadOrders = async () => {
+  const loadOrders = async (showLoading = true) => {
     try {
-      setLoadingOrders(true);
+      if (showLoading) setLoadingOrders(true);
       const data = await ordersApi.getOrders();
       setOrders(data);
     } catch (error) {
       console.error('Failed to load orders:', error);
       setOrders([]);
     } finally {
-      setLoadingOrders(false);
+      if (showLoading) setLoadingOrders(false);
     }
   };
 
@@ -192,12 +192,18 @@ export default function SupplierDashboardPage() {
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    const previousOrders = orders;
+    setOrders((current) =>
+      current.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
+    );
+
     try {
       await ordersApi.updateOrderStatus(orderId, newStatus);
-      await loadOrders();
+      await loadOrders(false);
       await loadStats();
       toast.success('Đã cập nhật trạng thái đơn hàng');
     } catch (error) {
+      setOrders(previousOrders);
       console.error('Failed to update order status:', error);
       toast.error('Không thể cập nhật trạng thái');
     }
@@ -280,7 +286,7 @@ export default function SupplierDashboardPage() {
             orders={orders}
             loading={loadingOrders}
             onUpdateStatus={handleUpdateOrderStatus}
-            onRefresh={loadOrders}
+            onRefresh={() => loadOrders(false)}
           />
         );
 

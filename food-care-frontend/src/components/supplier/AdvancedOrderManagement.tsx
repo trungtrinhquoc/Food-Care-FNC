@@ -286,9 +286,11 @@ export function AdvancedOrderManagement({
       confirmed: { label: 'Đã xác nhận', variant: 'default' },
       processing: { label: 'Đang xử lý', variant: 'secondary' },
       packed: { label: 'Đã đóng gói', variant: 'secondary' },
+      shipping: { label: 'Đang giao', variant: 'default' },
       shipped: { label: 'Đang giao', variant: 'default' },
       delivered: { label: 'Đã giao', variant: 'default' },
       cancelled: { label: 'Đã hủy', variant: 'outline' },
+      returned: { label: 'Đã hoàn trả', variant: 'outline' },
       refunded: { label: 'Hoàn tiền', variant: 'outline' },
     };
     const config = configs[status] || { label: status, variant: 'default' as const };
