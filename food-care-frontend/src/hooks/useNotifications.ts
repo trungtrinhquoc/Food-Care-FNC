@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { notificationApi, type AppNotification, type NotificationsResponse } from '../services/notificationApi';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -25,6 +26,9 @@ export function useNotifications() {
             setHasMore(pageNum < data.totalPages);
             setTotalPages(data.totalPages);
         } catch (err) {
+            if (!axios.isAxiosError(err)) return;
+            // Ignore expected auth/network transitions to avoid noisy console spam.
+            if (err.response?.status === 401 || err.code === 'ERR_NETWORK') return;
             console.error('Failed to fetch notifications', err);
         } finally {
             setLoading(false);

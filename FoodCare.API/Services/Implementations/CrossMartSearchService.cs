@@ -21,8 +21,31 @@ public class CrossMartSearchService : ICrossMartSearchService
 
     public async Task<(List<CrossMartProductResultDto> Products, int TotalCount)> SearchAcrossMartsAsync(CrossMartSearchDto query, Guid? userId)
     {
+        var keyword = (query.Query ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(keyword))
+            return (new List<CrossMartProductResultDto>(), 0);
+
         var userLat = (double)query.Latitude;
         var userLng = (double)query.Longitude;
+        var useRadiusFilter = query.RadiusKm > 0;
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, 200);
+
+        // Prefer persisted user location from default address to avoid realtime GPS/API dependency on each search.
+        if (userId.HasValue)
+        {
+            var defaultAddress = await _context.Addresses
+                .Where(a => a.UserId == userId.Value && a.IsDefault == true && a.Latitude != null && a.Longitude != null)
+                .OrderByDescending(a => a.CreatedAt)
+                .Select(a => new { a.Latitude, a.Longitude })
+                .FirstOrDefaultAsync();
+
+            if (defaultAddress != null)
+            {
+                userLat = (double)defaultAddress.Latitude!.Value;
+                userLng = (double)defaultAddress.Longitude!.Value;
+            }
+        }
 
         // Get active subscription total per mart for the user (for free shipping calculation)
         var userSubTotals = new Dictionary<int, decimal>();
@@ -43,17 +66,25 @@ public class CrossMartSearchService : ICrossMartSearchService
             .ToListAsync();
 
         var nearbyMartIds = marts
-            .Where(m => CalculateDistance(userLat, userLng, m.Lat, m.Lng) <= query.RadiusKm)
-            .ToDictionary(m => m.Id, m => new { m.StoreName, m.Rating, Distance = CalculateDistance(userLat, userLng, m.Lat, m.Lng) });
+            .Select(m => new
+            {
+                m.Id,
+                m.StoreName,
+                m.Rating,
+                Distance = CalculateDistance(userLat, userLng, m.Lat, m.Lng)
+            })
+            .Where(m => !useRadiusFilter || m.Distance <= query.RadiusKm)
+            .ToDictionary(m => m.Id, m => new { m.StoreName, m.Rating, m.Distance });
 
         if (nearbyMartIds.Count == 0)
             return (new List<CrossMartProductResultDto>(), 0);
 
         // Search products across nearby marts
-        var searchTerm = $"%{query.Query}%";
+        var searchTerm = $"%{keyword}%";
         var productQuery = _context.Products
             .Where(p => p.IsActive == true && p.IsDeleted != true && p.ApprovalStatus == "approved"
-                      && p.SupplierId != null && nearbyMartIds.Keys.Contains(p.SupplierId.Value))
+                      && p.SupplierId != null && nearbyMartIds.Keys.Contains(p.SupplierId.Value)
+                      && p.StockQuantity != null && p.StockQuantity > 0)
             .Where(p => EF.Functions.ILike(p.Name, searchTerm)
                      || (p.Manufacturer != null && EF.Functions.ILike(p.Manufacturer, searchTerm))
                      || (p.Origin != null && EF.Functions.ILike(p.Origin, searchTerm)));
@@ -61,6 +92,16 @@ public class CrossMartSearchService : ICrossMartSearchService
         var totalCount = await productQuery.CountAsync();
 
         var products = await productQuery.ToListAsync();
+
+        var productIds = products.Select(p => p.Id).ToList();
+        var soldByProduct = await _context.OrderItems
+            .Where(oi => oi.ProductId != null
+                      && productIds.Contains(oi.ProductId.Value)
+                      && oi.Order != null
+                      && oi.Order.Status == OrderStatus.delivered)
+            .GroupBy(oi => oi.ProductId!.Value)
+            .Select(g => new { ProductId = g.Key, SoldCount = g.Sum(x => x.Quantity) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.SoldCount);
 
         var results = products.Select(p =>
         {
@@ -98,15 +139,19 @@ public class CrossMartSearchService : ICrossMartSearchService
         results = query.SortBy?.ToLower() switch
         {
             "price_asc" => results.OrderBy(r => r.BasePrice).ToList(),
+            "price" => results.OrderBy(r => r.BasePrice).ToList(),
+            "price_low" => results.OrderBy(r => r.BasePrice).ToList(),
             "distance" => results.OrderBy(r => r.DistanceKm).ToList(),
-            "popularity" => results.OrderByDescending(r => r.RatingCount ?? 0).ToList(),
+            "nearest" => results.OrderBy(r => r.DistanceKm).ToList(),
+            "popularity" => results.OrderByDescending(r => soldByProduct.GetValueOrDefault(r.ProductId, 0)).ToList(),
+            "popular" => results.OrderByDescending(r => soldByProduct.GetValueOrDefault(r.ProductId, 0)).ToList(),
             _ => results.OrderBy(r => r.DistanceKm).ThenByDescending(r => r.RatingAverage ?? 0).ToList()
         };
 
         // Paginate
         var paged = results
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToList();
 
         return (paged, totalCount);
@@ -114,24 +159,21 @@ public class CrossMartSearchService : ICrossMartSearchService
 
     public async Task<List<ProductVariantDto>> GetProductVariantsAsync(Guid productId, int martId)
     {
-        // Get the source product to find category
+        // Get source product name to compare exact product variants in the same mart.
         var sourceProduct = await _context.Products
             .Where(p => p.Id == productId)
-            .Select(p => new { p.CategoryId, p.Name })
+            .Select(p => new { p.Name })
             .FirstOrDefaultAsync();
 
-        if (sourceProduct == null || sourceProduct.CategoryId == null)
+        if (sourceProduct == null)
             return new List<ProductVariantDto>();
 
-        // Find similar products in the same category from the same mart
-        var variants = await _context.Products
+        var baseVariants = await _context.Products
             .Where(p => p.SupplierId == martId
-                     && p.CategoryId == sourceProduct.CategoryId
+                     && p.Name == sourceProduct.Name
                      && p.IsActive == true
                      && p.IsDeleted != true
                      && p.ApprovalStatus == "approved")
-            .OrderByDescending(p => p.RatingCount ?? 0)
-            .Take(3)
             .Select(p => new ProductVariantDto
             {
                 ProductId = p.Id,
@@ -142,9 +184,32 @@ public class CrossMartSearchService : ICrossMartSearchService
                 BasePrice = p.BasePrice,
                 RatingAverage = p.RatingAverage,
                 RatingCount = p.RatingCount,
+                SoldCount = 0,
                 IsPopular = false
             })
             .ToListAsync();
+
+        if (baseVariants.Count == 0)
+            return baseVariants;
+
+        var variantIds = baseVariants.Select(v => v.ProductId).ToList();
+
+        var soldByProduct = await _context.OrderItems
+            .Where(oi => oi.ProductId != null && variantIds.Contains(oi.ProductId.Value))
+            .GroupBy(oi => oi.ProductId!.Value)
+            .Select(g => new { ProductId = g.Key, SoldCount = g.Sum(x => x.Quantity) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.SoldCount);
+
+        var variants = baseVariants
+            .Select(v =>
+            {
+                v.SoldCount = soldByProduct.GetValueOrDefault(v.ProductId, 0);
+                return v;
+            })
+            .OrderByDescending(v => v.SoldCount)
+            .ThenByDescending(v => v.RatingCount ?? 0)
+            .Take(3)
+            .ToList();
 
         // Mark most popular
         if (variants.Count > 0)

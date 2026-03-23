@@ -103,8 +103,20 @@ public class ProfileService : IProfileService
 
     #region Address Management
 
+    private async Task EnsureUserExistsAsync(Guid userId)
+    {
+        var exists = await _context.Users.AnyAsync(u => u.Id == userId);
+        if (!exists)
+        {
+            _logger.LogWarning("Profile operation attempted for missing local user {UserId}", userId);
+            throw new KeyNotFoundException("User profile not found in local database. Please re-login.");
+        }
+    }
+
     public async Task<List<AddressResponse>> GetAddressesAsync(Guid userId)
     {
+        await EnsureUserExistsAsync(userId);
+
         var addresses = await _context.Addresses
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.IsDefault)
@@ -119,6 +131,8 @@ public class ProfileService : IProfileService
                 City = a.City,
                 District = a.District,
                 Ward = a.Ward,
+                Latitude = a.Latitude,
+                Longitude = a.Longitude,
                 IsDefault = a.IsDefault ?? false,
                 CreatedAt = a.CreatedAt ?? DateTime.UtcNow
             })
@@ -129,6 +143,8 @@ public class ProfileService : IProfileService
 
     public async Task<AddressResponse> GetAddressByIdAsync(Guid userId, Guid addressId)
     {
+        await EnsureUserExistsAsync(userId);
+
         var address = await _context.Addresses
             .Where(a => a.Id == addressId && a.UserId == userId)
             .Select(a => new AddressResponse
@@ -141,6 +157,8 @@ public class ProfileService : IProfileService
                 City = a.City,
                 District = a.District,
                 Ward = a.Ward,
+                Latitude = a.Latitude,
+                Longitude = a.Longitude,
                 IsDefault = a.IsDefault ?? false,
                 CreatedAt = a.CreatedAt ?? DateTime.UtcNow
             })
@@ -156,6 +174,8 @@ public class ProfileService : IProfileService
 
     public async Task<AddressResponse> CreateAddressAsync(Guid userId, AddressRequest request)
     {
+        await EnsureUserExistsAsync(userId);
+
         // If this is set as default, unset other defaults
         if (request.IsDefault)
         {
@@ -173,6 +193,8 @@ public class ProfileService : IProfileService
             City = request.City,
             District = request.District,
             Ward = request.Ward,
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
             IsDefault = request.IsDefault,
             CreatedAt = DateTime.UtcNow
         };
@@ -192,6 +214,8 @@ public class ProfileService : IProfileService
             City = address.City,
             District = address.District,
             Ward = address.Ward,
+            Latitude = address.Latitude,
+            Longitude = address.Longitude,
             IsDefault = address.IsDefault ?? false,
             CreatedAt = address.CreatedAt ?? DateTime.UtcNow
         };
@@ -199,6 +223,8 @@ public class ProfileService : IProfileService
 
     public async Task<AddressResponse> UpdateAddressAsync(Guid userId, Guid addressId, AddressRequest request)
     {
+        await EnsureUserExistsAsync(userId);
+
         var address = await _context.Addresses
             .FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == userId);
 
@@ -220,6 +246,8 @@ public class ProfileService : IProfileService
         address.City = request.City;
         address.District = request.District;
         address.Ward = request.Ward;
+        address.Latitude = request.Latitude;
+        address.Longitude = request.Longitude;
         address.IsDefault = request.IsDefault;
 
         await _context.SaveChangesAsync();
@@ -236,6 +264,8 @@ public class ProfileService : IProfileService
             City = address.City,
             District = address.District,
             Ward = address.Ward,
+            Latitude = address.Latitude,
+            Longitude = address.Longitude,
             IsDefault = address.IsDefault ?? false,
             CreatedAt = address.CreatedAt ?? DateTime.UtcNow
         };
@@ -243,6 +273,8 @@ public class ProfileService : IProfileService
 
     public async Task<bool> DeleteAddressAsync(Guid userId, Guid addressId)
     {
+        await EnsureUserExistsAsync(userId);
+
         var address = await _context.Addresses
             .FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == userId);
 
@@ -272,6 +304,8 @@ public class ProfileService : IProfileService
 
     public async Task<bool> SetDefaultAddressAsync(Guid userId, Guid addressId)
     {
+        await EnsureUserExistsAsync(userId);
+
         var address = await _context.Addresses
             .FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == userId);
 

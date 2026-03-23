@@ -64,6 +64,30 @@ export interface GoongAutoCompleteResponse {
   status: string;
 }
 
+interface GoongPlaceDetailResponse {
+  result?: {
+    geometry?: {
+      location?: {
+        lat?: number;
+        lng?: number;
+      };
+    };
+  };
+  status?: string;
+}
+
+interface GoongGeocodeResponse {
+  results?: Array<{
+    geometry?: {
+      location?: {
+        lat?: number;
+        lng?: number;
+      };
+    };
+  }>;
+  status?: string;
+}
+
 // ─── Axios instances ────────────────────────────────────────────────────────────
 
 const provincesApi = axios.create({
@@ -161,6 +185,60 @@ export async function searchStreetAutocomplete(
   } catch {
     console.warn('[AddressAPI] Goong autocomplete failed, falling back to manual input');
     return [];
+  }
+}
+
+export async function getCoordinatesFromPlaceId(
+  placeId: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = import.meta.env.VITE_GOONG_API_KEY;
+  if (!apiKey || !placeId?.trim()) return null;
+
+  try {
+    const { data } = await goongApi.get<GoongPlaceDetailResponse>('/Place/Detail', {
+      params: {
+        place_id: placeId,
+        api_key: apiKey,
+      },
+    });
+
+    const lat = data?.result?.geometry?.location?.lat;
+    const lng = data?.result?.geometry?.location?.lng;
+
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      return { lat, lng };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function geocodeAddressWithGoong(
+  address: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = import.meta.env.VITE_GOONG_API_KEY;
+  if (!apiKey || !address?.trim()) return null;
+
+  try {
+    const { data } = await goongApi.get<GoongGeocodeResponse>('/Geocode', {
+      params: {
+        address: address.trim(),
+        api_key: apiKey,
+      },
+    });
+
+    const lat = data?.results?.[0]?.geometry?.location?.lat;
+    const lng = data?.results?.[0]?.geometry?.location?.lng;
+
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      return { lat, lng };
+    }
+
+    return null;
+  } catch {
+    return null;
   }
 }
 

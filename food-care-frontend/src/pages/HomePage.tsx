@@ -9,7 +9,7 @@ import { LowStockNotification } from '../components/LowStockNotification';
 import { productsApi } from '../services/productsApi';
 import { recommendationsApi } from '../services/recommendationsApi';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { ArrowRight, Star, TrendingUp, Package, Clock, DollarSign, Sparkles, Percent, Heart } from 'lucide-react';
+import { ArrowRight, Star, TrendingUp, Package, Clock, DollarSign, Sparkles, Percent, Heart, Search } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 
@@ -79,6 +79,8 @@ export default function HomePage() {
         navigate(`/products/${product.id}`);
     };
 
+    const openSearchPage = () => navigate('/search-all');
+
     return (
         <div className="min-h-screen bg-white">
             {/* Low Stock Notification */}
@@ -105,6 +107,25 @@ export default function HomePage() {
                         <p className="text-xl mb-8 text-emerald-50">
                             Đặt hàng một lần, nhận hàng định kỳ. Tiết kiệm thời gian và chi phí cho những sản phẩm thiết yếu hàng ngày!
                         </p>
+                        <div className="max-w-2xl mx-auto mb-8">
+                            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 border border-white/25">
+                                <p className="text-xs text-emerald-50 mb-2 text-left">Tìm sản phẩm trên toàn nền tảng</p>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Search className="w-4 h-4 text-emerald-200 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <button
+                                            onClick={openSearchPage}
+                                            className="w-full h-11 pl-9 pr-3 rounded-xl bg-white/95 text-gray-600 text-sm text-left"
+                                        >
+                                            Tìm thực phẩm khô...
+                                        </button>
+                                    </div>
+                                    <Button onClick={openSearchPage} className="bg-emerald-900 hover:bg-emerald-950 text-white rounded-xl px-4">
+                                        Mở tìm kiếm
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex flex-wrap justify-center gap-4">
                             <Button
                                 size="sm"

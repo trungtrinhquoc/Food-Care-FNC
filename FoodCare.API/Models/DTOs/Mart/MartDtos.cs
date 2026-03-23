@@ -20,6 +20,8 @@ public class NearbyMartDto
     public string? OperatingHours { get; set; }
     public string? Features { get; set; }
     public decimal? MinOrderValue { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
     public bool IsPreSelected { get; set; }
 }
 

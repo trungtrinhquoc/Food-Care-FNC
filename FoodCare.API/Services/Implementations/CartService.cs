@@ -126,9 +126,42 @@ public class CartService : ICartService
         if (product == null)
             throw new InvalidOperationException("Sản phẩm không tồn tại");
 
-        // Enforce 1-order-1-mart: product must belong to user's selected mart
-        if (user.SelectedMartId.HasValue && product.SupplierId != user.SelectedMartId)
-            throw new InvalidOperationException("Sản phẩm không thuộc mart đang chọn. Vui lòng chuyển mart trước khi thêm vào giỏ.");
+        var action = dto.ConflictAction?.Trim().ToLowerInvariant() ?? "keep_existing";
+
+        // Find currently locked mart from cart content first, then fallback to selected mart profile.
+        var cartMartId = await _context.CartItems
+            .Where(ci => ci.UserId == userId)
+            .Join(_context.Products, ci => ci.ProductId, p => p.Id, (ci, p) => p.SupplierId)
+            .Where(supplierId => supplierId != null)
+            .Select(supplierId => supplierId!.Value)
+            .Distinct()
+            .FirstOrDefaultAsync();
+
+        var activeMartId = cartMartId != 0 ? cartMartId : user.SelectedMartId;
+
+        if (activeMartId.HasValue && product.SupplierId != activeMartId)
+        {
+            switch (action)
+            {
+                case "switch_to_new_mart":
+                    var existingItems = await _context.CartItems.Where(ci => ci.UserId == userId).ToListAsync();
+                    if (existingItems.Count > 0)
+                    {
+                        _context.CartItems.RemoveRange(existingItems);
+                    }
+
+                    user.SelectedMartId = product.SupplierId;
+                    user.UpdatedAt = DateTime.UtcNow;
+                    break;
+
+                case "allow_multi_mart":
+                    // Keep items from different marts. Shipping fee logic should be split per mart at checkout UI.
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"MART_CONFLICT::{activeMartId.Value}::{product.SupplierId}");
+            }
+        }
 
         // Check for existing cart item with same product+subscription type
         var existing = await _context.CartItems

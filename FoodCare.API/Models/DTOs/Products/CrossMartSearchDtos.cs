@@ -7,10 +7,11 @@ public class CrossMartSearchDto
     public string Query { get; set; } = string.Empty;
     public decimal Latitude { get; set; }
     public decimal Longitude { get; set; }
-    public double RadiusKm { get; set; } = 3.0;
+    // 0 means no radius cap (search all active marts, then sort by distance)
+    public double RadiusKm { get; set; } = 0;
     public string? SortBy { get; set; } // price_asc, distance, popularity
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; set; } = 50;
 }
 
 public class CrossMartProductResultDto
@@ -50,6 +51,7 @@ public class ProductVariantDto
     public decimal BasePrice { get; set; }
     public decimal? RatingAverage { get; set; }
     public int? RatingCount { get; set; }
+    public int SoldCount { get; set; }
     public bool IsPopular { get; set; }
 }
 

@@ -26,23 +26,24 @@ import { useNavigate } from "react-router-dom";
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
 // ── Lazy-load all tab components ──────────────────────────────────────────────
-const OverviewTab       = lazy(() => import("./admin/OverviewTab").then(m => ({ default: m.OverviewTab })));
-const ProductsTab       = lazy(() => import("./admin/ProductsTab").then(m => ({ default: m.ProductsTab })));
-const OrdersTab         = lazy(() => import("./admin/OrdersTab").then(m => ({ default: m.OrdersTab })));
-const SuppliersTab      = lazy(() => import("./admin/SuppliersTab").then(m => ({ default: m.SuppliersTab })));
-const ZaloTab           = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.ZaloTab })));
-const ReviewsTab        = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
-const UsersTab          = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
-const CustomersTab      = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
-const ApprovalsTab      = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
-const SubscriptionsTab  = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
-const AdminCouponsPage  = lazy(() => import("./admin/AdminCouponsPage"));
+const OverviewTab = lazy(() => import("./admin/OverviewTab").then(m => ({ default: m.OverviewTab })));
+const ProductsTab = lazy(() => import("./admin/ProductsTab").then(m => ({ default: m.ProductsTab })));
+const OrdersTab = lazy(() => import("./admin/OrdersTab").then(m => ({ default: m.OrdersTab })));
+const SuppliersTab = lazy(() => import("./admin/SuppliersTab").then(m => ({ default: m.SuppliersTab })));
+const ZaloTab = lazy(() => import("./admin/ZaloTab").then(m => ({ default: m.ZaloTab })));
+const ReviewsTab = lazy(() => import("./admin/ReviewsTab").then(m => ({ default: m.ReviewsTab })));
+const UsersTab = lazy(() => import("./admin/UsersTab").then(m => ({ default: m.UsersTab })));
+const CustomersTab = lazy(() => import("./admin/CustomersTab").then(m => ({ default: m.CustomersTab })));
+const ApprovalsTab = lazy(() => import("./admin/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
+const SubscriptionsTab = lazy(() => import("./admin/SubscriptionsTab").then(m => ({ default: m.SubscriptionsTab })));
+const AdminCouponsPage = lazy(() => import("./admin/AdminCouponsPage"));
 // ── 3 new operational tabs ────────────────────────────────────────────────────
-const ComplaintsTab     = lazy(() => import("./admin/ComplaintsTab").then(m => ({ default: m.ComplaintsTab })));
-const MartTab           = lazy(() => import("./admin/MartTab").then(m => ({ default: m.MartTab })));
-const FinanceTab        = lazy(() => import("./admin/FinanceTab").then(m => ({ default: m.FinanceTab })));
-const BlindBoxTab       = lazy(() => import("./admin/BlindBoxTab").then(m => ({ default: m.BlindBoxTab })));
-const CommissionTab     = lazy(() => import("./admin/CommissionTab").then(m => ({ default: m.CommissionTab })));
+const ComplaintsTab = lazy(() => import("./admin/ComplaintsTab").then(m => ({ default: m.ComplaintsTab })));
+const MartTab = lazy(() => import("./admin/MartTab").then(m => ({ default: m.MartTab })));
+const FinanceTab = lazy(() => import("./admin/FinanceTab").then(m => ({ default: m.FinanceTab })));
+const BlindBoxTab = lazy(() => import("./admin/BlindBoxTab").then(m => ({ default: m.BlindBoxTab })));
+const CommissionTab = lazy(() => import("./admin/CommissionTab").then(m => ({ default: m.CommissionTab })));
+const FeedbackTab = lazy(() => import("./admin/FeedbackTab").then(m => ({ default: m.FeedbackTab })));
 
 // Responsive bottom-nav (used only on < lg screens)
 import { AdminBottomNav } from "../components/admin/AdminBottomNav";
@@ -50,24 +51,25 @@ import { AdminBottomNav } from "../components/admin/AdminBottomNav";
 // ── Sidebar tab configuration ─────────────────────────────────────────────────
 const TABS = [
   // ── Core monitoring ──────────────────────────────────────────────────────
-  { value: "overview",       label: "Tổng quan",      icon: BarChart3,    group: "monitor" },
-  { value: "complaints",     label: "Khiếu nại",      icon: AlertCircle,  group: "monitor" },
-  { value: "mart",           label: "Quản lý Mart",   icon: Store,        group: "monitor" },
-  { value: "blindbox",       label: "Blind Box",      icon: Box,          group: "monitor" },
-  { value: "finance",        label: "Tài chính",      icon: DollarSign,   group: "monitor" },
-  { value: "commission",     label: "Hoa hồng",       icon: Percent,      group: "monitor" },
+  { value: "overview", label: "Tổng quan", icon: BarChart3, group: "monitor" },
+  { value: "complaints", label: "Khiếu nại", icon: AlertCircle, group: "monitor" },
+  { value: "feedback", label: "Feedback", icon: MessageSquare, group: "monitor" },
+  { value: "mart", label: "Quản lý Mart", icon: Store, group: "monitor" },
+  { value: "blindbox", label: "Blind Box", icon: Box, group: "monitor" },
+  { value: "finance", label: "Tài chính", icon: DollarSign, group: "monitor" },
+  { value: "commission", label: "Hoa hồng", icon: Percent, group: "monitor" },
   // ── Operations ───────────────────────────────────────────────────────────
-  { value: "products",       label: "Sản phẩm",       icon: Box,          group: "ops" },
-  { value: "orders",         label: "Đơn hàng",       icon: ShoppingCart, group: "ops" },
-  { value: "customers",      label: "Khách hàng",     icon: Users,        group: "ops" },
-  { value: "subscriptions",  label: "Gói Đăng ký",    icon: CheckCircle,  group: "ops" },
-  { value: "approvals",      label: "Phê duyệt",      icon: CheckCircle,  group: "ops" },
+  { value: "products", label: "Sản phẩm", icon: Box, group: "ops" },
+  { value: "orders", label: "Đơn hàng", icon: ShoppingCart, group: "ops" },
+  { value: "customers", label: "Khách hàng", icon: Users, group: "ops" },
+  { value: "subscriptions", label: "Gói Đăng ký", icon: CheckCircle, group: "ops" },
+  { value: "approvals", label: "Phê duyệt", icon: CheckCircle, group: "ops" },
   // ── System ───────────────────────────────────────────────────────────────
-  { value: "users",          label: "Người dùng",     icon: UserCog,      group: "sys" },
-  { value: "reviews",        label: "Đánh giá",       icon: Star,         group: "sys" },
-  { value: "suppliers",      label: "NCC",            icon: Package,      group: "sys" },
-  { value: "coupons",        label: "Mã giảm giá",    icon: Ticket,       group: "sys" },
-  { value: "zalo",           label: "Zalo",           icon: MessageSquare,group: "sys" },
+  { value: "users", label: "Người dùng", icon: UserCog, group: "sys" },
+  { value: "reviews", label: "Đánh giá", icon: Star, group: "sys" },
+  { value: "suppliers", label: "NCC", icon: Package, group: "sys" },
+  { value: "coupons", label: "Mã giảm giá", icon: Ticket, group: "sys" },
+  { value: "zalo", label: "Zalo", icon: MessageSquare, group: "sys" },
 ] as const;
 
 type TabValue = typeof TABS[number]["value"];
@@ -109,11 +111,10 @@ function SidebarGroup({
         <button
           key={value}
           onClick={() => onSelect(value)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 mb-0.5 relative ${
-            selected === value
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 mb-0.5 relative ${selected === value
               ? "bg-orange-50 text-orange-700 font-semibold"
               : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-          }`}
+            }`}
         >
           <Icon className={`w-4 h-4 flex-shrink-0 ${selected === value ? "text-orange-600" : "text-slate-400"}`} />
           <span className="truncate text-sm">{label}</span>
@@ -149,21 +150,22 @@ function TabContent({
     if (formattedStats) return <OverviewTab stats={formattedStats} revenueData={formattedRevenueData} totalProducts={formattedStats.totalProducts} />;
     return null;
   }
-  if (tab === "complaints")    return <ComplaintsTab />;
-  if (tab === "mart")          return <MartTab />;
-  if (tab === "blindbox")      return <BlindBoxTab />;
-  if (tab === "finance")       return <FinanceTab />;
-  if (tab === "products")      return <ProductsTab />;
-  if (tab === "orders")        return <OrdersTab />;
-  if (tab === "customers")     return <CustomersTab />;
-  if (tab === "users")         return <UsersTab />;
-  if (tab === "reviews")       return <ReviewsTab />;
-  if (tab === "suppliers")     return <SuppliersTab />;
+  if (tab === "complaints") return <ComplaintsTab />;
+  if (tab === "feedback") return <FeedbackTab />;
+  if (tab === "mart") return <MartTab />;
+  if (tab === "blindbox") return <BlindBoxTab />;
+  if (tab === "finance") return <FinanceTab />;
+  if (tab === "products") return <ProductsTab />;
+  if (tab === "orders") return <OrdersTab />;
+  if (tab === "customers") return <CustomersTab />;
+  if (tab === "users") return <UsersTab />;
+  if (tab === "reviews") return <ReviewsTab />;
+  if (tab === "suppliers") return <SuppliersTab />;
   if (tab === "subscriptions") return <SubscriptionsTab />;
-  if (tab === "coupons")       return <AdminCouponsPage />;
-  if (tab === "approvals")     return <ApprovalsTab />;
-  if (tab === "zalo")          return <ZaloTab />;
-  if (tab === "commission")    return <CommissionTab />;
+  if (tab === "coupons") return <AdminCouponsPage />;
+  if (tab === "approvals") return <ApprovalsTab />;
+  if (tab === "zalo") return <ZaloTab />;
+  if (tab === "commission") return <CommissionTab />;
   return null;
 }
 
@@ -175,9 +177,9 @@ function buildFormattedStats(stats: ReturnType<typeof useDashboardStats>["stats"
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab]   = useState<TabValue>("overview");
-  const [sidebarOpen, setSidebarOpen]   = useState(true);
-  const [mobileTab,   setMobileTab]     = useState<"overview" | "complaints" | "mart" | "finance">("overview");
+  const [selectedTab, setSelectedTab] = useState<TabValue>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"overview" | "complaints" | "mart" | "finance">("overview");
 
   const { stats, revenueData, isLoading: statsLoading, error: statsError } = useDashboardStats();
 
@@ -187,7 +189,7 @@ export default function AdminDashboardPage() {
     [revenueData],
   );
   const handleTabChange = useCallback((value: string) => setSelectedTab(value as TabValue), []);
-  const handleLogout    = useCallback(() => { localStorage.removeItem("token"); navigate("/login"); }, [navigate]);
+  const handleLogout = useCallback(() => { localStorage.removeItem("token"); navigate("/login"); }, [navigate]);
 
   const pendingComplaints: number = stats?.pendingComplaints ?? 0;
 
@@ -317,15 +319,15 @@ export default function AdminDashboardPage() {
         >
           <div className="p-4">
             <Suspense fallback={<TabLoader />}>
-              {mobileTab === "overview"   && (
+              {mobileTab === "overview" && (
                 statsLoading ? <TabLoader /> :
-                statsError ? <div className="text-center py-10 text-red-500">Lỗi: {statsError}</div> :
-                formattedStats ? <OverviewTab stats={formattedStats} revenueData={formattedRevenueData} totalProducts={formattedStats.totalProducts} /> :
-                null
+                  statsError ? <div className="text-center py-10 text-red-500">Lỗi: {statsError}</div> :
+                    formattedStats ? <OverviewTab stats={formattedStats} revenueData={formattedRevenueData} totalProducts={formattedStats.totalProducts} /> :
+                      null
               )}
               {mobileTab === "complaints" && <ComplaintsTab />}
-              {mobileTab === "mart"       && <MartTab />}
-              {mobileTab === "finance"    && <FinanceTab />}
+              {mobileTab === "mart" && <MartTab />}
+              {mobileTab === "finance" && <FinanceTab />}
             </Suspense>
           </div>
         </AdminBottomNav>

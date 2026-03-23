@@ -33,6 +33,7 @@ export interface AddressValue {
   ward?: string;
   wardCode?: number;
   street?: string;
+  placeId?: string;
 }
 
 interface UseAddressApiOptions {
@@ -97,6 +98,7 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
   const [selectedDistrict, setSelectedDistrict] = useState<{ code: number; name: string } | null>(null);
   const [selectedWard, setSelectedWard] = useState<{ code: number; name: string } | null>(null);
   const [streetValue, setStreetValueState] = useState('');
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | undefined>(undefined);
 
   // Loading
   const [loadingProvinces, setLoadingProvinces] = useState(false);
@@ -235,6 +237,7 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
     setDistricts([]);
     setWards([]);
     setStreetValueState('');
+    setSelectedPlaceId(undefined);
     setStreetSuggestions([]);
   }, []);
 
@@ -243,6 +246,7 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
     setSelectedWard(null);
     setWards([]);
     setStreetValueState('');
+    setSelectedPlaceId(undefined);
     setStreetSuggestions([]);
   }, []);
 
@@ -252,6 +256,7 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
 
   const setStreetValue = useCallback((value: string) => {
     setStreetValueState(value);
+    setSelectedPlaceId(undefined);
 
     // Debounced autocomplete
     if (streetDebounceRef.current) {
@@ -278,6 +283,7 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
 
   const selectStreetSuggestion = useCallback((prediction: GoongPrediction) => {
     setStreetValueState(prediction.structured_formatting.main_text);
+    setSelectedPlaceId(prediction.place_id);
     setStreetSuggestions([]);
   }, []);
 
@@ -293,7 +299,8 @@ export function useAddressApi(options: UseAddressApiOptions = {}): UseAddressApi
     ward: selectedWard?.name,
     wardCode: selectedWard?.code,
     street: streetValue,
-  }), [selectedProvince, selectedDistrict, selectedWard, streetValue]);
+    placeId: selectedPlaceId,
+  }), [selectedProvince, selectedDistrict, selectedWard, streetValue, selectedPlaceId]);
 
   // ─── Cleanup debounce on unmount ──────────────────────────────────────────────
 

@@ -23,8 +23,15 @@ api.interceptors.request.use((config) => {
 
 export const crossMartSearchApi = {
     search: async (query: CrossMartSearchQuery): Promise<CrossMartProductResult[]> => {
-        const res = await api.get<CrossMartProductResult[]>('/crossmartsearch/search', { params: query });
-        return res.data;
+        const res = await api.get<
+            CrossMartProductResult[] |
+            { products?: CrossMartProductResult[]; totalCount?: number } |
+            { item1?: CrossMartProductResult[]; item2?: number }
+        >('/crossmartsearch/search', { params: query });
+        if (Array.isArray(res.data)) return res.data;
+        if ('products' in res.data) return res.data.products ?? [];
+        if ('item1' in res.data) return res.data.item1 ?? [];
+        return [];
     },
 
     getVariants: async (productId: string, martId: number): Promise<ProductVariant[]> => {

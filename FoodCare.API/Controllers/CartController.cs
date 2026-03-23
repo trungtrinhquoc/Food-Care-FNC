@@ -57,6 +57,22 @@ public class CartController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            if (ex.Message.StartsWith("MART_CONFLICT::"))
+            {
+                var parts = ex.Message.Split("::");
+                var currentMartId = parts.Length > 1 && int.TryParse(parts[1], out var parsedCurrent) ? parsedCurrent : (int?)null;
+                var incomingMartId = parts.Length > 2 && int.TryParse(parts[2], out var parsedIncoming) ? parsedIncoming : (int?)null;
+
+                return Conflict(new
+                {
+                    code = "MART_CONFLICT",
+                    message = "Giỏ hàng hiện tại đang thuộc mart khác.",
+                    currentMartId,
+                    incomingMartId,
+                    options = new[] { "keep_existing", "switch_to_new_mart", "allow_multi_mart" }
+                });
+            }
+
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)

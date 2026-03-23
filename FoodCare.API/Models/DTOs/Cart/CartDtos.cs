@@ -37,6 +37,8 @@ public class AddToCartDto
     public int Quantity { get; set; } = 1;
     public bool IsSubscription { get; set; }
     public string? SubscriptionFrequency { get; set; }
+    // keep_existing | switch_to_new_mart | allow_multi_mart
+    public string? ConflictAction { get; set; }
 }
 
 public class UpdateCartItemDto

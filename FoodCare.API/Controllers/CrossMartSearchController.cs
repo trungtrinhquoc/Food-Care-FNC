@@ -31,8 +31,14 @@ public class CrossMartSearchController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var results = await _searchService.SearchAcrossMartsAsync(dto, userId);
-            return Ok(results);
+            var (products, totalCount) = await _searchService.SearchAcrossMartsAsync(dto, userId);
+            return Ok(new
+            {
+                products,
+                totalCount,
+                page = dto.Page,
+                pageSize = dto.PageSize
+            });
         }
         catch (Exception ex)
         {

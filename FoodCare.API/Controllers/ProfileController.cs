@@ -148,6 +148,10 @@ public class ProfileController : ControllerBase
             var address = await _profileService.CreateAddressAsync(userId, request);
             return CreatedAtAction(nameof(GetAddress), new { addressId = address.Id }, address);
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating address");

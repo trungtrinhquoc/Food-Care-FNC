@@ -8,8 +8,8 @@ export interface NearbyMart {
     rating: number;
     productCount: number;
     isPreSelected: boolean;
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface MartDetail {
@@ -18,6 +18,8 @@ export interface MartDetail {
     address: string;
     phone: string;
     email: string;
+    storeLogoUrl?: string;
+    storeBannerUrl?: string;
     rating: number;
     productCount: number;
     latitude: number;
@@ -31,6 +33,7 @@ export interface MartProduct {
     name: string;
     basePrice: number;
     originalPrice?: number;
+    images?: string;
     imageUrl?: string;
     categoryName?: string;
     ratingAverage: number;
@@ -67,27 +70,34 @@ export interface CrossMartSearchQuery {
 
 export interface CrossMartProductResult {
     productId: string;
-    productName: string;
+    name: string;
+    manufacturer?: string;
+    origin?: string;
     basePrice: number;
     originalPrice?: number;
-    imageUrl?: string;
-    categoryName?: string;
-    ratingAverage: number;
-    stockQuantity: number;
+    images?: string;
+    ratingAverage?: number;
+    ratingCount?: number;
+    stockQuantity?: number;
+    stockStatus?: string;
     martId: number;
     martName: string;
     distanceKm: number;
+    martRating?: number;
     shippingDisplay: string;
     isFreeShipping: boolean;
 }
 
 export interface ProductVariant {
     productId: string;
-    productName: string;
+    name: string;
+    manufacturer?: string;
+    origin?: string;
     basePrice: number;
-    imageUrl?: string;
-    ratingAverage: number;
-    stockQuantity: number;
+    images?: string;
+    ratingAverage?: number;
+    ratingCount?: number;
+    soldCount: number;
     isPopular: boolean;
 }
 
@@ -97,7 +107,8 @@ export interface AlternativeMart {
     distanceKm: number;
     productPrice: number;
     stockQuantity: number;
-    isFreeShipping: boolean;
+    stockStatus?: string;
+    martRating?: number;
 }
 
 // Server-side cart
@@ -131,6 +142,7 @@ export interface AddToCartRequest {
     quantity: number;
     isSubscription: boolean;
     subscriptionFrequency?: string;
+    conflictAction?: 'keep_existing' | 'switch_to_new_mart' | 'allow_multi_mart';
 }
 
 export interface UpdateCartItemRequest {

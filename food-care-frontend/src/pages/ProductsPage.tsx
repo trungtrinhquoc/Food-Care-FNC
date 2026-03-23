@@ -4,20 +4,28 @@ import { categoriesApi } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import type { Product } from '../types'
 import { ProductCard } from '../components/ProductCard'
 import { useNavigate } from 'react-router-dom'
 import { SimplePagination } from '../components/ui/pagination';
+import { martApi } from '../services/martApi';
 
 
 
 
 export default function ProductsPage() {
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
     const pageSize = 12;
     const [currentPage, setCurrentPage] = useState(1);
+    const martIdParam = searchParams.get('martId');
+    const selectedMartFromQuery = martIdParam ? Number(martIdParam) : null;
+    const selectedMartId = Number.isFinite(selectedMartFromQuery) && selectedMartFromQuery! > 0
+        ? selectedMartFromQuery!
+        : (user?.selectedMartId ?? null);
 
     const handleViewDetail = (product: Product) => {
         navigate(`/products/${product.id}`)
@@ -42,15 +50,23 @@ export default function ProductsPage() {
         queryKey: ['categories'],
         queryFn: categoriesApi.getCategories,
     });
+
+    const { data: selectedMartDetail } = useQuery({
+        queryKey: ['mart-detail', selectedMartId],
+        queryFn: () => martApi.getMartDetail(selectedMartId!),
+        enabled: !!selectedMartId,
+        retry: 1,
+    });
+
     const { data, isLoading, error } = useQuery({
-        queryKey: ['products', selectedCategory, searchQuery, currentPage, user?.selectedMartId],
+        queryKey: ['products', selectedCategory, searchQuery, currentPage, selectedMartId],
         queryFn: () =>
             productsApi.getProducts({
                 page: currentPage,
                 pageSize,
                 searchTerm: searchQuery || undefined,
                 categoryId: (searchQuery || selectedCategory === 'all') ? undefined : parseInt(selectedCategory, 10),
-                supplierId: user?.selectedMartId ?? undefined,
+                supplierId: selectedMartId ?? undefined,
             }),
     });
 
@@ -75,6 +91,13 @@ export default function ProductsPage() {
         setSearchInput('');
         setSearchQuery('');
         setCurrentPage(1);
+        if (searchParams.has('martId')) {
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete('martId');
+                return next;
+            });
+        }
     };
 
     const { addToCart } = useCart();
@@ -95,6 +118,12 @@ export default function ProductsPage() {
                     <p className="text-sm md:text-base text-gray-500 max-w-2xl leading-relaxed">
                         Khám phá các sản phẩm chất lượng cao với giá ưu đãi đặc biệt khi đặt hàng định kỳ.
                     </p>
+                    {selectedMartId && (
+                        <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                            <span className="font-medium">Đang xem theo mart:</span>
+                            <span>{selectedMartDetail?.storeName || `Mart #${selectedMartId}`}</span>
+                        </div>
+                    )}
                 </div>
             </section>
 
