@@ -76,7 +76,7 @@ export function OverviewSection({
     // Format daily revenue for chart display
     const chartData = useMemo(() => {
         if (!revenueData?.dailyRevenue) return [];
-        
+
         // Get last 7 days of data
         const last7Days = revenueData.dailyRevenue.slice(-7);
         return last7Days.map(item => ({

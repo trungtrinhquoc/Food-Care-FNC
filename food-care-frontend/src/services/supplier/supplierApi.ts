@@ -536,7 +536,7 @@ export const shipmentsApi = {
     params.append('page', page.toString());
     params.append('pageSize', pageSize.toString());
     if (status) params.append('status', status);
-    
+
     const response = await supplierApi.get<PagedResponse<SupplierShipment>>(`/shipments?${params}`);
     return response.data;
   },
