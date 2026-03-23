@@ -27,8 +27,9 @@ public class MartController : ControllerBase
     {
         try
         {
-            if (query.RadiusKm <= 0 || query.RadiusKm > 50)
-                return BadRequest(new { message = "Bán kính tìm kiếm phải từ 0 đến 50 km" });
+            // radiusKm = 0 means unlimited radius (find nearest globally)
+            if (query.RadiusKm < 0 || query.RadiusKm > 50)
+                return BadRequest(new { message = "Bán kính tìm kiếm phải từ 0 đến 50 km (0 = không giới hạn)" });
 
             var marts = await _martService.GetNearbyMartsAsync(query);
             return Ok(new { marts, count = marts.Count });

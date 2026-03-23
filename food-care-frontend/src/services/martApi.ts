@@ -24,8 +24,8 @@ api.interceptors.request.use((config) => {
 
 export const martApi = {
     getNearbyMarts: async (query: NearbyMartQuery): Promise<NearbyMart[]> => {
-        const res = await api.get<NearbyMart[]>('/mart/nearby', { params: query });
-        return res.data;
+        const res = await api.get<{ marts: NearbyMart[]; count: number }>('/mart/nearby', { params: query });
+        return res.data.marts ?? [];
     },
 
     getMartDetail: async (id: number): Promise<MartDetail> => {
@@ -43,7 +43,7 @@ export const martApi = {
     },
 
     getSelectedMart: async (): Promise<number | null> => {
-        const res = await api.get<{ selectedMartId: number | null }>('/mart/selected');
-        return res.data.selectedMartId;
+        const res = await api.get<{ martId: number | null; mart?: MartDetail | null }>('/mart/selected');
+        return res.data.martId ?? null;
     },
 };

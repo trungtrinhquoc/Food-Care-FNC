@@ -28,6 +28,7 @@ public class MartService : IMartService
         var userLat = (double)query.Latitude;
         var userLng = (double)query.Longitude;
         var radiusKm = query.RadiusKm;
+        var useRadiusFilter = radiusKm > 0;
 
         // Query active, verified suppliers with geolocation
         var suppliers = await _context.Suppliers
@@ -54,7 +55,7 @@ public class MartService : IMartService
                 s.ProductCount,
                 Distance = CalculateHaversineDistance(userLat, userLng, s.Lat, s.Lng)
             })
-            .Where(s => s.Distance <= radiusKm)
+            .Where(s => !useRadiusFilter || s.Distance <= radiusKm)
             .OrderBy(s => s.Distance)
             .ThenByDescending(s => s.Supplier.Rating ?? 0)
             .ThenByDescending(s => s.ProductCount)
@@ -79,10 +80,19 @@ public class MartService : IMartService
             OperatingHours = m.Supplier.OperatingHours,
             Features = m.Supplier.Features,
             MinOrderValue = m.Supplier.MinOrderValue,
+            Latitude = m.Supplier.Latitude,
+            Longitude = m.Supplier.Longitude,
             IsPreSelected = index == 0  // First result is pre-selected
         }).ToList();
 
-        _logger.LogInformation("Found {Count} marts within {Radius}km", result.Count, radiusKm);
+        if (useRadiusFilter)
+        {
+            _logger.LogInformation("Found {Count} marts within {Radius}km", result.Count, radiusKm);
+        }
+        else
+        {
+            _logger.LogInformation("Found {Count} nearest marts without radius filter", result.Count);
+        }
         return result;
     }
 

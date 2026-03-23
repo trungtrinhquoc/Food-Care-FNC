@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -9,6 +9,7 @@ import { Toaster } from 'sonner';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import ProductVariantsPage from './pages/ProductVariantsPage';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -25,10 +26,14 @@ import NotificationsPage from './pages/NotificationsPage';
 import BlindBoxPage from './pages/BlindBoxPage';
 import MartSelectionPage from './pages/MartSelectionPage';
 import CrossMartSearchPage from './pages/CrossMartSearchPage';
+import MartStorePage from './pages/MartStorePage';
 import ServerCartPage from './pages/ServerCartPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import SplashPage from './pages/SplashPage';
 import OnboardingPage from './pages/OnboardingPage';
+import FeedbackPage from './pages/FeedbackPage';
+import { profileApi } from './services/api';
+import { martApi } from './services/martApi';
 
 import SupplierShipmentManagement from './components/supplier/SupplierShipmentManagement';
 
@@ -111,8 +116,58 @@ const SupplierRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Guard: redirect brand-new customer users to onboarding
-// Onboarding is optional — users land on home regardless of mart selection status
 const NewUserGuard = ({ children }: { children: React.ReactNode }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated, loading, user } = useAuth();
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkOnboarding = async () => {
+      if (loading) return;
+
+      if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
+        if (!cancelled) setCheckingOnboarding(false);
+        return;
+      }
+
+      try {
+        const [addresses, selectedMartId] = await Promise.all([
+          profileApi.getAddresses(),
+          martApi.getSelectedMart(),
+        ]);
+
+        const hasDefaultAddress = addresses.some((a) => a.isDefault);
+        const hasSelectedMart = !!selectedMartId;
+
+        if (!hasDefaultAddress || !hasSelectedMart) {
+          localStorage.setItem('onboarding_pending', 'true');
+          navigate('/welcome', { replace: true });
+          return;
+        }
+
+        localStorage.setItem('onboarding_completed', 'true');
+      } catch {
+        localStorage.setItem('onboarding_pending', 'true');
+        navigate('/welcome', { replace: true });
+        return;
+      }
+
+      if (!cancelled) setCheckingOnboarding(false);
+    };
+
+    checkOnboarding();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, loading, navigate, user?.role]);
+
+  if (loading || checkingOnboarding) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return <>{children}</>;
 };
 
@@ -136,6 +191,7 @@ function AppRoutes() {
           <Route path="/onboarding/mart" element={<ProtectedRoute><MartSelectionPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
+          <Route path="/products/:id/variants" element={<ProductVariantsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -158,8 +214,12 @@ function AppRoutes() {
           <Route path="/notifications" element={
             <ProtectedRoute><NotificationsPage /></ProtectedRoute>
           } />
+          <Route path="/feedback" element={
+            <ProtectedRoute><FeedbackPage /></ProtectedRoute>
+          } />
           <Route path="/blind-boxes" element={<BlindBoxPage />} />
           <Route path="/mart-selection" element={<MartSelectionPage />} />
+          <Route path="/marts/:id" element={<MartStorePage />} />
           <Route path="/search-all" element={<CrossMartSearchPage />} />
           <Route path="/server-cart" element={
             <ProtectedRoute><ServerCartPage /></ProtectedRoute>

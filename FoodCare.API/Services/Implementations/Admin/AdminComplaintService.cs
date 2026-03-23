@@ -25,6 +25,10 @@ public class AdminComplaintService : IAdminComplaintService
             .Include(c => c.Supplier)
             .AsQueryable();
 
+        // Keep platform feedback separate from complaint moderation queue by default.
+        if (string.IsNullOrEmpty(filter.Type))
+            query = query.Where(c => c.Type != "Góp ý nền tảng");
+
         if (!string.IsNullOrEmpty(filter.Status))
             query = query.Where(c => c.Status == filter.Status);
 

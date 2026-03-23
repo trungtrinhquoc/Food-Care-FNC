@@ -78,9 +78,10 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
-    token: string;
-    refreshToken: string;
-    user: User;
+    token?: string;
+    refreshToken?: string;
+    user?: User;
+    message?: string;
 }
 
 // Product Types
@@ -251,6 +252,8 @@ export interface Address {
     city: string;
     district?: string;
     ward?: string;
+    latitude?: number;
+    longitude?: number;
     isDefault: boolean;
     createdAt?: string;
 }

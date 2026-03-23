@@ -3,16 +3,26 @@ import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-
 import {
     ShoppingBag, User, ShoppingCart, Settings, Menu,
     X, ChevronDown, LogOut, Home, LayoutDashboard, Package,
-    Truck, Store, BarChart3, FileText, Bell, Ticket,
+    Truck, Store, BarChart3, FileText, Bell, Ticket, MapPin,
     CheckCircle, XCircle, AlertCircle, Plus, Loader2,
     Camera, Box, ShoppingCart as ShoppingCartIcon, Wallet
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import NotificationBell from './NotificationBell';
+import { profileApi } from '../services/api';
+import { martApi } from '../services/martApi';
+import { toast } from 'sonner';
+import type { Address } from '../types';
+
+function shortenAddress(fullAddress: string) {
+    if (!fullAddress) return '';
+    const firstPart = fullAddress.split(',')[0]?.trim();
+    return firstPart || fullAddress;
+}
 
 export default function Header() {
-    const { user, isAuthenticated, isAdmin, logout } = useAuth();
+    const { user, isAuthenticated, isAdmin, logout, refreshUser } = useAuth();
     const { getItemCount } = useCart();
     const location = useLocation();
     const navigate = useNavigate();
@@ -21,7 +31,13 @@ export default function Header() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [defaultAddressLabel, setDefaultAddressLabel] = useState<string>('');
+    const [selectedMartName, setSelectedMartName] = useState<string>('');
+    const [customerAddresses, setCustomerAddresses] = useState<Address[]>([]);
+    const [isAddressMenuOpen, setIsAddressMenuOpen] = useState(false);
+    const [switchingAddressId, setSwitchingAddressId] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const addressMenuRef = useRef<HTMLDivElement>(null);
 
     const isAdminPage = location.pathname.startsWith('/admin');
     const isSupplierPage = location.pathname.startsWith('/supplier');
@@ -35,6 +51,9 @@ export default function Header() {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsUserMenuOpen(false);
+            }
+            if (addressMenuRef.current && !addressMenuRef.current.contains(event.target as Node)) {
+                setIsAddressMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -54,7 +73,106 @@ export default function Header() {
     useEffect(() => {
         setIsMobileMenuOpen(false);
         setIsUserMenuOpen(false);
+        setIsAddressMenuOpen(false);
     }, [location.pathname]);
+
+    useEffect(() => {
+        if (!isAuthenticated || user?.role?.toLowerCase() !== 'customer') {
+            setDefaultAddressLabel('');
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadCustomerContext = async () => {
+            try {
+                const [addresses, selectedMartId] = await Promise.all([
+                    profileApi.getAddresses(),
+                    martApi.getSelectedMart(),
+                ]);
+
+                if (!cancelled) {
+                    setCustomerAddresses(addresses.slice(0, 5));
+                }
+
+                const current = addresses.find((a) => a.isDefault);
+                if (!current || cancelled) {
+                    return;
+                }
+
+                const text = [
+                    current.addressLine1,
+                    current.ward,
+                    current.district,
+                    current.city,
+                ]
+                    .filter(Boolean)
+                    .join(', ');
+
+                setDefaultAddressLabel(text);
+
+                if (selectedMartId) {
+                    try {
+                        const mart = await martApi.getMartDetail(selectedMartId);
+                        if (!cancelled) {
+                            setSelectedMartName(mart.storeName || 'Mart đã chọn');
+                        }
+                    } catch {
+                        if (!cancelled) setSelectedMartName('Mart đã chọn');
+                    }
+                } else if (!cancelled) {
+                    setSelectedMartName('Chưa chọn mart');
+                }
+            } catch {
+                if (!cancelled) {
+                    setDefaultAddressLabel('');
+                    setSelectedMartName('');
+                    setCustomerAddresses([]);
+                }
+            }
+        };
+
+        loadCustomerContext();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, user?.role, location.pathname]);
+
+    const handleSwitchAddress = async (address: Address) => {
+        if (switchingAddressId) return;
+
+        setSwitchingAddressId(address.id);
+        try {
+            await profileApi.setDefaultAddress(address.id);
+
+            if (typeof address.latitude === 'number' && typeof address.longitude === 'number') {
+                const nearest = await martApi.getNearbyMarts({
+                    latitude: address.latitude,
+                    longitude: address.longitude,
+                    radiusKm: 0,
+                    maxResults: 1,
+                });
+
+                if (nearest.length > 0) {
+                    await martApi.selectMart(nearest[0].id);
+                    setSelectedMartName(nearest[0].storeName);
+                }
+            }
+
+            const shortText = [address.addressLine1, address.ward, address.district, address.city]
+                .filter(Boolean)
+                .join(', ');
+            setDefaultAddressLabel(shortText);
+            await refreshUser();
+            toast.success('Đã đổi địa chỉ và cập nhật mart gần nhất');
+            setIsAddressMenuOpen(false);
+        } catch {
+            toast.error('Không thể đổi địa chỉ. Vui lòng thử lại.');
+        } finally {
+            setSwitchingAddressId(null);
+        }
+    };
 
     // Staff pages use their own layout with integrated header - must be after all hooks
     if (isStaffPage && (isStaff || isAdmin)) {
@@ -290,6 +408,71 @@ export default function Header() {
     // Default user header
     return (
         <header className={`bg-white sticky top-0 z-50 transition-shadow duration-300 ${isScrolled ? 'shadow-md' : 'shadow-sm'}`}>
+            {isAuthenticated && user?.role?.toLowerCase() === 'customer' && (
+                <div className="border-b border-gray-100 bg-emerald-50/50">
+                    <div className="container mx-auto px-4 lg:px-8 py-2 flex items-center justify-between gap-3 text-sm relative" ref={addressMenuRef}>
+                        <button
+                            onClick={() => setIsAddressMenuOpen((v) => !v)}
+                            className="min-w-0 flex items-center gap-2 text-gray-700 hover:text-emerald-700 transition-colors"
+                        >
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
+                            <span className="truncate font-medium">
+                                {selectedMartName || 'Chưa chọn mart'} · {shortenAddress(defaultAddressLabel) || 'Chưa có địa chỉ'}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${isAddressMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <button
+                            onClick={() => navigate(user?.selectedMartId ? `/marts/${user.selectedMartId}` : '/mart-selection')}
+                            className="shrink-0 text-emerald-700 hover:text-emerald-800 font-semibold"
+                        >
+                            Xem mart
+                        </button>
+
+                        {isAddressMenuOpen && (
+                            <div className="absolute left-4 right-4 lg:left-8 lg:right-8 mt-10 z-50 bg-white rounded-xl shadow-lg border border-gray-200 p-2">
+                                <div className="px-2 py-1 text-xs text-gray-500">Địa chỉ đã lưu (tối đa 5)</div>
+                                <div className="max-h-64 overflow-auto">
+                                    {customerAddresses.length > 0 ? customerAddresses.map((addr, idx) => {
+                                        const text = [addr.addressLine1, addr.ward, addr.district, addr.city].filter(Boolean).join(', ');
+                                        const isDefault = !!addr.isDefault;
+                                        return (
+                                            <button
+                                                key={addr.id}
+                                                onClick={() => handleSwitchAddress(addr)}
+                                                disabled={!!switchingAddressId}
+                                                className={`w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors ${isDefault ? 'bg-emerald-50 border border-emerald-100' : ''}`}
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">{`Địa chỉ ${idx + 1}`}</p>
+                                                    {isDefault && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white">Mặc định</span>}
+                                                </div>
+                                                <p className="text-xs text-gray-500 truncate mt-0.5">{text}</p>
+                                                {switchingAddressId === addr.id && (
+                                                    <p className="text-xs text-emerald-600 mt-1 inline-flex items-center gap-1">
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        Đang cập nhật mart gần nhất...
+                                                    </p>
+                                                )}
+                                            </button>
+                                        );
+                                    }) : (
+                                        <p className="px-3 py-2 text-sm text-gray-500">Bạn chưa có địa chỉ nào.</p>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setIsAddressMenuOpen(false);
+                                        navigate('/mart-selection');
+                                    }}
+                                    className="mt-2 w-full text-left px-3 py-2 rounded-lg text-emerald-700 hover:bg-emerald-50 font-medium"
+                                >
+                                    + Thêm địa chỉ mới
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     <Link to="/" className="flex items-center space-x-3 group">
@@ -387,6 +570,9 @@ export default function Header() {
                                             <Link to="/notifications" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Bell className="w-5 h-5 text-gray-400" /> <span className="text-sm">Trung tâm thông báo</span>
                                             </Link>
+                                            <Link to="/feedback" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                                                <FileText className="w-5 h-5 text-gray-400" /> <span className="text-sm">Góp ý nền tảng</span>
+                                            </Link>
                                             <Link to="/vouchers" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
                                                 <Ticket className="w-5 h-5 text-amber-500" /> <span className="text-sm">Kho Voucher ưu đãi</span>
                                                 <span className="ml-auto text-[10px] bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded-full">Mới</span>
@@ -428,6 +614,7 @@ export default function Header() {
                                     <span className="ml-auto text-[10px] bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded-full">Mới</span>
                                 </Link>
                                 <Link to="/profile" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/profile') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Tài khoản</Link>
+                                <Link to="/feedback" className={`block px-4 py-3 rounded-lg text-sm font-medium ${isActiveLink('/feedback') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>Góp ý nền tảng</Link>
                                 <Link to="/profile?tab=wallet" className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${location.search.includes('tab=wallet') ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'}`}>
                                     <Wallet className="h-4 w-4 text-emerald-500" />
                                     Ví FNC Pay

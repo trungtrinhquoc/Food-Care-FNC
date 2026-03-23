@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminCouponsService } from '../../services/admin/adminCouponsService';
+import type { AdminCoupon } from '../../services/admin/adminCouponsService';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -10,20 +11,7 @@ import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import { Loader2, Plus, Edit, Trash2, Ticket, Copy, Check, Percent, DollarSign, Calendar, TrendingUp } from 'lucide-react';
 
-interface CouponRaw {
-    id: number;
-    code: string;
-    discountType?: string;
-    discountValue: number;
-    minOrderValue?: number;
-    maxDiscountAmount?: number;
-    startDate?: string;
-    endDate?: string;
-    usageLimit?: number;
-    usageCount?: number;
-    isActive?: boolean;
-    createdAt?: string;
-}
+type CouponRaw = AdminCoupon;
 
 export default function AdminCouponsPage() {
     const [coupons, setCoupons] = useState<CouponRaw[]>([]);

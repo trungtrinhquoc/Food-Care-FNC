@@ -59,6 +59,10 @@ public class AddressRequest
     [StringLength(100, ErrorMessage = "Phường/Xã không được vượt quá 100 ký tự")]
     public string? Ward { get; set; }
 
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
     public bool IsDefault { get; set; } = false;
 }
 
@@ -89,6 +93,8 @@ public class AddressResponse
     public string City { get; set; } = null!;
     public string? District { get; set; }
     public string? Ward { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
     public bool IsDefault { get; set; }
     public DateTime CreatedAt { get; set; }
 }

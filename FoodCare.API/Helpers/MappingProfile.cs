@@ -17,7 +17,8 @@ public class MappingProfile : Profile
         CreateMap<User, UserDto>()
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()))
             .ForMember(dest => dest.LoyaltyPoints, opt => opt.MapFrom(src => src.LoyaltyPoints ?? 0))
-            .ForMember(dest => dest.MemberTier, opt => opt.MapFrom(src => src.Tier));
+            .ForMember(dest => dest.MemberTier, opt => opt.MapFrom(src => src.Tier))
+            .ForMember(dest => dest.SelectedMartId, opt => opt.MapFrom(src => src.SelectedMartId));
         
         // MemberTier mappings
         CreateMap<MemberTier, MemberTierDto>();
