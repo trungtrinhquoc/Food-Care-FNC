@@ -58,11 +58,18 @@ public class CrossMartSearchService : ICrossMartSearchService
                 .ToDictionaryAsync(x => x.MartId, x => x.Total);
         }
 
-        // Get all nearby active marts with coordinates
+        // Get all active marts. Keep marts without coordinates so system-wide search does not hide their products.
         var marts = await _context.Suppliers
             .Where(s => s.IsActive == true && s.IsVerified == true && s.IsDeleted != true
-                      && s.Latitude != null && s.Longitude != null)
-            .Select(s => new { s.Id, s.StoreName, s.Rating, Lat = (double)s.Latitude!.Value, Lng = (double)s.Longitude!.Value })
+            )
+            .Select(s => new
+            {
+                s.Id,
+                s.StoreName,
+                s.Rating,
+                Lat = s.Latitude,
+                Lng = s.Longitude
+            })
             .ToListAsync();
 
         var nearbyMartIds = marts
@@ -71,23 +78,41 @@ public class CrossMartSearchService : ICrossMartSearchService
                 m.Id,
                 m.StoreName,
                 m.Rating,
-                Distance = CalculateDistance(userLat, userLng, m.Lat, m.Lng)
+                HasCoordinates = m.Lat.HasValue && m.Lng.HasValue,
+                Distance = (m.Lat.HasValue && m.Lng.HasValue)
+                    ? CalculateDistance(userLat, userLng, (double)m.Lat.Value, (double)m.Lng.Value)
+                    : -1d
             })
-            .Where(m => !useRadiusFilter || m.Distance <= query.RadiusKm)
+            .Where(m => !useRadiusFilter || (m.HasCoordinates && m.Distance <= query.RadiusKm))
             .ToDictionary(m => m.Id, m => new { m.StoreName, m.Rating, m.Distance });
 
         if (nearbyMartIds.Count == 0)
             return (new List<CrossMartProductResultDto>(), 0);
 
-        // Search products across nearby marts
-        var searchTerm = $"%{keyword}%";
+        // Search products across nearby marts.
+        // Token-based matching avoids missing results when product name words are separated by other words.
+        var tokens = keyword
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(8)
+            .ToList();
+
         var productQuery = _context.Products
             .Where(p => p.IsActive == true && p.IsDeleted != true && p.ApprovalStatus == "approved"
                       && p.SupplierId != null && nearbyMartIds.Keys.Contains(p.SupplierId.Value)
                       && p.StockQuantity != null && p.StockQuantity > 0)
-            .Where(p => EF.Functions.ILike(p.Name, searchTerm)
-                     || (p.Manufacturer != null && EF.Functions.ILike(p.Manufacturer, searchTerm))
-                     || (p.Origin != null && EF.Functions.ILike(p.Origin, searchTerm)));
+            .AsQueryable();
+
+        foreach (var token in tokens)
+        {
+            var t = token;
+            var tokenPattern = $"%{t}%";
+            productQuery = productQuery.Where(p =>
+                EF.Functions.ILike(p.Name, tokenPattern)
+                || (p.Manufacturer != null && EF.Functions.ILike(p.Manufacturer, tokenPattern))
+                || (p.Origin != null && EF.Functions.ILike(p.Origin, tokenPattern))
+            );
+        }
 
         var totalCount = await productQuery.CountAsync();
 
@@ -141,11 +166,14 @@ public class CrossMartSearchService : ICrossMartSearchService
             "price_asc" => results.OrderBy(r => r.BasePrice).ToList(),
             "price" => results.OrderBy(r => r.BasePrice).ToList(),
             "price_low" => results.OrderBy(r => r.BasePrice).ToList(),
-            "distance" => results.OrderBy(r => r.DistanceKm).ToList(),
-            "nearest" => results.OrderBy(r => r.DistanceKm).ToList(),
+            "distance" => results.OrderBy(r => r.DistanceKm < 0 ? double.MaxValue : r.DistanceKm).ToList(),
+            "nearest" => results.OrderBy(r => r.DistanceKm < 0 ? double.MaxValue : r.DistanceKm).ToList(),
             "popularity" => results.OrderByDescending(r => soldByProduct.GetValueOrDefault(r.ProductId, 0)).ToList(),
             "popular" => results.OrderByDescending(r => soldByProduct.GetValueOrDefault(r.ProductId, 0)).ToList(),
-            _ => results.OrderBy(r => r.DistanceKm).ThenByDescending(r => r.RatingAverage ?? 0).ToList()
+            _ => results
+                .OrderBy(r => r.DistanceKm < 0 ? double.MaxValue : r.DistanceKm)
+                .ThenByDescending(r => r.RatingAverage ?? 0)
+                .ToList()
         };
 
         // Paginate

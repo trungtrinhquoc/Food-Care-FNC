@@ -98,6 +98,15 @@ export interface SupplierOrder {
   createdAt: string;
   updatedAt?: string;
   notes?: string;
+  shippingAddress?: {
+    street?: string;
+    ward?: string;
+    district?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
 }
 
 export interface SupplierOrderItem {
@@ -391,10 +400,9 @@ export const ordersApi = {
     return response.data;
   },
 
-  // Update order status (legacy PUT)
-  updateOrderStatus: async (id: string, status: string, notes?: string): Promise<SupplierOrder> => {
-    const response = await supplierApi.put<SupplierOrder>(`/orders/${id}/status`, { status, notes });
-    return response.data;
+  // Update order status
+  updateOrderStatus: async (id: string, status: string, notes?: string): Promise<void> => {
+    await supplierApi.patch(`/orders/${id}/status`, { status, notes });
   },
 
   // Update order status with delivery photo / cancel reason (PATCH)
@@ -528,7 +536,7 @@ export const shipmentsApi = {
     params.append('page', page.toString());
     params.append('pageSize', pageSize.toString());
     if (status) params.append('status', status);
-    
+
     const response = await supplierApi.get<PagedResponse<SupplierShipment>>(`/shipments?${params}`);
     return response.data;
   },

@@ -24,6 +24,7 @@ import {
     ShoppingCart,
     Search,
     Filter,
+    MapPin,
     Eye,
     CheckCircle,
     XCircle,
@@ -193,8 +194,7 @@ function DeliveryConfirmDialog({ open, order, onClose, onConfirmed }: DeliveryCo
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
     pending: { label: 'Chờ xác nhận', color: 'text-amber-700', bgColor: 'bg-amber-100' },
     confirmed: { label: 'Đã xác nhận', color: 'text-blue-700', bgColor: 'bg-blue-100' },
-    processing: { label: 'Đang xử lý', color: 'text-purple-700', bgColor: 'bg-purple-100' },
-    shipped: { label: 'Đang giao', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
+    shipping: { label: 'Đang giao', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
     delivered: { label: 'Đã giao', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
     cancelled: { label: 'Đã hủy', color: 'text-red-700', bgColor: 'bg-red-100' },
 };
@@ -300,6 +300,7 @@ export function OrdersSection({
 }: OrdersSectionProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [districtFilter, setDistrictFilter] = useState<string>('all');
     const [selectedOrder, setSelectedOrder] = useState<SupplierOrder | null>(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [updating, setUpdating] = useState<string | null>(null);
@@ -324,10 +325,45 @@ export function OrdersSection({
         });
     };
 
+    const formatAddress = (order: SupplierOrder) => {
+        const addr = order.shippingAddress;
+        if (!addr) return 'Chưa có địa chỉ giao hàng';
+
+        const parts = [
+            addr.street,
+            addr.ward,
+            addr.district,
+            addr.city,
+            addr.state,
+            addr.zipCode,
+            addr.country,
+        ].filter(Boolean);
+
+        return parts.length > 0 ? parts.join(', ') : 'Chưa có địa chỉ giao hàng';
+    };
+
+    const getDeliveryDistrict = (order: SupplierOrder) => {
+        const addr = order.shippingAddress;
+        return addr?.district || addr?.city || 'Chưa xác định';
+    };
+
+    const statusTimeline = [
+        { key: 'pending', label: 'Đơn mới tạo' },
+        { key: 'confirmed', label: 'Supplier đã xác nhận' },
+        { key: 'shipping', label: 'Đơn đang giao' },
+        { key: 'delivered', label: 'Đã giao thành công' },
+    ] as const;
+
+    const getStatusIndex = (status: string) => statusTimeline.findIndex((s) => s.key === status);
+
     const getStatusBadge = (status: string) => {
         const config = statusConfig[status] || { label: status, color: 'text-gray-600', bgColor: 'bg-gray-100' };
         return <Badge className={`${config.bgColor} ${config.color} border-0`}>{config.label}</Badge>;
     };
+
+    const districtOptions = Array.from(
+        new Set(orders.map((order) => getDeliveryDistrict(order)).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, 'vi'));
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         setUpdating(orderId);
@@ -353,14 +389,15 @@ export function OrdersSection({
             (order.orderNumber?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
             (order.customerName?.toLowerCase() ?? '').includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesDistrict = districtFilter === 'all' || getDeliveryDistrict(order) === districtFilter;
+        return matchesSearch && matchesStatus && matchesDistrict;
     });
 
     // Calculate stats
     const stats = {
         total: orders.length,
         pending: orders.filter(o => o.status === 'pending').length,
-        processing: orders.filter(o => ['confirmed', 'processing'].includes(o.status)).length,
+        processing: orders.filter(o => ['confirmed', 'shipping'].includes(o.status)).length,
         completed: orders.filter(o => o.status === 'delivered').length,
     };
 
@@ -368,7 +405,7 @@ export function OrdersSection({
         <div className="space-y-6">
             <SectionHeader
                 title="Quản lý đơn hàng"
-                description={`Tổng cộng ${orders.length} đơn hàng`}
+                description={`Tổng cộng ${orders.length} đơn hàng, hiển thị ${filteredOrders.length} đơn theo bộ lọc`}
                 actions={
                     <Button variant="outline" onClick={onRefresh} className="gap-2">
                         <RefreshCw className="h-4 w-4" />
@@ -445,10 +482,23 @@ export function OrdersSection({
                         <SelectItem value="all">Tất cả</SelectItem>
                         <SelectItem value="pending">Chờ xác nhận</SelectItem>
                         <SelectItem value="confirmed">Đã xác nhận</SelectItem>
-                        <SelectItem value="processing">Đang xử lý</SelectItem>
-                        <SelectItem value="shipped">Đang giao</SelectItem>
+                        <SelectItem value="shipping">Đang giao</SelectItem>
                         <SelectItem value="delivered">Đã giao</SelectItem>
                         <SelectItem value="cancelled">Đã hủy</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={districtFilter} onValueChange={setDistrictFilter}>
+                    <SelectTrigger className="w-[220px]">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Khu vực giao" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tất cả khu vực</SelectItem>
+                        {districtOptions.map((district) => (
+                            <SelectItem key={district} value={district}>
+                                {district}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
@@ -460,7 +510,7 @@ export function OrdersSection({
                         <EmptyState
                             icon={ShoppingCart}
                             title="Không có đơn hàng"
-                            description="Không tìm thấy đơn hàng phù hợp với bộ lọc"
+                            description="Không tìm thấy đơn phù hợp. Hãy đổi từ khóa hoặc nới bộ lọc trạng thái/khu vực."
                         />
                     ) : (
                         <Table>
@@ -468,10 +518,12 @@ export function OrdersSection({
                                 <TableRow>
                                     <TableHead>Mã đơn</TableHead>
                                     <TableHead>Khách hàng</TableHead>
+                                    <TableHead>Khu vực giao</TableHead>
                                     <TableHead>Số SP</TableHead>
                                     <TableHead>Tổng tiền</TableHead>
                                     <TableHead>Trạng thái</TableHead>
                                     <TableHead>Ngày tạo</TableHead>
+                                    <TableHead>Cập nhật</TableHead>
                                     <TableHead className="text-right">Hành động</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -492,12 +544,19 @@ export function OrdersSection({
                                                 </div>
                                             </div>
                                         </TableCell>
+                                        <TableCell>
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                                                <MapPin className="h-3.5 w-3.5" />
+                                                {getDeliveryDistrict(order)}
+                                            </div>
+                                        </TableCell>
                                         <TableCell>{order.items?.length || 0} SP</TableCell>
                                         <TableCell className="font-semibold text-emerald-600">
                                             {formatCurrency(order.totalAmount)}
                                         </TableCell>
                                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                                         <TableCell className="text-gray-500">{formatDate(order.createdAt)}</TableCell>
+                                        <TableCell className="text-gray-500">{formatDate(order.updatedAt || order.createdAt)}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button
@@ -533,23 +592,13 @@ export function OrdersSection({
                                                         variant="default"
                                                         size="sm"
                                                         disabled={updating === order.id}
-                                                        onClick={() => handleUpdateStatus(order.id, 'processing')}
-                                                    >
-                                                        Xử lý
-                                                    </Button>
-                                                )}
-                                                {order.status === 'processing' && (
-                                                    <Button
-                                                        variant="default"
-                                                        size="sm"
-                                                        disabled={updating === order.id}
-                                                        onClick={() => handleUpdateStatus(order.id, 'shipped')}
+                                                        onClick={() => handleUpdateStatus(order.id, 'shipping')}
                                                     >
                                                         <Truck className="h-4 w-4 mr-1" />
-                                                        Giao
+                                                        Bắt đầu giao
                                                     </Button>
                                                 )}
-                                                {order.status === 'shipped' && (
+                                                {order.status === 'shipping' && (
                                                     <Button
                                                         variant="default"
                                                         size="sm"
@@ -589,7 +638,7 @@ export function OrdersSection({
 
             {/* Order Detail Dialog */}
             <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-                <DialogContent className="sm:max-w-[600px]">
+                <DialogContent className="w-[95vw] sm:max-w-[760px] max-h-[88vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Chi tiết đơn hàng</DialogTitle>
                         <DialogDescription>
@@ -614,6 +663,22 @@ export function OrdersSection({
                                     )}
                                 </div>
                                 {getStatusBadge(selectedOrder.status)}
+                            </div>
+
+                            {/* Meta */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                                    <p className="text-xs text-slate-500">Mã đơn</p>
+                                    <p className="text-sm font-semibold text-slate-800">{selectedOrder.orderNumber}</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                                    <p className="text-xs text-slate-500">Tạo lúc</p>
+                                    <p className="text-sm font-semibold text-slate-800">{formatDate(selectedOrder.createdAt)}</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                                    <p className="text-xs text-slate-500">Cập nhật gần nhất</p>
+                                    <p className="text-sm font-semibold text-slate-800">{formatDate(selectedOrder.updatedAt || selectedOrder.createdAt)}</p>
+                                </div>
                             </div>
 
                             {/* Order Items */}
@@ -645,6 +710,35 @@ export function OrdersSection({
                                 <p className="text-xl font-bold text-emerald-600">
                                     {formatCurrency(selectedOrder.totalAmount)}
                                 </p>
+                            </div>
+
+                            {/* Delivery destination */}
+                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                <p className="text-sm font-medium text-blue-800 mb-1">Địa chỉ giao đến</p>
+                                <p className="text-sm text-blue-700">{formatAddress(selectedOrder)}</p>
+                            </div>
+
+                            {/* Progress timeline */}
+                            <div className="p-4 bg-white rounded-lg border border-gray-200">
+                                <p className="text-sm font-medium text-gray-800 mb-3">Tiến trình đơn hàng</p>
+                                {selectedOrder.status === 'cancelled' ? (
+                                    <p className="text-sm text-red-600">Đơn hàng đã bị hủy.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {statusTimeline.map((step, idx) => {
+                                            const currentIndex = getStatusIndex(selectedOrder.status);
+                                            const reached = currentIndex >= idx;
+                                            return (
+                                                <div key={step.key} className="flex items-center gap-3">
+                                                    <div className={`h-2.5 w-2.5 rounded-full ${reached ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                                    <span className={`text-sm ${reached ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+                                                        {step.label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Notes */}

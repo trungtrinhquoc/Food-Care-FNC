@@ -55,7 +55,7 @@ export interface PagedSupplierResult {
 
 // ===== ORDER TYPES =====
 
-export type OrderStatus = 'pending' | 'new' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled' | 'returned' | 'new' | 'processing' | 'packed' | 'shipped' | 'refunded';
 
 export interface ShippingTimeline {
   date: string;

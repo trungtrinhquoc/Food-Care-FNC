@@ -89,21 +89,21 @@ export function AdvancedOrderManagement({
     const createdTime = new Date(order.createdAt).getTime();
     const now = new Date().getTime();
     const hoursPassed = (now - createdTime) / (1000 * 60 * 60);
-    
+
     // SLA rules:
     // - Xác nhận đơn hàng: 2 giờ
     // - Đóng gói: 4 giờ từ khi xác nhận
     // - Bàn giao vận chuyển: 6 giờ từ khi đóng gói
-    
+
     let slaHours = 0;
     if (order.status === 'new') slaHours = 2;
     else if (order.status === 'confirmed') slaHours = 4;
     else if (order.status === 'packed') slaHours = 6;
-    
+
     const remainingHours = slaHours - hoursPassed;
     const isOverdue = remainingHours < 0;
     const isUrgent = remainingHours < 0.5 && remainingHours > 0;
-    
+
     return {
       remainingHours,
       isOverdue,
@@ -150,12 +150,12 @@ export function AdvancedOrderManagement({
   const handleAcceptOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     const sla = order ? calculateSLA(order) : null;
-    
+
     if (sla?.isOverdue) {
       const confirmMessage = `Đơn hàng này đã quá hạn SLA ${Math.abs(sla.remainingHours).toFixed(1)} giờ. Bạn có chắc muốn xác nhận?`;
       if (!confirm(confirmMessage)) return;
     }
-    
+
     onUpdateStatus(orderId, 'confirmed');
     toast.success('Đã xác nhận đơn hàng');
   };
@@ -286,9 +286,11 @@ export function AdvancedOrderManagement({
       confirmed: { label: 'Đã xác nhận', variant: 'default' },
       processing: { label: 'Đang xử lý', variant: 'secondary' },
       packed: { label: 'Đã đóng gói', variant: 'secondary' },
+      shipping: { label: 'Đang giao', variant: 'default' },
       shipped: { label: 'Đang giao', variant: 'default' },
       delivered: { label: 'Đã giao', variant: 'default' },
       cancelled: { label: 'Đã hủy', variant: 'outline' },
+      returned: { label: 'Đã hoàn trả', variant: 'outline' },
       refunded: { label: 'Hoàn tiền', variant: 'outline' },
     };
     const config = configs[status] || { label: status, variant: 'default' as const };
@@ -362,7 +364,7 @@ export function AdvancedOrderManagement({
                 className="pl-10"
               />
             </div>
-            
+
             <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)}>
               <SelectTrigger className="w-full lg:w-48">
                 <SelectValue placeholder="Trạng thái" />
@@ -481,13 +483,12 @@ export function AdvancedOrderManagement({
             return (
               <Card
                 key={order.id}
-                className={`p-4 transition-all ${
-                  sla.isOverdue
+                className={`p-4 transition-all ${sla.isOverdue
                     ? 'border-l-4 border-l-red-500 bg-red-50/50'
                     : sla.isUrgent
-                    ? 'border-l-4 border-l-orange-500 bg-orange-50/50'
-                    : ''
-                } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+                      ? 'border-l-4 border-l-orange-500 bg-orange-50/50'
+                      : ''
+                  } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
               >
                 <div className="space-y-4">
                   {/* Header row */}
@@ -854,7 +855,7 @@ export function AdvancedOrderManagement({
             ...selectedOrderForDetails,
             customerName: selectedOrderForDetails.customer?.name || selectedOrderForDetails.customerName,
             customerPhone: selectedOrderForDetails.customer?.phone || selectedOrderForDetails.customerPhone,
-            deliveryAddress: selectedOrderForDetails.shippingAddress 
+            deliveryAddress: selectedOrderForDetails.shippingAddress
               ? `${selectedOrderForDetails.shippingAddress.street || ''}, ${selectedOrderForDetails.shippingAddress.ward || ''}, ${selectedOrderForDetails.shippingAddress.district || ''}, ${selectedOrderForDetails.shippingAddress.city || ''}`
               : '',
             items: (selectedOrderForDetails.products || selectedOrderForDetails.items || []).map((p: any) => ({

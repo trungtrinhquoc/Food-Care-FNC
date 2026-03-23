@@ -16,6 +16,7 @@ function formatPriceVnd(value: number) {
 }
 
 function formatDistance(distanceKm: number) {
+    if (distanceKm < 0) return 'Chưa rõ khoảng cách';
     if (distanceKm < 1) return `${Math.round(distanceKm * 1000)}m`;
     return `${distanceKm.toFixed(1)}km`;
 }
@@ -87,7 +88,9 @@ export default function CrossMartSearchPage() {
 
     const nearestDistance = useMemo(() => {
         if (!results || results.length === 0) return null;
-        return Math.min(...results.map((r) => r.distanceKm));
+        const knownDistances = results.map((r) => r.distanceKm).filter((d) => d >= 0);
+        if (knownDistances.length === 0) return null;
+        return Math.min(...knownDistances);
     }, [results]);
 
     const selectedMartHasResult = useMemo(() => {
@@ -278,7 +281,9 @@ export default function CrossMartSearchPage() {
                         {results.map((product) => {
                             const imageUrl = getImageUrl(product.images);
                             const stockQty = product.stockQuantity ?? 0;
-                            const nearestBadge = nearestDistance != null && Math.abs(product.distanceKm - nearestDistance) < 0.01;
+                            const nearestBadge = product.distanceKm >= 0
+                                && nearestDistance != null
+                                && Math.abs(product.distanceKm - nearestDistance) < 0.01;
 
                             return (
                                 <div

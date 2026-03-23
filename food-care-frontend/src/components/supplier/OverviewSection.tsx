@@ -76,7 +76,7 @@ export function OverviewSection({
     // Format daily revenue for chart display
     const chartData = useMemo(() => {
         if (!revenueData?.dailyRevenue) return [];
-        
+
         // Get last 7 days of data
         const last7Days = revenueData.dailyRevenue.slice(-7);
         return last7Days.map(item => ({
@@ -107,6 +107,7 @@ export function OverviewSection({
             pending: { variant: 'secondary', label: 'Chờ xác nhận', className: 'bg-amber-100 text-amber-800 border-amber-200' },
             confirmed: { variant: 'default', label: 'Đã xác nhận', className: 'bg-blue-100 text-blue-800 border-blue-200' },
             processing: { variant: 'default', label: 'Đang xử lý', className: 'bg-purple-100 text-purple-800 border-purple-200' },
+            shipping: { variant: 'default', label: 'Đang giao', className: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
             shipped: { variant: 'default', label: 'Đang giao', className: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
             delivered: { variant: 'default', label: 'Đã giao', className: 'bg-blue-100 text-blue-800 border-blue-200' },
             cancelled: { variant: 'destructive', label: 'Đã hủy', className: 'bg-red-100 text-red-800 border-red-200' },
