@@ -31,6 +31,8 @@ export interface MartDetail {
 export interface MartProduct {
     id: string;
     name: string;
+    manufacturer?: string;
+    origin?: string;
     basePrice: number;
     originalPrice?: number;
     images?: string;

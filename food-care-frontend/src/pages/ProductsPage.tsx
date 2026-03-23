@@ -11,6 +11,8 @@ import { ProductCard } from '../components/ProductCard'
 import { useNavigate } from 'react-router-dom'
 import { SimplePagination } from '../components/ui/pagination';
 import { martApi } from '../services/martApi';
+import { Search, ArrowUpRight } from 'lucide-react';
+import { Button } from '../components/ui/button';
 
 
 
@@ -37,15 +39,20 @@ export default function ProductsPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchMode, setSearchMode] = useState<'mart' | 'platform'>('mart');
 
-    // Debounce search
+    // Debounce only for in-mart search mode
     useEffect(() => {
+        if (searchMode !== 'mart') {
+            setSearchQuery('');
+            return;
+        }
         const timer = setTimeout(() => {
             setSearchQuery(searchInput);
             setCurrentPage(1);
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchInput]);
+    }, [searchInput, searchMode]);
     const { data: categories } = useQuery({
         queryKey: ['categories'],
         queryFn: categoriesApi.getCategories,
@@ -82,6 +89,12 @@ export default function ProductsPage() {
     };
 
     const handleSearch = () => {
+        if (searchMode === 'platform') {
+            const q = searchInput.trim();
+            if (!q) return;
+            navigate(`/search-all?q=${encodeURIComponent(q)}`);
+            return;
+        }
         setSearchQuery(searchInput);
         setCurrentPage(1);
     };
@@ -113,7 +126,7 @@ export default function ProductsPage() {
     return (
         <div>
             <section className="bg-white border-b border-gray-100">
-                <div className="container mx-auto px-4 py-8 md:py-12">
+                <div className="container mx-auto px-4 py-8 md:py-10">
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 tracking-tight">Sản Phẩm Thiết Yếu</h1>
                     <p className="text-sm md:text-base text-gray-500 max-w-2xl leading-relaxed">
                         Khám phá các sản phẩm chất lượng cao với giá ưu đãi đặc biệt khi đặt hàng định kỳ.
@@ -124,6 +137,50 @@ export default function ProductsPage() {
                             <span>{selectedMartDetail?.storeName || `Mart #${selectedMartId}`}</span>
                         </div>
                     )}
+
+                    <div className="mt-5 max-w-3xl bg-white rounded-2xl border border-gray-200 shadow-sm p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                            <button
+                                onClick={() => setSearchMode('mart')}
+                                className={`px-3 py-1.5 text-xs rounded-full ${searchMode === 'mart' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                            >
+                                Tìm trong mart
+                            </button>
+                            <button
+                                onClick={() => setSearchMode('platform')}
+                                className={`px-3 py-1.5 text-xs rounded-full ${searchMode === 'platform' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                            >
+                                Tìm toàn nền tảng
+                            </button>
+                        </div>
+                        <div className="relative group flex items-center gap-2">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+                                <Search className="h-4 w-4" />
+                            </span>
+                            <input
+                                type="text"
+                                placeholder={searchMode === 'platform' ? 'Ví dụ: gạo ST25, dầu ăn, mì...' : 'Tìm sản phẩm trong mart hiện tại...'}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSearch();
+                                    }
+                                }}
+                                className="flex-1 pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all duration-300"
+                            />
+                            <Button onClick={handleSearch} className={`${searchMode === 'platform' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'} rounded-xl`}>
+                                {searchMode === 'platform' ? (
+                                    <span className="inline-flex items-center gap-1">Tìm toàn hệ thống <ArrowUpRight className="h-4 w-4" /></span>
+                                ) : 'Tìm kiếm'}
+                            </Button>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-2">
+                            {searchMode === 'platform'
+                                ? 'Mở trang kết quả toàn nền tảng để so sánh lựa chọn từ nhiều mart gần bạn.'
+                                : 'Lọc trực tiếp danh sách sản phẩm theo mart bạn đang chọn.'}
+                        </p>
+                    </div>
                 </div>
             </section>
 
@@ -175,33 +232,22 @@ export default function ProductsPage() {
                             </Tabs>
                         </div>
 
-                        {/* Search */}
-                        <div className="relative w-full lg:w-80">
-                            <div className="relative group">
-                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 group-focus-within:text-emerald-500 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </span>
-                                <input
-                                    type="text"
-                                    placeholder="Tìm kiếm sản phẩm..."
-                                    value={searchInput}
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            handleSearch();
-                                        }
-                                    }}
-                                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all duration-300"
-                                />
-                            </div>
-                        </div>
+                        <div className="hidden lg:block text-xs text-gray-500">Lọc danh mục áp dụng cho danh sách hiện tại</div>
                     </div>
                 </div>
             </section>
 
             <div className="container mx-auto px-4 py-6 md:py-8 lg:py-12">
+                <div className="flex items-center justify-between mb-4 text-sm">
+                    <p className="text-gray-600">
+                        {isLoading ? 'Đang tải sản phẩm...' : `Hiển thị ${totalItems} sản phẩm`}
+                    </p>
+                    {searchQuery && searchMode === 'mart' && (
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            Từ khóa: {searchQuery}
+                        </span>
+                    )}
+                </div>
                 <div className="relative min-h-[400px]">
                     {isLoading ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6 opacity-50">
