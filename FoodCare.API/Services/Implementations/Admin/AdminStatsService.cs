@@ -65,7 +65,8 @@ public class AdminStatsService : IAdminStatsService
         int pendingComplaints = 0;
         try
         {
-            pendingComplaints = await _context.Complaints.CountAsync(c => c.Status == "pending");
+            pendingComplaints = await _context.Complaints
+                .CountAsync(c => c.Status == "pending" && c.Type != "Góp ý nền tảng");
         }
         catch { pendingComplaints = 0; }
 

@@ -159,6 +159,21 @@ export function OrderDetailDialog({ open, onOpenChange, order, onReviewSuccess }
 
   if (!order) return null;
 
+  const timelineSteps: Array<{ key: OrderStatus; label: string; desc: string }> = [
+    { key: 'pending', label: 'Đặt hàng', desc: 'Đơn hàng đã được tạo thành công' },
+    { key: 'confirmed', label: 'Xác nhận đơn', desc: 'Mart đã xác nhận và bắt đầu xử lý' },
+    { key: 'shipping', label: 'Đang giao', desc: 'Đơn hàng đang trên đường giao đến bạn' },
+    { key: 'delivered', label: 'Đã giao', desc: 'Bạn đã nhận hàng thành công' },
+  ];
+
+  const currentStatusIndex = (() => {
+    if (order.status === 'cancelled' || order.status === 'returned') return -1;
+    if (order.status === 'processing') return 1;
+    const idx = timelineSteps.findIndex((s) => s.key === order.status);
+    return idx >= 0 ? idx : 0;
+  })();
+  const progressPercent = currentStatusIndex < 0 ? 0 : ((currentStatusIndex + 1) / timelineSteps.length) * 100;
+
 
 
   return (
@@ -189,6 +204,52 @@ export function OrderDetailDialog({ open, onOpenChange, order, onReviewSuccess }
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Order Timeline */}
+            <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold text-gray-900">Tiến trình đơn hàng</h4>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${getStatusColor(order.status)}`}>
+                  {getStatusText(order.status)}
+                </span>
+              </div>
+
+              {(order.status !== 'cancelled' && order.status !== 'returned') && (
+                <div className="mb-4">
+                  <div className="w-full h-2 rounded-full bg-emerald-100 overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                  </div>
+                  <p className="text-xs text-emerald-700 mt-2">
+                    Bước hiện tại: {timelineSteps[Math.max(0, currentStatusIndex)]?.label}
+                  </p>
+                </div>
+              )}
+
+              {(order.status === 'cancelled' || order.status === 'returned') ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  Đơn hàng đã {order.status === 'cancelled' ? 'bị hủy' : 'được trả hàng'}.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  {timelineSteps.map((step, idx) => {
+                    const done = idx < currentStatusIndex;
+                    const active = idx === currentStatusIndex;
+
+                    return (
+                      <div key={step.key} className={`rounded-lg border p-3 transition-all ${active ? 'border-emerald-500 bg-white shadow-sm' : done ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white/80'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${active ? 'bg-emerald-600 text-white' : done ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {done ? <CheckCircle className="w-3.5 h-3.5" /> : idx + 1}
+                          </span>
+                          <p className={`text-sm font-semibold ${active ? 'text-emerald-700' : 'text-gray-800'}`}>{step.label}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">{step.desc}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Items Section */}
             <div>
               <h4 className="flex items-center gap-2 font-semibold mb-3">
