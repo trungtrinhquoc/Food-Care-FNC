@@ -228,45 +228,45 @@ export default function MartStorePage() {
                             Lọc nhanh sản phẩm theo danh mục, giá và mức phổ biến
                         </div>
                         <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-                        <div className="flex gap-2 flex-wrap">
-                            <button
-                                onClick={() => setActiveCategory('all')}
-                                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${activeCategory === 'all' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                            >
-                                Tất cả
-                            </button>
-                            {categories.map((c) => (
+                            <div className="flex gap-2 flex-wrap">
                                 <button
-                                    key={c}
-                                    onClick={() => setActiveCategory(c!)}
-                                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${activeCategory === c ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                    onClick={() => setActiveCategory('all')}
+                                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${activeCategory === 'all' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                 >
-                                    {c}
+                                    Tất cả
                                 </button>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-2">
-                            <div className="relative">
-                                <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                                <input
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Tìm trong mart..."
-                                    className="h-9 pl-8 pr-3 rounded-lg border text-sm"
-                                />
+                                {categories.map((c) => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setActiveCategory(c!)}
+                                        className={`px-3 py-1.5 rounded-full text-sm transition-colors ${activeCategory === c ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
                             </div>
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="h-9 px-2 rounded-lg border text-sm"
-                            >
-                                <option value="popular">Phổ biến</option>
-                                <option value="rating">Đánh giá</option>
-                                <option value="price_asc">Giá tăng dần</option>
-                                <option value="price_desc">Giá giảm dần</option>
-                            </select>
-                        </div>
+
+                            <div className="flex gap-2">
+                                <div className="relative">
+                                    <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Tìm trong mart..."
+                                        className="h-9 pl-8 pr-3 rounded-lg border text-sm"
+                                    />
+                                </div>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="h-9 px-2 rounded-lg border text-sm"
+                                >
+                                    <option value="popular">Phổ biến</option>
+                                    <option value="rating">Đánh giá</option>
+                                    <option value="price_asc">Giá tăng dần</option>
+                                    <option value="price_desc">Giá giảm dần</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -302,8 +302,8 @@ export function OrderDetailDialog({ open, onOpenChange, order, onReviewSuccess }
                           <div className="flex items-center gap-2 flex-wrap">
                             <p
                               className={`font-medium transition-colors ${isUnavailable
-                                  ? 'text-gray-400 line-through cursor-not-allowed'
-                                  : 'text-gray-900 cursor-pointer hover:text-emerald-600'
+                                ? 'text-gray-400 line-through cursor-not-allowed'
+                                : 'text-gray-900 cursor-pointer hover:text-emerald-600'
                                 }`}
                               onClick={() => {
                                 if (isUnavailable) {
